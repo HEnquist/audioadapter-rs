@@ -56,7 +56,7 @@ impl<'a, T> VecOfChannels<'a, T> {
 
 impl<'a, T> AudioBuffer<'a, T>for VecOfChannels<'a, T> where T: Copy {
 
-    type ChannelIterator = std::slice::Iter<'a, T>;
+    type ChannelIterator = std::iter::Take<std::slice::Iter<'a, T>>;
     type FrameIterator = Box<dyn Iterator<Item=&'a T> + 'a>;
 
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
@@ -76,11 +76,11 @@ impl<'a, T> AudioBuffer<'a, T>for VecOfChannels<'a, T> where T: Copy {
     }
 
     fn channel(&'a self, channel: usize) -> Self::ChannelIterator {
-        self.buf[channel].iter()
+        self.buf[channel].iter().take(self.frames)
     }
 
-    fn frame(&'a self, channel: usize) -> Self::FrameIterator {
-        Box::new(self.buf.iter().map(move |v| &v[channel]))
+    fn frame(&'a self, frame: usize) -> Self::FrameIterator {
+        Box::new(self.buf.iter().take(self.channels).map(move |v| &v[frame]))
     }
 
 }
@@ -128,7 +128,7 @@ impl<'a, T> AudioBuffer<'a, T>for VecOfFrames<'a, T> where T: Copy {
         self.frames
     }
 }
-
+*/
 pub struct Interleaved<'a, T> {
     buf: &'a mut [T],
     frames: usize,
@@ -149,6 +149,9 @@ impl<'a, T> Interleaved<'a, T> {
 }
 
 impl<'a, T> AudioBuffer<'a, T>for Interleaved<'a, T> where T: Copy {
+    type ChannelIterator = std::iter::Take<std::iter::StepBy<std::iter::Skip<std::slice::Iter<'a, T>>>>;
+    type FrameIterator = std::iter::Take<std::iter::Skip<std::slice::Iter<'a, T>>>;
+
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         return self.buf.get(frame*self.channels + channel)
     }
@@ -164,8 +167,16 @@ impl<'a, T> AudioBuffer<'a, T>for Interleaved<'a, T> where T: Copy {
     fn frames(&self) -> usize{
         self.frames
     }
-}
 
+    fn channel(&'a self, channel: usize) -> Self::ChannelIterator {
+        self.buf.iter().skip(channel).step_by(self.channels).take(self.frames)
+    }
+
+    fn frame(&'a self, frame: usize) -> Self::FrameIterator {
+        self.buf.iter().skip(frame * self.channels).take(self.channels)
+    }
+}
+/*
 pub struct NonInterleaved<'a, T> {
     buf: &'a mut [T],
     frames: usize,
@@ -260,17 +271,31 @@ mod tests {
         *buffer.get_mut(1,1).unwrap() = 8;
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
-
+    */
     #[test]
     fn interleaved() {
         let mut data = vec![1_i32, 4, 2, 5, 3, 6];
         let mut buffer = Interleaved::new(&mut data, 2, 3).unwrap();
         assert_eq!(*buffer.get(0,0).unwrap(), 1);
         assert_eq!(*buffer.get(1,2).unwrap(), 6);
+
+        {
+            let mut iter1 = buffer.channel(0);
+            assert_eq!(iter1.next(), Some(&1));
+            assert_eq!(iter1.next(), Some(&2));
+            assert_eq!(iter1.next(), Some(&3));
+            assert_eq!(iter1.next(), None);
+
+            let mut iter2 = buffer.frame(1);
+            assert_eq!(iter2.next(), Some(&2));
+            assert_eq!(iter2.next(), Some(&5));
+            assert_eq!(iter2.next(), None);
+        }
+
         *buffer.get_mut(1,1).unwrap() = 8;
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
-
+    /*
     #[test]
     fn non_interleaved() {
         let mut data = vec![1_i32, 2, 3, 4, 5, 6];
