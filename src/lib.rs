@@ -1,6 +1,6 @@
 use std::error;
 use std::fmt;
-
+use std::slice::Iter;
 
 #[derive(Debug)]
 pub struct BufferError {
@@ -34,6 +34,8 @@ pub struct VecOfChannels<'a, T> {
     channels: usize,
 }  
 
+
+
 impl<'a, T> VecOfChannels<'a, T> {
     pub fn new(buf: &'a mut [Vec<T>], channels: usize, frames: usize) -> Result<Self, BufferError> {
         if buf.len() != channels {
@@ -53,6 +55,10 @@ impl<'a, T> VecOfChannels<'a, T> {
 }
 
 impl<'a, T> AudioBuffer<'a, T>for VecOfChannels<'a, T> where T: Copy {
+
+    type ChannelIterator = std::slice::Iter<'a, T>;
+    type FrameIterator = Box<dyn Iterator<Item=&'a T> + 'a>;
+
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         return self.buf.get(channel).and_then(|ch| ch.get(frame))
     }
@@ -68,8 +74,19 @@ impl<'a, T> AudioBuffer<'a, T>for VecOfChannels<'a, T> where T: Copy {
     fn frames(&self) -> usize{
         self.frames
     }
+
+    fn channel(&'a self, channel: usize) -> Self::ChannelIterator {
+        self.buf[channel].iter()
+    }
+
+    fn frame(&'a self, channel: usize) -> Self::FrameIterator {
+        Box::new(self.buf.iter().map(move |v| &v[channel]))
+    }
+
 }
 
+
+/* 
 pub struct VecOfFrames<'a, T> {
     buf: &'a mut [Vec<T>],
     frames: usize,
@@ -184,9 +201,14 @@ impl<'a, T> AudioBuffer<'a, T>for NonInterleaved<'a, T> where T: Copy {
     fn frames(&self) -> usize{
         self.frames
     }
-}
 
-pub trait AudioBuffer<'a, T: Copy> {
+}
+*/
+pub trait AudioBuffer<'a, T: Copy + 'a> {
+
+    type ChannelIterator: Iterator<Item=&'a T>;
+    type FrameIterator: Iterator<Item=&'a T>;
+
     fn get(&self, channel: usize, frame: usize) -> Option<&T>;
 
     fn get_mut(&mut self, channel: usize, frame: usize) -> Option<&mut T>;
@@ -195,7 +217,11 @@ pub trait AudioBuffer<'a, T: Copy> {
 
     fn frames(&self) -> usize;
 
+    fn channel(&'a self, channel: usize) -> Self::ChannelIterator;
+
+    fn frame(&'a self, frame: usize) -> Self::FrameIterator;
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -207,10 +233,24 @@ mod tests {
         let mut buffer = VecOfChannels::new(&mut data, 2, 3).unwrap();
         assert_eq!(*buffer.get(0,0).unwrap(), 1);
         assert_eq!(*buffer.get(1,2).unwrap(), 6);
+        {
+            let mut iter1 = buffer.channel(0);
+            assert_eq!(iter1.next(), Some(&1));
+            assert_eq!(iter1.next(), Some(&2));
+            assert_eq!(iter1.next(), Some(&3));
+            assert_eq!(iter1.next(), None);
+
+            let mut iter2 = buffer.frame(1);
+            assert_eq!(iter2.next(), Some(&2));
+            assert_eq!(iter2.next(), Some(&5));
+            assert_eq!(iter2.next(), None);
+        }
+
         *buffer.get_mut(1,1).unwrap() = 8;
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
 
+    /*
     #[test]
     fn vec_of_frames() {
         let mut data = vec![vec![1_i32,4], vec![2_i32,5], vec![3,6]];
@@ -240,5 +280,6 @@ mod tests {
         *buffer.get_mut(1,1).unwrap() = 8;
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
+    */
 
 }  
