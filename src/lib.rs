@@ -1,6 +1,7 @@
 use std::error;
 use std::fmt;
-use std::slice::Iter;
+use std::slice;
+use std::iter::{StepBy, Skip, Take};
 
 #[derive(Debug)]
 pub struct BufferError {
@@ -54,9 +55,9 @@ impl<'a, T> VecOfChannels<'a, T> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T>for VecOfChannels<'a, T> where T: Copy {
+impl<'a, T> AudioBuffer<'a, T>for VecOfChannels<'a, T> where T: Clone {
 
-    type ChannelIterator = std::iter::Take<std::slice::Iter<'a, T>>;
+    type ChannelIterator = Take<slice::Iter<'a, T>>;
     type FrameIterator = Box<dyn Iterator<Item=&'a T> + 'a>;
 
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
@@ -86,7 +87,6 @@ impl<'a, T> AudioBuffer<'a, T>for VecOfChannels<'a, T> where T: Copy {
 }
 
 
-/* 
 pub struct VecOfFrames<'a, T> {
     buf: &'a mut [Vec<T>],
     frames: usize,
@@ -111,7 +111,10 @@ impl<'a, T> VecOfFrames<'a, T> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T>for VecOfFrames<'a, T> where T: Copy {
+impl<'a, T> AudioBuffer<'a, T>for VecOfFrames<'a, T> where T: Clone {
+    type ChannelIterator = Box<dyn Iterator<Item=&'a T> + 'a>;
+    type FrameIterator = Take<slice::Iter<'a, T>>;
+
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         return self.buf.get(frame).and_then(|ch| ch.get(channel))
     }
@@ -127,15 +130,24 @@ impl<'a, T> AudioBuffer<'a, T>for VecOfFrames<'a, T> where T: Copy {
     fn frames(&self) -> usize{
         self.frames
     }
+
+    fn channel(&'a self, channel: usize) -> Self::ChannelIterator {
+        Box::new(self.buf.iter().take(self.frames).map(move |v| &v[channel]))
+    }
+
+    fn frame(&'a self, frame: usize) -> Self::FrameIterator {
+        self.buf[frame].iter().take(self.channels)
+
+    }
 }
-*/
-pub struct Interleaved<'a, T> {
+
+pub struct InterleavedSlice<'a, T> {
     buf: &'a mut [T],
     frames: usize,
     channels: usize,
 }  
 
-impl<'a, T> Interleaved<'a, T> {
+impl<'a, T> InterleavedSlice<'a, T> {
     pub fn new(buf: &'a mut [T], channels: usize, frames: usize) -> Result<Self, BufferError> {
         if buf.len() < frames*channels {
             return Err(BufferError { desc: format!("Buffer is too short, {} < {}", buf.len(), frames*channels)});
@@ -148,9 +160,9 @@ impl<'a, T> Interleaved<'a, T> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T>for Interleaved<'a, T> where T: Copy {
-    type ChannelIterator = std::iter::Take<std::iter::StepBy<std::iter::Skip<std::slice::Iter<'a, T>>>>;
-    type FrameIterator = std::iter::Take<std::iter::Skip<std::slice::Iter<'a, T>>>;
+impl<'a, T> AudioBuffer<'a, T>for InterleavedSlice<'a, T> where T: Clone {
+    type ChannelIterator = Take<StepBy<Skip<slice::Iter<'a, T>>>>;
+    type FrameIterator = Take<Skip<slice::Iter<'a, T>>>;
 
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         return self.buf.get(frame*self.channels + channel)
@@ -176,14 +188,14 @@ impl<'a, T> AudioBuffer<'a, T>for Interleaved<'a, T> where T: Copy {
         self.buf.iter().skip(frame * self.channels).take(self.channels)
     }
 }
-/*
-pub struct NonInterleaved<'a, T> {
+
+pub struct SequentialSlice<'a, T> {
     buf: &'a mut [T],
     frames: usize,
     channels: usize,
 }  
 
-impl<'a, T> NonInterleaved<'a, T> {
+impl<'a, T> SequentialSlice<'a, T> {
     pub fn new(buf: &'a mut [T], channels: usize, frames: usize) -> Result<Self, BufferError> {
         if buf.len() < frames*channels {
             return Err(BufferError { desc: format!("Buffer is too short, {} < {}", buf.len(), frames*channels)});
@@ -196,7 +208,10 @@ impl<'a, T> NonInterleaved<'a, T> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T>for NonInterleaved<'a, T> where T: Copy {
+impl<'a, T> AudioBuffer<'a, T>for SequentialSlice<'a, T> where T: Clone {
+    type ChannelIterator = Take<Skip<slice::Iter<'a, T>>>;
+    type FrameIterator = Take<StepBy<Skip<slice::Iter<'a, T>>>>;
+
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         return self.buf.get(channel*self.frames + frame)
     }
@@ -213,9 +228,17 @@ impl<'a, T> AudioBuffer<'a, T>for NonInterleaved<'a, T> where T: Copy {
         self.frames
     }
 
+    fn channel(&'a self, channel: usize) -> Self::ChannelIterator {
+        self.buf.iter().skip(self.frames * channel).take(self.frames)
+    }
+
+    fn frame(&'a self, frame: usize) -> Self::FrameIterator {
+        self.buf.iter().skip(frame).step_by(self.frames).take(self.channels)
+    }
+
 }
-*/
-pub trait AudioBuffer<'a, T: Copy + 'a> {
+
+pub trait AudioBuffer<'a, T: Clone + 'a> {
 
     type ChannelIterator: Iterator<Item=&'a T>;
     type FrameIterator: Iterator<Item=&'a T>;
@@ -261,21 +284,33 @@ mod tests {
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
 
-    /*
+
     #[test]
     fn vec_of_frames() {
         let mut data = vec![vec![1_i32,4], vec![2_i32,5], vec![3,6]];
         let mut buffer = VecOfFrames::new(&mut data, 2, 3).unwrap();
         assert_eq!(*buffer.get(0,0).unwrap(), 1);
         assert_eq!(*buffer.get(1,2).unwrap(), 6);
+        {
+            let mut iter1 = buffer.channel(0);
+            assert_eq!(iter1.next(), Some(&1));
+            assert_eq!(iter1.next(), Some(&2));
+            assert_eq!(iter1.next(), Some(&3));
+            assert_eq!(iter1.next(), None);
+
+            let mut iter2 = buffer.frame(1);
+            assert_eq!(iter2.next(), Some(&2));
+            assert_eq!(iter2.next(), Some(&5));
+            assert_eq!(iter2.next(), None);
+        }
         *buffer.get_mut(1,1).unwrap() = 8;
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
-    */
+
     #[test]
     fn interleaved() {
         let mut data = vec![1_i32, 4, 2, 5, 3, 6];
-        let mut buffer = Interleaved::new(&mut data, 2, 3).unwrap();
+        let mut buffer = InterleavedSlice::new(&mut data, 2, 3).unwrap();
         assert_eq!(*buffer.get(0,0).unwrap(), 1);
         assert_eq!(*buffer.get(1,2).unwrap(), 6);
 
@@ -295,16 +330,27 @@ mod tests {
         *buffer.get_mut(1,1).unwrap() = 8;
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
-    /*
+
     #[test]
-    fn non_interleaved() {
+    fn sequential() {
         let mut data = vec![1_i32, 2, 3, 4, 5, 6];
-        let mut buffer = NonInterleaved::new(&mut data, 2, 3).unwrap();
+        let mut buffer = SequentialSlice::new(&mut data, 2, 3).unwrap();
         assert_eq!(*buffer.get(0,0).unwrap(), 1);
         assert_eq!(*buffer.get(1,2).unwrap(), 6);
+        {
+            let mut iter1 = buffer.channel(0);
+            assert_eq!(iter1.next(), Some(&1));
+            assert_eq!(iter1.next(), Some(&2));
+            assert_eq!(iter1.next(), Some(&3));
+            assert_eq!(iter1.next(), None);
+
+            let mut iter2 = buffer.frame(1);
+            assert_eq!(iter2.next(), Some(&2));
+            assert_eq!(iter2.next(), Some(&5));
+            assert_eq!(iter2.next(), None);
+        }
         *buffer.get_mut(1,1).unwrap() = 8;
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
-    */
 
 }  
