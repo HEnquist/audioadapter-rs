@@ -55,10 +55,11 @@ impl<'a, T> VecOfChannels<'a, T> {
     }
 }
 
+
 impl<'a, T> AudioBuffer<'a, T>for VecOfChannels<'a, T> where T: Clone {
 
-    type ChannelIterator = Take<slice::Iter<'a, T>>;
-    type FrameIterator = Box<dyn Iterator<Item=&'a T> + 'a>;
+    //type ChannelIterator = Take<slice::Iter<'a, T>>;
+    //type FrameIterator = Box<dyn Iterator<Item=&'a T> + 'a>;
 
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         return self.buf.get(channel).and_then(|ch| ch.get(frame))
@@ -76,12 +77,16 @@ impl<'a, T> AudioBuffer<'a, T>for VecOfChannels<'a, T> where T: Clone {
         self.frames
     }
 
-    fn channel(&'a self, channel: usize) -> Self::ChannelIterator {
-        self.buf[channel].iter().take(self.frames)
+    fn channel(&'a self, channel: usize) -> SampleIterator<'a, T> {
+        SampleIterator { iterator: Box::new(self.buf[channel].iter().take(self.frames)) }
     }
 
-    fn frame(&'a self, frame: usize) -> Self::FrameIterator {
-        Box::new(self.buf.iter().take(self.channels).map(move |v| &v[frame]))
+    fn channel_mut(&'a mut self, channel: usize) -> SampleIteratorMut<'a, T> {
+        SampleIteratorMut { iterator: Box::new(self.buf[channel].iter_mut().take(self.frames)) }
+    }
+
+    fn frame(&'a self, frame: usize) -> SampleIterator<'a, T> {
+        SampleIterator { iterator: Box::new(self.buf.iter().take(self.channels).map(move |v| &v[frame])) }
     }
 
 }
@@ -112,8 +117,8 @@ impl<'a, T> VecOfFrames<'a, T> {
 }
 
 impl<'a, T> AudioBuffer<'a, T>for VecOfFrames<'a, T> where T: Clone {
-    type ChannelIterator = Box<dyn Iterator<Item=&'a T> + 'a>;
-    type FrameIterator = Take<slice::Iter<'a, T>>;
+    //type ChannelIterator = Box<dyn Iterator<Item=&'a T> + 'a>;
+    //type FrameIterator = Take<slice::Iter<'a, T>>;
 
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         return self.buf.get(frame).and_then(|ch| ch.get(channel))
@@ -131,13 +136,16 @@ impl<'a, T> AudioBuffer<'a, T>for VecOfFrames<'a, T> where T: Clone {
         self.frames
     }
 
-    fn channel(&'a self, channel: usize) -> Self::ChannelIterator {
-        Box::new(self.buf.iter().take(self.frames).map(move |v| &v[channel]))
+    fn channel(&'a self, channel: usize) -> SampleIterator<'a, T> {
+        SampleIterator { iterator: Box::new(self.buf.iter().take(self.frames).map(move |v| &v[channel])) }
     }
 
-    fn frame(&'a self, frame: usize) -> Self::FrameIterator {
-        self.buf[frame].iter().take(self.channels)
+    fn channel_mut(&'a mut self, channel: usize) -> SampleIteratorMut<'a, T> {
+        SampleIteratorMut { iterator: Box::new(self.buf.iter_mut().take(self.frames).map(move |v| &mut v[channel])) }
+    }
 
+    fn frame(&'a self, frame: usize) -> SampleIterator<'a, T> {
+        SampleIterator { iterator: Box::new(self.buf[frame].iter().take(self.channels)) }
     }
 }
 
@@ -161,8 +169,8 @@ impl<'a, T> InterleavedSlice<'a, T> {
 }
 
 impl<'a, T> AudioBuffer<'a, T>for InterleavedSlice<'a, T> where T: Clone {
-    type ChannelIterator = Take<StepBy<Skip<slice::Iter<'a, T>>>>;
-    type FrameIterator = Take<Skip<slice::Iter<'a, T>>>;
+    //type ChannelIterator = Take<StepBy<Skip<slice::Iter<'a, T>>>>;
+    //type FrameIterator = Take<Skip<slice::Iter<'a, T>>>;
 
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         return self.buf.get(frame*self.channels + channel)
@@ -180,13 +188,18 @@ impl<'a, T> AudioBuffer<'a, T>for InterleavedSlice<'a, T> where T: Clone {
         self.frames
     }
 
-    fn channel(&'a self, channel: usize) -> Self::ChannelIterator {
-        self.buf.iter().skip(channel).step_by(self.channels).take(self.frames)
+    fn channel(&'a self, channel: usize) -> SampleIterator<'a, T> {
+        SampleIterator { iterator: Box::new(self.buf.iter().skip(channel).step_by(self.channels).take(self.frames)) }
     }
 
-    fn frame(&'a self, frame: usize) -> Self::FrameIterator {
-        self.buf.iter().skip(frame * self.channels).take(self.channels)
+    fn channel_mut(&'a mut self, channel: usize) -> SampleIteratorMut<'a, T> {
+        SampleIteratorMut { iterator: Box::new(self.buf.iter_mut().skip(channel).step_by(self.channels).take(self.frames)) }
     }
+
+    fn frame(&'a self, frame: usize) -> SampleIterator<'a, T> {
+        SampleIterator { iterator: Box::new(self.buf.iter().skip(frame * self.channels).take(self.channels)) }
+    }
+
 }
 
 pub struct SequentialSlice<'a, T> {
@@ -209,8 +222,8 @@ impl<'a, T> SequentialSlice<'a, T> {
 }
 
 impl<'a, T> AudioBuffer<'a, T>for SequentialSlice<'a, T> where T: Clone {
-    type ChannelIterator = Take<Skip<slice::Iter<'a, T>>>;
-    type FrameIterator = Take<StepBy<Skip<slice::Iter<'a, T>>>>;
+    //type ChannelIterator = Take<Skip<slice::Iter<'a, T>>>;
+    //type FrameIterator = Take<StepBy<Skip<slice::Iter<'a, T>>>>;
 
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         return self.buf.get(channel*self.frames + frame)
@@ -228,20 +241,24 @@ impl<'a, T> AudioBuffer<'a, T>for SequentialSlice<'a, T> where T: Clone {
         self.frames
     }
 
-    fn channel(&'a self, channel: usize) -> Self::ChannelIterator {
-        self.buf.iter().skip(self.frames * channel).take(self.frames)
+    fn channel(&'a self, channel: usize) -> SampleIterator<'a, T> {
+        SampleIterator { iterator: Box::new(self.buf.iter().skip(self.frames * channel).take(self.frames)) }
     }
 
-    fn frame(&'a self, frame: usize) -> Self::FrameIterator {
-        self.buf.iter().skip(frame).step_by(self.frames).take(self.channels)
+    fn channel_mut(&'a mut self, channel: usize) -> SampleIteratorMut<'a, T> {
+        SampleIteratorMut { iterator: Box::new(self.buf.iter_mut().skip(self.frames * channel).take(self.frames)) }
+    }
+
+    fn frame(&'a self, frame: usize) -> SampleIterator<'a, T> {
+        SampleIterator { iterator: Box::new(self.buf.iter().skip(frame).step_by(self.frames).take(self.channels)) }
     }
 
 }
 
 pub trait AudioBuffer<'a, T: Clone + 'a> {
 
-    type ChannelIterator: Iterator<Item=&'a T>;
-    type FrameIterator: Iterator<Item=&'a T>;
+    //type ChannelIterator: Iterator<Item=&'a T>;
+    //type FrameIterator: Iterator<Item=&'a T>;
 
     fn get(&self, channel: usize, frame: usize) -> Option<&T>;
 
@@ -251,9 +268,35 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
 
     fn frames(&self) -> usize;
 
-    fn channel(&'a self, channel: usize) -> Self::ChannelIterator;
+    fn channel(&'a self, channel: usize) -> SampleIterator<'a, T>;
 
-    fn frame(&'a self, frame: usize) -> Self::FrameIterator;
+    fn channel_mut(&'a mut self, channel: usize) -> SampleIteratorMut<'a, T>;
+
+    fn frame(&'a self, frame: usize) -> SampleIterator<'a, T>;
+}
+
+pub struct SampleIterator<'a, T >{
+    iterator: Box<dyn Iterator<Item = &'a T> + 'a>
+}
+
+impl<'a, T> Iterator for SampleIterator<'a, T> where T: Clone {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        self.iterator.next()
+    }
+}
+
+pub struct SampleIteratorMut<'a, T >{
+    iterator: Box<dyn Iterator<Item = &'a mut T> + 'a>
+}
+
+impl<'a, T> Iterator for SampleIteratorMut<'a, T> where T: Clone {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<&'a mut T> {
+        self.iterator.next()
+    }
 }
 
 
@@ -357,7 +400,7 @@ mod tests {
     #[test]
     fn boxed_buffer() {
         let mut data = vec![1_i32, 2, 3, 4, 5, 6];
-        let boxed: Box<dyn AudioBuffer<i32, ChannelIterator = Take<Skip<slice::Iter<i32>>>, FrameIterator = Take<StepBy<Skip<slice::Iter<i32>>>>>> = Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
+        let boxed: Box<dyn AudioBuffer<i32>> = Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
         assert_eq!(*boxed.get(0,0).unwrap(), 1);
     }
 
