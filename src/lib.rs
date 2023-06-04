@@ -353,4 +353,12 @@ mod tests {
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
 
+    // This tests that an AudioBuffer is object safe.
+    #[test]
+    fn boxed_buffer() {
+        let mut data = vec![1_i32, 2, 3, 4, 5, 6];
+        let boxed: Box<dyn AudioBuffer<i32, ChannelIterator = Take<Skip<slice::Iter<i32>>>, FrameIterator = Take<StepBy<Skip<slice::Iter<i32>>>>>> = Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
+        assert_eq!(*boxed.get(0,0).unwrap(), 1);
+    }
+
 }  
