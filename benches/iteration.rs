@@ -16,6 +16,19 @@ pub fn bench_with_iterator(c: &mut Criterion) {
     c.bench_function("new_iter", |b| b.iter(|| black_box(iter_with_iterator(black_box(&buffer)))));
 }
 
+fn iter_with_iterator2(buf: &SliceOfFrameVecs<i32>) -> i32 {
+    let mut sum = 0;
+    for channel in buf.iter_channels() {
+        sum += channel.sum::<i32>();
+    }
+    return sum
+}
+
+pub fn bench_with_iterator2(c: &mut Criterion) {
+    let mut data = vec![vec![1_i32; 2]; 10000];
+    let mut buffer = SliceOfFrameVecs::new(&mut data, 2, 10000).unwrap();
+    c.bench_function("new_iter2", |b| b.iter(|| black_box(iter_with_iterator2(black_box(&buffer)))));
+}
 
 
 fn iter_with_loop(buf: &SliceOfChannelVecs<i32>) -> i32 {
@@ -68,5 +81,5 @@ pub fn bench_slice_iter(c: &mut Criterion) {
 
 
 
-criterion_group!(benches, bench_with_iterator, bench_with_loop, bench_with_safe_loop, bench_slice_iter);
+criterion_group!(benches, bench_with_iterator, bench_with_iterator2, bench_with_loop, bench_with_safe_loop, bench_slice_iter);
 criterion_main!(benches);
