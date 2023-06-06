@@ -2,23 +2,6 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use audiobuffer::*;
 
 
-
-fn iter_with_box(buf: &SliceOfChannelVecs<i32>) -> i32 {
-    let mut sum = 0;
-    for channel in 0..buf.channels() {
-        sum += buf.channel(channel).sum::<i32>();
-    }
-    return sum
-}
-
-pub fn bench_with_box(c: &mut Criterion) {
-    let mut data = vec![vec![1_i32; 10000], vec![2_i32; 10000]];
-    let mut buffer = SliceOfChannelVecs::new(&mut data, 2, 10000).unwrap();
-    c.bench_function("box", |b| b.iter(|| black_box(iter_with_box(black_box(&buffer)))));
-}
-
-
-
 fn iter_with_iterator(buf: &SliceOfChannelVecs<i32>) -> i32 {
     let mut sum = 0;
     for channel in buf.iter_channels() {
@@ -85,5 +68,5 @@ pub fn bench_slice_iter(c: &mut Criterion) {
 
 
 
-criterion_group!(benches, bench_with_box, bench_with_iterator, bench_with_loop, bench_with_safe_loop, bench_slice_iter);
+criterion_group!(benches, bench_with_iterator, bench_with_loop, bench_with_safe_loop, bench_slice_iter);
 criterion_main!(benches);
