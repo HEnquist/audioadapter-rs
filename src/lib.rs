@@ -356,6 +356,15 @@ pub trait AudioBuffer<'a, T: Clone + 'a>{
     //fn frame_as_slice(&'a self, frame: usize) -> Option<&[T]>;
     //fn channel_as_slice(&'a self, channel: usize) -> Option<&[T]>;
 
+    // Convenience methods to read and write to/from slices.
+    // Reads/writes the entire slice.
+    // Returns an error if self isn't large enough, lengh < (slice length + start)
+    // Can use efficient clone_from_slice when the alignments match. 
+    //fn read_channel_from_slice(channel: usize, start: usize, slice: &[T]) -> Result 
+    //fn write_channel_to_slice(channel: usize, start: usize, slice: &mut [T]) -> Result
+    //fn read_frame_from_slice(channel: usize, start: usize, slice: &[T]) -> Result
+    //fn write_frame_to_slice(channel: usize, start: usize, slice: &mut [T]) -> Result
+
     fn iter_channel(&'a self, channel: usize) -> Option<ChannelSamples<'a, T>>;
 
     fn iter_channels(&'a self) -> Channels<'a, T>;
