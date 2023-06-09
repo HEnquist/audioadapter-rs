@@ -71,35 +71,35 @@ impl<'a, T> AudioBuffer<'a, T>for SliceOfChannelVecs<'a, T> where T: Clone {
         self.frames
     }
 
-    fn iter_channel(&'a self, channel: usize) -> Option<ChannelSamples<'a, T>> {
+    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>> {
         ChannelSamples::new(self, channel)
     }
 
-    fn iter_channels(&'a self) -> Channels<'a, T> {
+    fn iter_channels(&self) -> Channels<'a, '_, T> {
         Channels::new(self)
     }
 
-    fn iter_frame(&'a self, frame: usize) -> Option<FrameSamples<'a, T>> {
+    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T>> {
         FrameSamples::new(self, frame)
     }
 
-    fn iter_frames(&'a self) -> Frames<'a, T> {
+    fn iter_frames(&self) -> Frames<'a, '_, T> {
         Frames::new(self)
     }
 
-    fn iter_channel_mut(&'a mut self, channel: usize) -> Option<ChannelSamplesMut<'a, T>> {
+    fn iter_channel_mut(&mut self, channel: usize) -> Option<ChannelSamplesMut<'a, '_, T>> {
         ChannelSamplesMut::new(self, channel)
     }
 
-    fn iter_channels_mut(&'a mut self) -> ChannelsMut<'a, T> {
+    fn iter_channels_mut(&mut self) -> ChannelsMut<'a, '_, T> {
         ChannelsMut::new(self)
     }
 
-    fn iter_frame_mut(&'a mut self, frame: usize) -> Option<FrameSamplesMut<'a, T>> {
+    fn iter_frame_mut(&mut self, frame: usize) -> Option<FrameSamplesMut<'a, '_, T>> {
         FrameSamplesMut::new(self, frame)
     }
 
-    fn iter_frames_mut(&'a mut self) -> FramesMut<'a, T> {
+    fn iter_frames_mut(&mut self) -> FramesMut<'a, '_, T> {
         FramesMut::new(self)
     }
 
@@ -162,35 +162,35 @@ impl<'a, T> AudioBuffer<'a, T>for SliceOfFrameVecs<'a, T> where T: Clone {
         self.frames
     }
 
-    fn iter_channel(&'a self, channel: usize) -> Option<ChannelSamples<'a, T>> {
+    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>> {
         ChannelSamples::new(self, channel)
     }
 
-    fn iter_channels(&'a self) -> Channels<'a, T> {
+    fn iter_channels(&self) -> Channels<'a, '_, T> {
         Channels::new(self)
     }
 
-    fn iter_frame(&'a self, frame: usize) -> Option<FrameSamples<'a, T>> {
+    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T>> {
         FrameSamples::new(self, frame)
     }
 
-    fn iter_frames(&'a self) -> Frames<'a, T> {
+    fn iter_frames(&self) -> Frames<'a, '_, T> {
         Frames::new(self)
     }
 
-    fn iter_channel_mut(&'a mut self, channel: usize) -> Option<ChannelSamplesMut<'a, T>> {
+    fn iter_channel_mut(&mut self, channel: usize) -> Option<ChannelSamplesMut<'a, '_, T>> {
         ChannelSamplesMut::new(self, channel)
     }
 
-    fn iter_channels_mut(&'a mut self) -> ChannelsMut<'a, T> {
+    fn iter_channels_mut(&mut self) -> ChannelsMut<'a, '_, T> {
         ChannelsMut::new(self)
     }
 
-    fn iter_frame_mut(&'a mut self, frame: usize) -> Option<FrameSamplesMut<'a, T>> {
+    fn iter_frame_mut(&mut self, frame: usize) -> Option<FrameSamplesMut<'a, '_, T>> {
         FrameSamplesMut::new(self, frame)
     }
 
-    fn iter_frames_mut(&'a mut self) -> FramesMut<'a, T> {
+    fn iter_frames_mut(&mut self) -> FramesMut<'a, '_, T> {
         FramesMut::new(self)
     }
 
@@ -248,35 +248,34 @@ impl<'a, T> AudioBuffer<'a, T>for InterleavedSlice<'a, T> where T: Clone {
         self.frames
     }
 
-    fn iter_channel(&'a self, channel: usize) -> Option<ChannelSamples<'a, T>> {
+    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>> {
         ChannelSamples::new(self, channel)
     }
 
-    fn iter_channels(&'a self) -> Channels<'a, T> {
+    fn iter_channels(&self) -> Channels<'a, '_, T> {
         Channels::new(self)
     }
 
-    fn iter_frame(&'a self, frame: usize) -> Option<FrameSamples<'a, T>> {
+    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T>> {
         FrameSamples::new(self, frame)
     }
 
-    fn iter_frames(&'a self) -> Frames<'a, T> {
+    fn iter_frames(&self) -> Frames<'a, '_, T> {
         Frames::new(self)
     }
 
-    fn iter_channel_mut(&'a mut self, channel: usize) -> Option<ChannelSamplesMut<'a, T>> {
+    fn iter_channel_mut(&mut self, channel: usize) -> Option<ChannelSamplesMut<'a, '_, T>> {
         ChannelSamplesMut::new(self, channel)
     }
 
-    fn iter_channels_mut(&'a mut self) -> ChannelsMut<'a, T> {
+    fn iter_channels_mut(&mut self) -> ChannelsMut<'a, '_, T> {
         ChannelsMut::new(self)
     }
-
-    fn iter_frame_mut(&'a mut self, frame: usize) -> Option<FrameSamplesMut<'a, T>> {
+    fn iter_frame_mut(&mut self, frame: usize) -> Option<FrameSamplesMut<'a, '_, T>> {
         FrameSamplesMut::new(self, frame)
     }
 
-    fn iter_frames_mut(&'a mut self) -> FramesMut<'a, T> {
+    fn iter_frames_mut(&mut self) -> FramesMut<'a, '_, T> {
         FramesMut::new(self)
     }
 
@@ -335,35 +334,35 @@ impl<'a, T> AudioBuffer<'a, T>for SequentialSlice<'a, T> where T: Clone {
         self.frames
     }
 
-    fn iter_channel(&'a self, channel: usize) -> Option<ChannelSamples<'a, T>> {
+    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>> {
         ChannelSamples::new(self, channel)
     }
 
-    fn iter_channels(&'a self) -> Channels<'a, T> {
+    fn iter_channels(&self) -> Channels<'a, '_, T> {
         Channels::new(self)
     }
 
-    fn iter_frame(&'a self, frame: usize) -> Option<FrameSamples<'a, T>> {
+    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T>> {
         FrameSamples::new(self, frame)
     }
 
-    fn iter_frames(&'a self) -> Frames<'a, T> {
+    fn iter_frames(&self) -> Frames<'a, '_, T> {
         Frames::new(self)
     }
 
-    fn iter_channel_mut(&'a mut self, channel: usize) -> Option<ChannelSamplesMut<'a, T>> {
+    fn iter_channel_mut(&mut self, channel: usize) -> Option<ChannelSamplesMut<'a, '_, T>> {
         ChannelSamplesMut::new(self, channel)
     }
 
-    fn iter_channels_mut(&'a mut self) -> ChannelsMut<'a, T> {
+    fn iter_channels_mut(&mut self) -> ChannelsMut<'a, '_, T> {
         ChannelsMut::new(self)
     }
 
-    fn iter_frame_mut(&'a mut self, frame: usize) -> Option<FrameSamplesMut<'a, T>> {
+    fn iter_frame_mut(&mut self, frame: usize) -> Option<FrameSamplesMut<'a, '_, T>> {
         FrameSamplesMut::new(self, frame)
     }
 
-    fn iter_frames_mut(&'a mut self) -> FramesMut<'a, T> {
+    fn iter_frames_mut(&mut self) -> FramesMut<'a, '_, T> {
         FramesMut::new(self)
     }
 
@@ -425,44 +424,45 @@ pub trait AudioBuffer<'a, T: Clone + 'a>{
     //fn copy_frame_from_slice(channel: usize, start: usize, slice: &[T]) -> Result
     //fn copy_frame_to_slice(channel: usize, start: usize, slice: &mut [T]) -> Result
 
-    fn iter_channel(&'a self, channel: usize) -> Option<ChannelSamples<'a, T>>;
+    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>>;
 
-    fn iter_channels(&'a self) -> Channels<'a, T>;
+    fn iter_channels(&self) -> Channels<'a, '_, T>;
 
-    fn iter_frame(&'a self, frame: usize) -> Option<FrameSamples<'a, T>>;
+    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T>>;
 
-    fn iter_frames(&'a self) -> Frames<'a, T>;
+    fn iter_frames(&self) -> Frames<'a, '_, T>;
 
-    fn iter_channel_mut(&'a mut self, channel: usize) -> Option<ChannelSamplesMut<'a, T>>;
+    fn iter_channel_mut(&mut self, channel: usize) -> Option<ChannelSamplesMut<'a, '_, T>>;
 
-    fn iter_channels_mut(&'a mut self) -> ChannelsMut<'a, T>;
+    fn iter_channels_mut(&mut self) -> ChannelsMut<'a, '_, T>;
 
-    fn iter_frame_mut(&'a mut self, frame: usize) -> Option<FrameSamplesMut<'a, T>>;
+    fn iter_frame_mut(&mut self, frame: usize) -> Option<FrameSamplesMut<'a, '_, T>>;
 
-    fn iter_frames_mut(&'a mut self) -> FramesMut<'a, T>;
+    fn iter_frames_mut(&mut self) -> FramesMut<'a, '_, T>;
+
 }
 
 
 // -------------------- Iterators returning immutable samples --------------------
-pub struct ChannelSamples<'a, T >{
-    buf: &'a dyn AudioBuffer<'a, T>,
+pub struct ChannelSamples<'a, 'b, T >{
+    buf: &'b dyn AudioBuffer<'a, T>,
     frame: usize,
     nbr_frames: usize,
     channel: usize
 }
 
-impl<'a, T> ChannelSamples<'a, T> where T: Clone {
-    pub fn new(buffer: &'a dyn AudioBuffer<'a, T>, channel: usize) -> Option<ChannelSamples<'a, T>> {
+impl<'a, 'b, T> ChannelSamples<'a, 'b, T> where T: Clone {
+    pub fn new(buffer: &'b dyn AudioBuffer<'a, T>, channel: usize) -> Option<ChannelSamples<'a, 'b, T>> {
         if channel >= buffer.channels() {
             return None;
         }
         let nbr_frames = buffer.frames();
-        Some(ChannelSamples { buf: buffer as &'a dyn AudioBuffer<'a, T>, frame: 0, nbr_frames, channel })
+        Some(ChannelSamples { buf: buffer as &'b dyn AudioBuffer<'a, T>, frame: 0, nbr_frames, channel })
     }
 } 
 
-impl<'a, T> Iterator for ChannelSamples<'a, T> where T: Clone {
-    type Item = &'a T;
+impl<'a, 'b, T> Iterator for ChannelSamples<'a, 'b, T> where T: Clone {
+    type Item = &'b T;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.frame >= self.nbr_frames {
@@ -474,25 +474,25 @@ impl<'a, T> Iterator for ChannelSamples<'a, T> where T: Clone {
     }
 }
 
-pub struct FrameSamples<'a, T >{
-    buf: &'a dyn AudioBuffer<'a, T>,
+pub struct FrameSamples<'a, 'b, T >{
+    buf: &'b dyn AudioBuffer<'a, T>,
     frame: usize,
     nbr_channels: usize,
     channel: usize
 }
 
-impl<'a, T> FrameSamples<'a, T> where T: Clone {
-    pub fn new(buffer: &'a dyn AudioBuffer<'a, T>, frame: usize) -> Option<FrameSamples<'a, T>> {
+impl<'a, 'b, T> FrameSamples<'a, 'b, T> where T: Clone {
+    pub fn new(buffer: &'b dyn AudioBuffer<'a, T>, frame: usize) -> Option<FrameSamples<'a, 'b, T>> {
         if frame >= buffer.frames() {
             return None;
         }
         let nbr_channels = buffer.channels();
-        Some(FrameSamples { buf: buffer as &'a dyn AudioBuffer<'a, T>, channel: 0, nbr_channels, frame })
+        Some(FrameSamples { buf: buffer as &'b dyn AudioBuffer<'a, T>, channel: 0, nbr_channels, frame })
     }
 } 
 
-impl<'a, T> Iterator for FrameSamples<'a, T> where T: Clone {
-    type Item = &'a T;
+impl<'a, 'b, T> Iterator for FrameSamples<'a, 'b, T> where T: Clone {
+    type Item = &'b T;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.channel >= self.nbr_channels {
@@ -505,21 +505,21 @@ impl<'a, T> Iterator for FrameSamples<'a, T> where T: Clone {
 }
 
 // -------------------- Iterators returning immutable iterators --------------------
-pub struct Channels<'a, T >{
-    buf: &'a dyn AudioBuffer<'a, T>,
+pub struct Channels<'a, 'b, T >{
+    buf: &'b dyn AudioBuffer<'a, T>,
     nbr_channels: usize,
     channel: usize
 }
 
-impl<'a, T> Channels<'a, T> where T: Clone {
-    pub fn new(buffer: &'a dyn AudioBuffer<'a, T>) -> Channels<'a, T> {
+impl<'a, 'b, T> Channels<'a, 'b, T> where T: Clone {
+    pub fn new(buffer: &'b dyn AudioBuffer<'a, T>) -> Channels<'a, 'b, T> {
         let nbr_channels = buffer.channels();
-        Channels { buf: buffer as &'a dyn AudioBuffer<'a, T>, channel: 0, nbr_channels }
+        Channels { buf: buffer as &'b dyn AudioBuffer<'a, T>, channel: 0, nbr_channels }
     }
 } 
 
-impl<'a, T> Iterator for Channels<'a, T> where T: Clone {
-    type Item = ChannelSamples<'a, T>;
+impl<'a, 'b, T> Iterator for Channels<'a, 'b, T> where T: Clone {
+    type Item = ChannelSamples<'a, 'b, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.channel >= self.nbr_channels {
@@ -531,21 +531,21 @@ impl<'a, T> Iterator for Channels<'a, T> where T: Clone {
     }
 }
 
-pub struct Frames<'a, T >{
-    buf: &'a dyn AudioBuffer<'a, T>,
+pub struct Frames<'a, 'b, T >{
+    buf: &'b dyn AudioBuffer<'a, T>,
     nbr_frames: usize,
     frame: usize
 }
 
-impl<'a, T> Frames<'a, T> where T: Clone {
-    pub fn new(buffer: &'a dyn AudioBuffer<'a, T>) -> Frames<'a, T> {
+impl<'a, 'b, T> Frames<'a, 'b, T> where T: Clone {
+    pub fn new(buffer: &'b dyn AudioBuffer<'a, T>) -> Frames<'a, 'b, T> {
         let nbr_frames = buffer.frames();
-        Frames { buf: buffer as &'a dyn AudioBuffer<'a, T>, frame: 0, nbr_frames }
+        Frames { buf: buffer as &'b dyn AudioBuffer<'a, T>, frame: 0, nbr_frames }
     }
 } 
 
-impl<'a, T> Iterator for Frames<'a, T> where T: Clone {
-    type Item = FrameSamples<'a, T>;
+impl<'a, 'b, T> Iterator for Frames<'a, 'b, T> where T: Clone {
+    type Item = FrameSamples<'a, 'b, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.frame >= self.nbr_frames {
@@ -559,24 +559,24 @@ impl<'a, T> Iterator for Frames<'a, T> where T: Clone {
 
 // -------------------- Iterators returning mutable samples --------------------
 
-pub struct ChannelSamplesMut<'a, T >{
-    buf: &'a mut dyn AudioBuffer<'a, T>,
+pub struct ChannelSamplesMut<'a, 'b, T >{
+    buf: &'b mut dyn AudioBuffer<'a, T>,
     frame: usize,
     nbr_frames: usize,
     channel: usize
 }
 
-impl<'a, T> ChannelSamplesMut<'a, T> where T: Clone {
-    pub fn new(buffer: &'a mut dyn AudioBuffer<'a, T>, channel: usize) -> Option<ChannelSamplesMut<'a, T>> {
+impl<'a, 'b, T> ChannelSamplesMut<'a, 'b, T> where T: Clone {
+    pub fn new(buffer: &'b mut dyn AudioBuffer<'a, T>, channel: usize) -> Option<ChannelSamplesMut<'a, 'b, T>> {
         if channel >= buffer.channels() {
             return None;
         }
         let nbr_frames = buffer.frames();
-        Some(ChannelSamplesMut { buf: buffer as &'a mut dyn AudioBuffer<'a, T>, frame: 0, nbr_frames, channel })
+        Some(ChannelSamplesMut { buf: buffer as &'b mut dyn AudioBuffer<'a, T>, frame: 0, nbr_frames, channel })
     }
 } 
 
-impl<'a, T> Iterator for ChannelSamplesMut<'a, T> where T: Clone {
+impl<'a, 'b, T> Iterator for ChannelSamplesMut<'a, 'b, T> where T: Clone {
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -594,24 +594,24 @@ impl<'a, T> Iterator for ChannelSamplesMut<'a, T> where T: Clone {
     }
 }
 
-pub struct FrameSamplesMut<'a, T >{
-    buf: &'a mut dyn AudioBuffer<'a, T>,
+pub struct FrameSamplesMut<'a, 'b, T >{
+    buf: &'b mut dyn AudioBuffer<'a, T>,
     frame: usize,
     nbr_channels: usize,
     channel: usize
 }
 
-impl<'a, T> FrameSamplesMut<'a, T> where T: Clone {
-    pub fn new(buffer: &'a mut dyn AudioBuffer<'a, T>, frame: usize) -> Option<FrameSamplesMut<'a, T>> {
+impl<'a, 'b, T> FrameSamplesMut<'a, 'b, T> where T: Clone {
+    pub fn new(buffer: &'b mut dyn AudioBuffer<'a, T>, frame: usize) -> Option<FrameSamplesMut<'a, 'b, T>> {
         if frame >= buffer.frames() {
             return None;
         }
         let nbr_channels = buffer.channels();
-        Some(FrameSamplesMut { buf: buffer as &'a mut dyn AudioBuffer<'a, T>, channel: 0, nbr_channels, frame })
+        Some(FrameSamplesMut { buf: buffer as &'b mut dyn AudioBuffer<'a, T>, channel: 0, nbr_channels, frame })
     }
 } 
 
-impl<'a, T> Iterator for FrameSamplesMut<'a, T> where T: Clone {
+impl<'a, 'b, T> Iterator for FrameSamplesMut<'a, 'b, T> where T: Clone {
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -631,21 +631,21 @@ impl<'a, T> Iterator for FrameSamplesMut<'a, T> where T: Clone {
 
 // -------------------- Iterators returning mutable iterators --------------------
 
-pub struct ChannelsMut<'a, T >{
-    buf: &'a mut dyn AudioBuffer<'a, T>,
+pub struct ChannelsMut<'a, 'b, T >{
+    buf: &'b mut dyn AudioBuffer<'a, T>,
     nbr_channels: usize,
     channel: usize
 }
 
-impl<'a, T> ChannelsMut<'a, T> where T: Clone {
-    pub fn new(buffer: &'a mut dyn AudioBuffer<'a, T>) -> ChannelsMut<'a, T> {
+impl<'a, 'b, T> ChannelsMut<'a, 'b, T> where T: Clone {
+    pub fn new(buffer: &'b mut dyn AudioBuffer<'a, T>) -> ChannelsMut<'a, 'b, T> {
         let nbr_channels = buffer.channels();
-        ChannelsMut { buf: buffer as &'a mut dyn AudioBuffer<'a, T>, channel: 0, nbr_channels }
+        ChannelsMut { buf: buffer as &'b mut dyn AudioBuffer<'a, T>, channel: 0, nbr_channels }
     }
 } 
 
-impl<'a, T> Iterator for ChannelsMut<'a, T> where T: Clone {
-    type Item = ChannelSamplesMut<'a, T>;
+impl<'a, 'b, T> Iterator for ChannelsMut<'a, 'b, T> where T: Clone {
+    type Item = ChannelSamplesMut<'a, 'b, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.channel >= self.nbr_channels {
@@ -662,21 +662,21 @@ impl<'a, T> Iterator for ChannelsMut<'a, T> where T: Clone {
     }
 }
 
-pub struct FramesMut<'a, T >{
-    buf: &'a mut dyn AudioBuffer<'a, T>,
+pub struct FramesMut<'a, 'b, T >{
+    buf: &'b mut dyn AudioBuffer<'a, T>,
     nbr_frames: usize,
     frame: usize
 }
 
-impl<'a, T> FramesMut<'a, T> where T: Clone {
-    pub fn new(buffer: &'a mut dyn AudioBuffer<'a, T>) -> FramesMut<'a, T> {
+impl<'a, 'b, T> FramesMut<'a, 'b, T> where T: Clone {
+    pub fn new(buffer: &'b mut dyn AudioBuffer<'a, T>) -> FramesMut<'a, 'b, T> {
         let nbr_frames = buffer.frames();
-        FramesMut { buf: buffer as &'a mut dyn AudioBuffer<'a, T>, frame: 0, nbr_frames }
+        FramesMut { buf: buffer as &'b mut dyn AudioBuffer<'a, T>, frame: 0, nbr_frames }
     }
 } 
 
-impl<'a, T> Iterator for FramesMut<'a, T> where T: Clone {
-    type Item = FrameSamplesMut<'a, T>;
+impl<'a, 'b, T> Iterator for FramesMut<'a, 'b, T> where T: Clone {
+    type Item = FrameSamplesMut<'a, 'b, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.frame >= self.nbr_frames {
@@ -705,42 +705,36 @@ mod tests {
         let mut buffer = SliceOfChannelVecs::new(&mut data, 2, 3).unwrap();
         assert_eq!(*buffer.get(0,0).unwrap(), 1);
         assert_eq!(*buffer.get(1,2).unwrap(), 6);
-        {
-            let mut iter1 = buffer.iter_channel(0).unwrap();
-            assert_eq!(iter1.next(), Some(&1));
-            assert_eq!(iter1.next(), Some(&2));
-            assert_eq!(iter1.next(), Some(&3));
-            assert_eq!(iter1.next(), None);
 
-            let mut iter2 = buffer.iter_frame(1).unwrap();
-            assert_eq!(iter2.next(), Some(&2));
-            assert_eq!(iter2.next(), Some(&5));
-            assert_eq!(iter2.next(), None);
-        }
-        {
-            let mut sum = 0;
-            for channel in buffer.iter_channels() {
-                sum += channel.sum::<i32>();
-            }
-            assert_eq!(sum, 21);
-        }
-        {
-            for channel in buffer.iter_channels_mut() {
-                for sample in channel {
-                    *sample = 2 * *sample;
-                }
-            }
-        }
-        {
-            let mut sum = 0;
-            for channel in data.iter() {
-                sum += channel.iter().sum::<i32>();
-            }
-            assert_eq!(sum, 42);
-        }
+        let mut iter1 = buffer.iter_channel(0).unwrap();
+        assert_eq!(iter1.next(), Some(&1));
+        assert_eq!(iter1.next(), Some(&2));
+        assert_eq!(iter1.next(), Some(&3));
+        assert_eq!(iter1.next(), None);
 
-        //*buffer.get_mut(1,1).unwrap() = 8;
-        //assert_eq!(*buffer.get(1,1).unwrap(), 8);
+        let mut iter2 = buffer.iter_frame(1).unwrap();
+        assert_eq!(iter2.next(), Some(&2));
+        assert_eq!(iter2.next(), Some(&5));
+        assert_eq!(iter2.next(), None);
+
+        let mut sum = 0;
+        for channel in buffer.iter_channels() {
+            sum += channel.sum::<i32>();
+        }
+        assert_eq!(sum, 21);
+
+        for channel in buffer.iter_channels_mut() {
+            for sample in channel {
+                *sample = 2 * *sample;
+            }
+        }
+        let mut sum = 0;
+        for channel in buffer.iter_channels() {
+            sum += channel.sum::<i32>();
+        }
+        assert_eq!(sum, 42);
+        *buffer.get_mut(1,1).unwrap() = 8;
+        assert_eq!(*buffer.get(1,1).unwrap(), 8);
     }
 
 
@@ -750,18 +744,18 @@ mod tests {
         let mut buffer = SliceOfFrameVecs::new(&mut data, 2, 3).unwrap();
         assert_eq!(*buffer.get(0,0).unwrap(), 1);
         assert_eq!(*buffer.get(1,2).unwrap(), 6);
-        {
-            let mut iter1 = buffer.iter_channel(0).unwrap();
-            assert_eq!(iter1.next(), Some(&1));
-            assert_eq!(iter1.next(), Some(&2));
-            assert_eq!(iter1.next(), Some(&3));
-            assert_eq!(iter1.next(), None);
 
-            let mut iter2 = buffer.iter_frame(1).unwrap();
-            assert_eq!(iter2.next(), Some(&2));
-            assert_eq!(iter2.next(), Some(&5));
-            assert_eq!(iter2.next(), None);
-        }
+        let mut iter1 = buffer.iter_channel(0).unwrap();
+        assert_eq!(iter1.next(), Some(&1));
+        assert_eq!(iter1.next(), Some(&2));
+        assert_eq!(iter1.next(), Some(&3));
+        assert_eq!(iter1.next(), None);
+
+        let mut iter2 = buffer.iter_frame(1).unwrap();
+        assert_eq!(iter2.next(), Some(&2));
+        assert_eq!(iter2.next(), Some(&5));
+        assert_eq!(iter2.next(), None);
+
         let mut sum = 0;
         for channel in buffer.iter_channels() {
             sum += channel.sum::<i32>();
@@ -778,18 +772,17 @@ mod tests {
         assert_eq!(*buffer.get(0,0).unwrap(), 1);
         assert_eq!(*buffer.get(1,2).unwrap(), 6);
 
-        {
-            let mut iter1 = buffer.iter_channel(0).unwrap();
-            assert_eq!(iter1.next(), Some(&1));
-            assert_eq!(iter1.next(), Some(&2));
-            assert_eq!(iter1.next(), Some(&3));
-            assert_eq!(iter1.next(), None);
+        let mut iter1 = buffer.iter_channel(0).unwrap();
+        assert_eq!(iter1.next(), Some(&1));
+        assert_eq!(iter1.next(), Some(&2));
+        assert_eq!(iter1.next(), Some(&3));
+        assert_eq!(iter1.next(), None);
 
-            let mut iter2 = buffer.iter_frame(1).unwrap();
-            assert_eq!(iter2.next(), Some(&2));
-            assert_eq!(iter2.next(), Some(&5));
-            assert_eq!(iter2.next(), None);
-        }
+        let mut iter2 = buffer.iter_frame(1).unwrap();
+        assert_eq!(iter2.next(), Some(&2));
+        assert_eq!(iter2.next(), Some(&5));
+        assert_eq!(iter2.next(), None);
+
         let mut sum = 0;
         for channel in buffer.iter_channels() {
             sum += channel.sum::<i32>();
@@ -806,18 +799,18 @@ mod tests {
         let mut buffer = SequentialSlice::new(&mut data, 2, 3).unwrap();
         assert_eq!(*buffer.get(0,0).unwrap(), 1);
         assert_eq!(*buffer.get(1,2).unwrap(), 6);
-        {
-            let mut iter1 = buffer.iter_channel(0).unwrap();
-            assert_eq!(iter1.next(), Some(&1));
-            assert_eq!(iter1.next(), Some(&2));
-            assert_eq!(iter1.next(), Some(&3));
-            assert_eq!(iter1.next(), None);
 
-            let mut iter2 = buffer.iter_frame(1).unwrap();
-            assert_eq!(iter2.next(), Some(&2));
-            assert_eq!(iter2.next(), Some(&5));
-            assert_eq!(iter2.next(), None);
-        }
+        let mut iter1 = buffer.iter_channel(0).unwrap();
+        assert_eq!(iter1.next(), Some(&1));
+        assert_eq!(iter1.next(), Some(&2));
+        assert_eq!(iter1.next(), Some(&3));
+        assert_eq!(iter1.next(), None);
+
+        let mut iter2 = buffer.iter_frame(1).unwrap();
+        assert_eq!(iter2.next(), Some(&2));
+        assert_eq!(iter2.next(), Some(&5));
+        assert_eq!(iter2.next(), None);
+
         let mut sum = 0;
         for channel in buffer.iter_channels() {
             sum += channel.sum::<i32>();
