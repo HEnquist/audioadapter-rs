@@ -26,7 +26,6 @@ impl BufferError {
     }
 }
 
-
 pub struct SliceOfChannelVecs<'a, T> {
     buf: &'a mut [Vec<T>],
     frames: usize,
@@ -102,6 +101,20 @@ impl<'a, T> AudioBuffer<'a, T>for SliceOfChannelVecs<'a, T> where T: Clone {
 
     fn iter_frames_mut(&'a mut self) -> FramesMut<'a, T> {
         FramesMut::new(self)
+    }
+
+    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
+        if channel >= self.channels || start >= self.frames {
+            return 0;
+        }
+        let frames_to_read = if (self.frames - start) < slice.len() {
+            self.frames - start
+        }
+        else {
+            slice.len()
+        };
+        self.buf[channel][start..start+frames_to_read].clone_from_slice(&slice[..frames_to_read]);
+        frames_to_read
     }
 
 }
@@ -180,6 +193,22 @@ impl<'a, T> AudioBuffer<'a, T>for SliceOfFrameVecs<'a, T> where T: Clone {
     fn iter_frames_mut(&'a mut self) -> FramesMut<'a, T> {
         FramesMut::new(self)
     }
+
+    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
+        if channel >= self.channels || start >= self.frames {
+            return 0;
+        }
+        let frames_to_read = if (self.frames - start) < slice.len() {
+            self.frames - start
+        }
+        else {
+            slice.len()
+        };
+        for n in 0..frames_to_read {
+            unsafe { *self.get_unchecked_mut(channel, start+n) = slice[n].clone() };
+        }
+        frames_to_read
+    }
 }
 
 pub struct InterleavedSlice<'a, T> {
@@ -249,6 +278,22 @@ impl<'a, T> AudioBuffer<'a, T>for InterleavedSlice<'a, T> where T: Clone {
 
     fn iter_frames_mut(&'a mut self) -> FramesMut<'a, T> {
         FramesMut::new(self)
+    }
+
+    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
+        if channel >= self.channels || start >= self.frames {
+            return 0;
+        }
+        let frames_to_read = if (self.frames - start) < slice.len() {
+            self.frames - start
+        }
+        else {
+            slice.len()
+        };
+        for n in 0..frames_to_read {
+            unsafe { *self.get_unchecked_mut(channel, start+n) = slice[n].clone() };
+        }
+        frames_to_read
     }
 
 }
@@ -321,6 +366,21 @@ impl<'a, T> AudioBuffer<'a, T>for SequentialSlice<'a, T> where T: Clone {
     fn iter_frames_mut(&'a mut self) -> FramesMut<'a, T> {
         FramesMut::new(self)
     }
+
+    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
+        if channel >= self.channels || start >= self.frames {
+            return 0;
+        }
+        let frames_to_read = if (self.frames - start) < slice.len() {
+            self.frames - start
+        }
+        else {
+            slice.len()
+        };
+        let buffer_start = channel*self.frames + start;
+        self.buf[buffer_start..buffer_start+frames_to_read].clone_from_slice(&slice[..frames_to_read]);
+        frames_to_read
+    }
 }
 
 
@@ -360,10 +420,10 @@ pub trait AudioBuffer<'a, T: Clone + 'a>{
     // Reads/writes the entire slice.
     // Returns an error if self isn't large enough, lengh < (slice length + start)
     // Can use efficient clone_from_slice when the alignments match. 
-    //fn read_channel_from_slice(channel: usize, start: usize, slice: &[T]) -> Result 
-    //fn write_channel_to_slice(channel: usize, start: usize, slice: &mut [T]) -> Result
-    //fn read_frame_from_slice(channel: usize, start: usize, slice: &[T]) -> Result
-    //fn write_frame_to_slice(channel: usize, start: usize, slice: &mut [T]) -> Result
+    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize; 
+    //fn write_from_channel_to_slice(channel: usize, start: usize, slice: &mut [T]) -> Result
+    //fn copy_frame_from_slice(channel: usize, start: usize, slice: &[T]) -> Result
+    //fn copy_frame_to_slice(channel: usize, start: usize, slice: &mut [T]) -> Result
 
     fn iter_channel(&'a self, channel: usize) -> Option<ChannelSamples<'a, T>>;
 
@@ -766,6 +826,21 @@ mod tests {
 
         *buffer.get_mut(1,1).unwrap() = 8;
         assert_eq!(*buffer.get(1,1).unwrap(), 8);
+    }
+
+
+    #[test]
+    fn sequential_sliceops() {
+        let mut data = vec![1_i32, 2, 3, 4, 5, 6];
+        let mut buffer = SequentialSlice::new(&mut data, 2, 3).unwrap();
+        let other = vec![8,9];
+        buffer.read_into_channel_from_slice(0, 1, &other);
+        let mut buffer2 = SequentialSlice::new(&mut data, 2, 3).unwrap();
+        let mut iter1 = buffer2.iter_channel(0).unwrap();
+        assert_eq!(iter1.next(), Some(&1));
+        assert_eq!(iter1.next(), Some(&8));
+        assert_eq!(iter1.next(), Some(&9));
+        assert_eq!(iter1.next(), None);
     }
 
     #[test]
