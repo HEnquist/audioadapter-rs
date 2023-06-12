@@ -83,7 +83,11 @@ macro_rules! implement_iterators {
         fn iter_frames(&self) -> Frames<'a, '_, T> {
             Frames::new(self)
         }
+    }
+}
 
+macro_rules! implement_iterators_mut {
+    () => {
         fn iter_channel_mut(&mut self, channel: usize) -> Option<ChannelSamplesMut<'a, '_, T>> {
             ChannelSamplesMut::new(self, channel)
         }
@@ -102,15 +106,28 @@ macro_rules! implement_iterators {
     };
 }
 
+macro_rules! implement_size_getters {
+    () => {
+        fn channels(&self) -> usize {
+            self.channels
+        }
+
+        fn frames(&self) -> usize {
+            self.frames
+        }
+    }
+}
+
+/* 
 /// Wrapper for a slice of length `channels`, containing vectors of length `frames`.
 /// Each vector contains the samples for all frames of one channel.
-pub struct SliceOfChannelVecs<'a, T> {
-    buf: &'a mut [Vec<T>],
+pub struct SequentialSliceOfVecs<U> {
+    buf: U,
     frames: usize,
     channels: usize,
 }
 
-impl<'a, T> SliceOfChannelVecs<'a, T> {
+impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
     /// Create a new `SliceOfChannelVecs` to wrap a slice of vectors.
     /// The slice must contain at least `channels` vectors,
     /// and each vector must be at least `frames` long.
@@ -142,7 +159,7 @@ impl<'a, T> SliceOfChannelVecs<'a, T> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T> for SliceOfChannelVecs<'a, T>
+impl<'a, T> AudioBuffer<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -191,23 +208,50 @@ where
         frames_to_write
     }
 }
+*/
 
 /// Wrapper for a slice of length `frames`, containing vectors of length `channels`.
 /// Each vector contains the samples for all channels of one frame.
-pub struct SliceOfFrameVecs<'a, T> {
-    buf: &'a mut [Vec<T>],
+pub struct InterleavedSliceOfVecs<U> {
+    buf: U,
     frames: usize,
     channels: usize,
 }
 
-impl<'a, T> SliceOfFrameVecs<'a, T> {
-    /// Create a new `SliceOfFrameVecs` to wrap a slice of vectors.
+impl<'a, T> InterleavedSliceOfVecs<&'a [Vec<T>]> {
+    /// Create a new `InterleavedWrapper` to wrap a slice of vectors.
     /// The slice must contain at least `frames` vectors,
     /// and each vector must be at least `channels` long.
     /// They are allowed to be longer than needed,
     /// but these extra frames or channels cannot
     /// be accessed via the `AudioBuffer` trait methods.
     pub fn new(
+        buf: &'a [Vec<T>],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, BufferSizeError> {
+        if buf.len() < frames {
+            return Err(BufferSizeError {
+                desc: format!("Too few frames, {} < {}", buf.len(), frames),
+            });
+        }
+        for (idx, frame) in buf.iter().enumerate() {
+            if frame.len() < channels {
+                return Err(BufferSizeError {
+                    desc: format!("Frame {} is too short, {} < {}", idx, frame.len(), channels),
+                });
+            }
+        }
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
+    pub fn new_mut(
         buf: &'a mut [Vec<T>],
         channels: usize,
         frames: usize,
@@ -232,7 +276,7 @@ impl<'a, T> SliceOfFrameVecs<'a, T> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T> for SliceOfFrameVecs<'a, T>
+impl<'a, T> AudioBuffer<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
@@ -240,33 +284,9 @@ where
         return self.buf.get_unchecked(frame).get_unchecked(channel);
     }
 
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        return self.buf.get_unchecked_mut(frame).get_unchecked_mut(channel);
-    }
-
-    fn channels(&self) -> usize {
-        self.channels
-    }
-
-    fn frames(&self) -> usize {
-        self.frames
-    }
+    implement_size_getters!();
 
     implement_iterators!();
-
-    fn read_into_frame_from_slice(&mut self, frame: usize, start: usize, slice: &[T]) -> usize {
-        if frame >= self.frames || start >= self.channels {
-            return 0;
-        }
-        let channels_to_read = if (self.channels - start) < slice.len() {
-            self.channels - start
-        } else {
-            slice.len()
-        };
-        self.buf[frame][start..start + channels_to_read]
-            .clone_from_slice(&slice[..channels_to_read]);
-        channels_to_read
-    }
 
     fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
         if frame >= self.frames || start >= self.channels {
@@ -283,20 +303,74 @@ where
     }
 }
 
+impl<'a, T> AudioBuffer<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
+where
+    T: Clone,
+{
+    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+        return self.buf.get_unchecked(frame).get_unchecked(channel);
+    }
+
+    implement_size_getters!();
+
+    implement_iterators!();
+
+    fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
+        if frame >= self.frames || start >= self.channels {
+            return 0;
+        }
+        let channels_to_write = if (self.channels - start) < slice.len() {
+            self.channels - start
+        } else {
+            slice.len()
+        };
+        slice[..channels_to_write]
+            .clone_from_slice(&self.buf[frame][start..start + channels_to_write]);
+        channels_to_write
+    }
+}
+
+impl<'a, T> AudioBufferMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
+where
+    T: Clone,
+{
+
+    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+        return self.buf.get_unchecked_mut(frame).get_unchecked_mut(channel);
+    }
+
+    implement_iterators_mut!();
+
+    fn read_into_frame_from_slice(&mut self, frame: usize, start: usize, slice: &[T]) -> usize {
+        if frame >= self.frames || start >= self.channels {
+            return 0;
+        }
+        let channels_to_read = if (self.channels - start) < slice.len() {
+            self.channels - start
+        } else {
+            slice.len()
+        };
+        self.buf[frame][start..start + channels_to_read]
+            .clone_from_slice(&slice[..channels_to_read]);
+        channels_to_read
+    }
+}
+
+/* 
 /// Wrapper for a slice of length `frames * channels`.
 /// The samples are stored in _interleaved_ order,
 /// where all the samples for one frame are stored consecutively,
 /// followed by the samples for the next frame.
 /// For a stereo buffer containing four frames, the order is
 /// `L1, R1, L2, R2, L3, R3, L4, R4`
-pub struct InterleavedSlice<'a, T> {
-    buf: &'a mut [T],
+pub struct InterleavedSlice<U> {
+    buf: U,
     frames: usize,
     channels: usize,
 }
 
-impl<'a, T> InterleavedSlice<'a, T> {
-    /// Create a new `InterleavedSlice` to wrap a slice.
+impl<'a, T> InterleavedSlice<&'a mut [T]> {
+    /// Create a new `InterleavedWrapper` to wrap a slice.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
@@ -315,7 +389,7 @@ impl<'a, T> InterleavedSlice<'a, T> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T> for InterleavedSlice<'a, T>
+impl<'a, T> AudioBuffer<'a, T> for InterleavedSlice<&'a mut [T]>
 where
     T: Clone,
 {
@@ -367,6 +441,7 @@ where
         channels_to_write
     }
 }
+*/
 
 /// Wrapper for a slice of length `frames * channels`.
 /// The samples are stored in _sequential_ order,
@@ -374,19 +449,25 @@ where
 /// followed by the samples for the next channel.
 /// For a stereo buffer containing four frames, the order is
 /// `L1, L2, L3, L4, R1, R2, R3, R4`
-pub struct SequentialSlice<'a, T> {
-    buf: &'a mut [T],
+pub struct SequentialSlice<U> {
+    buf: U,
     frames: usize,
     channels: usize,
 }
 
-impl<'a, T> SequentialSlice<'a, T> {
-    /// Create a new `SequentialSlice` to wrap a slice.
+impl<U> SequentialSlice<U> {
+    fn calc_index(&self, channel: usize, frame: usize) -> usize {
+        channel * self.frames + frame
+    }
+}
+
+impl<'a, T> SequentialSlice<&'a [T]> {
+    /// Create a new `SequentialWrapper` to wrap a slice.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `AudioBuffer` trait methods.
-    pub fn new(buf: &'a mut [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
+    pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
         if buf.len() < frames * channels {
             return Err(BufferSizeError {
                 desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
@@ -400,42 +481,37 @@ impl<'a, T> SequentialSlice<'a, T> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T> for SequentialSlice<'a, T>
+impl<'a, T> SequentialSlice<&'a mut [T]> {
+    /// Create a new `SequentialWrapper` to wrap a slice.
+    /// The slice length must be at least `frames*channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `AudioBuffer` trait methods.
+    pub fn new_mut(buf: &'a mut [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
+        if buf.len() < frames * channels {
+            return Err(BufferSizeError {
+                desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
+            });
+        }
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, T> AudioBuffer<'a, T> for SequentialSlice<&'a [T]>
 where
     T: Clone,
 {
     unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
-        return self.buf.get_unchecked(channel * self.frames + frame);
+        let index = self.calc_index(channel, frame);
+        return self.buf.get_unchecked(index);
     }
 
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        return self.buf.get_unchecked_mut(channel * self.frames + frame);
-    }
-
-    fn channels(&self) -> usize {
-        self.channels
-    }
-
-    fn frames(&self) -> usize {
-        self.frames
-    }
-
+    implement_size_getters!();
     implement_iterators!();
-
-    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
-        if channel >= self.channels || start >= self.frames {
-            return 0;
-        }
-        let frames_to_read = if (self.frames - start) < slice.len() {
-            self.frames - start
-        } else {
-            slice.len()
-        };
-        let buffer_start = channel * self.frames + start;
-        self.buf[buffer_start..buffer_start + frames_to_read]
-            .clone_from_slice(&slice[..frames_to_read]);
-        frames_to_read
-    }
 
     fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
         if channel >= self.channels || start >= self.frames {
@@ -446,12 +522,69 @@ where
         } else {
             slice.len()
         };
-        let buffer_start = channel * self.frames + start;
+        let buffer_start = self.calc_index(channel, start);
         slice[..frames_to_write]
             .clone_from_slice(&self.buf[buffer_start..buffer_start + frames_to_write]);
         frames_to_write
     }
 }
+
+// Implement also for mutable version, identical to the immutable impl.
+impl<'a, T> AudioBuffer<'a, T> for SequentialSlice<&'a mut [T]>
+where
+    T: Clone,
+{
+    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+        let index = self.calc_index(channel, frame);
+        return self.buf.get_unchecked(index);
+    }
+
+    implement_size_getters!();
+    implement_iterators!();
+
+    fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || start >= self.frames {
+            return 0;
+        }
+        let frames_to_write = if (self.frames - start) < slice.len() {
+            self.frames - start
+        } else {
+            slice.len()
+        };
+        let buffer_start = self.calc_index(channel, start);
+        slice[..frames_to_write]
+            .clone_from_slice(&self.buf[buffer_start..buffer_start + frames_to_write]);
+        frames_to_write
+    }
+}
+
+impl<'a, T> AudioBufferMut<'a, T> for SequentialSlice<&'a mut [T]>
+where
+    T: Clone,
+{
+    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+        let index = self.calc_index(channel, frame);
+        return self.buf.get_unchecked_mut(index);
+    }
+
+    implement_iterators_mut!();
+
+    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
+        if channel >= self.channels || start >= self.frames {
+            return 0;
+        }
+        let frames_to_read = if (self.frames - start) < slice.len() {
+            self.frames - start
+        } else {
+            slice.len()
+        };
+        let buffer_start = self.calc_index(channel, start);
+        self.buf[buffer_start..buffer_start + frames_to_read]
+            .clone_from_slice(&slice[..frames_to_read]);
+        frames_to_read
+    }
+}
+
 
 // -------------------- The main buffer trait --------------------
 
@@ -478,58 +611,11 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
         Some(unsafe { self.get_unchecked(channel, frame) })
     }
 
-    /// Get a mutable reference to the sample at
-    /// a given combination of frame and channel.
-    ///
-    /// # Safety
-    ///
-    /// This method performs no bounds checking.
-    /// Calling it with an out-of-bound value for frame or channel
-    /// results in undefined behavior,
-    /// for example returning an invalid value or panicking.
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T;
-
-    /// Get a mutable reference to the sample at
-    /// a given combination of frame and channel.
-    /// Returns `None` if the frame or channel is
-    /// out of bounds of the `AudioBuffer`.
-    fn get_mut(&mut self, channel: usize, frame: usize) -> Option<&mut T> {
-        if channel >= self.channels() || frame >= self.frames() {
-            return None;
-        }
-        Some(unsafe { self.get_unchecked_mut(channel, frame) })
-    }
-
     /// Get the number of channels stored in this `AudioBuffer`.
     fn channels(&self) -> usize;
 
     /// Get the number of frames stored in this `AudioBuffer`.
     fn frames(&self) -> usize;
-
-    /// Read values from a slice into a channel of the `AudioBuffer`.
-    /// The `start` argument is the offset into the `AudioBuffer` channel
-    /// where the first value will be written.
-    /// If the slice is longer than the available space in the `AudioBuffer` channel,
-    /// then only the number of samples that fit will be read.
-    ///
-    /// Returns the number of values read.
-    /// If an invalid channel number is given,
-    /// or if `start` is larger than the length of the channel,
-    /// no samples will be read and zero is returned.
-    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
-        if channel >= self.channels() || start >= self.frames() {
-            return 0;
-        }
-        let frames_to_read = if (self.frames() - start) < slice.len() {
-            self.frames() - start
-        } else {
-            slice.len()
-        };
-        for n in 0..frames_to_read {
-            unsafe { *self.get_unchecked_mut(channel, start + n) = slice[n].clone() };
-        }
-        frames_to_read
-    }
 
     /// Write values from channel of the `AudioBuffer` to a slice.
     /// The `start` argument is the offset into the `AudioBuffer` channel
@@ -556,30 +642,7 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
         frames_to_write
     }
 
-    /// Read values from a slice into a frame of the `AudioBuffer`.
-    /// The `start` argument is the offset into the `AudioBuffer` frame
-    /// where the first value will be written.
-    /// If the slice is longer than the available space in the `AudioBuffer` frame,
-    /// then only the number of samples that fit will be read.
-    ///
-    /// Returns the number of values read.
-    /// If an invalid frame number is given,
-    /// or if `start` is larger than the length of the frame,
-    /// no samples will be read and zero is returned.
-    fn read_into_frame_from_slice(&mut self, frame: usize, start: usize, slice: &[T]) -> usize {
-        if frame >= self.frames() || start >= self.channels() {
-            return 0;
-        }
-        let channels_to_read = if (self.channels() - start) < slice.len() {
-            self.channels() - start
-        } else {
-            slice.len()
-        };
-        for n in 0..channels_to_read {
-            unsafe { *self.get_unchecked_mut(start + n, frame) = slice[n].clone() };
-        }
-        channels_to_read
-    }
+
 
     /// Write values from a frame of the `AudioBuffer` to a slice.
     /// The `start` argument is the offset into the `AudioBuffer` frame
@@ -620,6 +683,86 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
     /// Each element is an iterator that yields immutable references to the samples of the frame.
     fn iter_frames(&self) -> Frames<'a, '_, T>;
 
+}
+
+
+pub trait AudioBufferMut<'a, T: Clone + 'a>: AudioBuffer<'a, T> {
+
+
+    /// Get a mutable reference to the sample at
+    /// a given combination of frame and channel.
+    ///
+    /// # Safety
+    ///
+    /// This method performs no bounds checking.
+    /// Calling it with an out-of-bound value for frame or channel
+    /// results in undefined behavior,
+    /// for example returning an invalid value or panicking.
+    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T;
+
+    /// Get a mutable reference to the sample at
+    /// a given combination of frame and channel.
+    /// Returns `None` if the frame or channel is
+    /// out of bounds of the `AudioBuffer`.
+    fn get_mut(&mut self, channel: usize, frame: usize) -> Option<&mut T> {
+        if channel >= self.channels() || frame >= self.frames() {
+            return None;
+        }
+        Some(unsafe { self.get_unchecked_mut(channel, frame) })
+    }
+
+    /// Read values from a slice into a channel of the `AudioBuffer`.
+    /// The `start` argument is the offset into the `AudioBuffer` channel
+    /// where the first value will be written.
+    /// If the slice is longer than the available space in the `AudioBuffer` channel,
+    /// then only the number of samples that fit will be read.
+    ///
+    /// Returns the number of values read.
+    /// If an invalid channel number is given,
+    /// or if `start` is larger than the length of the channel,
+    /// no samples will be read and zero is returned.
+    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
+        if channel >= self.channels() || start >= self.frames() {
+            return 0;
+        }
+        let frames_to_read = if (self.frames() - start) < slice.len() {
+            self.frames() - start
+        } else {
+            slice.len()
+        };
+        for n in 0..frames_to_read {
+            unsafe { *self.get_unchecked_mut(channel, start + n) = slice[n].clone() };
+        }
+        frames_to_read
+    }
+
+
+
+    /// Read values from a slice into a frame of the `AudioBuffer`.
+    /// The `start` argument is the offset into the `AudioBuffer` frame
+    /// where the first value will be written.
+    /// If the slice is longer than the available space in the `AudioBuffer` frame,
+    /// then only the number of samples that fit will be read.
+    ///
+    /// Returns the number of values read.
+    /// If an invalid frame number is given,
+    /// or if `start` is larger than the length of the frame,
+    /// no samples will be read and zero is returned.
+    fn read_into_frame_from_slice(&mut self, frame: usize, start: usize, slice: &[T]) -> usize {
+        if frame >= self.frames() || start >= self.channels() {
+            return 0;
+        }
+        let channels_to_read = if (self.channels() - start) < slice.len() {
+            self.channels() - start
+        } else {
+            slice.len()
+        };
+        for n in 0..channels_to_read {
+            unsafe { *self.get_unchecked_mut(start + n, frame) = slice[n].clone() };
+        }
+        channels_to_read
+    }
+
     /// Returns an iterator that yields mutable references to the samples of a channel.
     fn iter_channel_mut(&mut self, channel: usize) -> Option<ChannelSamplesMut<'a, '_, T>>;
 
@@ -634,7 +777,6 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
     /// Each element is an iterator that yields mutable references to the samples of the frame.
     fn iter_frames_mut(&mut self) -> FramesMut<'a, '_, T>;
 }
-
 // -------------------- Iterators returning immutable samples --------------------
 
 /// An iterator that yields immutable references to the samples of a channel.
@@ -807,7 +949,7 @@ where
 
 /// An iterator that yields mutable references to the samples of a channel.
 pub struct ChannelSamplesMut<'a, 'b, T> {
-    buf: &'b mut dyn AudioBuffer<'a, T>,
+    buf: &'b mut dyn AudioBufferMut<'a, T>,
     frame: usize,
     nbr_frames: usize,
     channel: usize,
@@ -818,7 +960,7 @@ where
     T: Clone,
 {
     pub fn new(
-        buffer: &'b mut dyn AudioBuffer<'a, T>,
+        buffer: &'b mut dyn AudioBufferMut<'a, T>,
         channel: usize,
     ) -> Option<ChannelSamplesMut<'a, 'b, T>> {
         if channel >= buffer.channels() {
@@ -826,7 +968,7 @@ where
         }
         let nbr_frames = buffer.frames();
         Some(ChannelSamplesMut {
-            buf: buffer as &'b mut dyn AudioBuffer<'a, T>,
+            buf: buffer as &'b mut dyn AudioBufferMut<'a, T>,
             frame: 0,
             nbr_frames,
             channel,
@@ -857,7 +999,7 @@ where
 
 /// An iterator that yields mutable references to the samples of a frame.
 pub struct FrameSamplesMut<'a, 'b, T> {
-    buf: &'b mut dyn AudioBuffer<'a, T>,
+    buf: &'b mut dyn AudioBufferMut<'a, T>,
     frame: usize,
     nbr_channels: usize,
     channel: usize,
@@ -868,7 +1010,7 @@ where
     T: Clone,
 {
     pub fn new(
-        buffer: &'b mut dyn AudioBuffer<'a, T>,
+        buffer: &'b mut dyn AudioBufferMut<'a, T>,
         frame: usize,
     ) -> Option<FrameSamplesMut<'a, 'b, T>> {
         if frame >= buffer.frames() {
@@ -876,7 +1018,7 @@ where
         }
         let nbr_channels = buffer.channels();
         Some(FrameSamplesMut {
-            buf: buffer as &'b mut dyn AudioBuffer<'a, T>,
+            buf: buffer as &'b mut dyn AudioBufferMut<'a, T>,
             channel: 0,
             nbr_channels,
             frame,
@@ -909,7 +1051,7 @@ where
 
 /// An iterator that yields a [ChannelSamplesMut] iterator for each channel of an [AudioBuffer].
 pub struct ChannelsMut<'a, 'b, T> {
-    buf: &'b mut dyn AudioBuffer<'a, T>,
+    buf: &'b mut dyn AudioBufferMut<'a, T>,
     nbr_channels: usize,
     channel: usize,
 }
@@ -918,10 +1060,10 @@ impl<'a, 'b, T> ChannelsMut<'a, 'b, T>
 where
     T: Clone,
 {
-    pub fn new(buffer: &'b mut dyn AudioBuffer<'a, T>) -> ChannelsMut<'a, 'b, T> {
+    pub fn new(buffer: &'b mut dyn AudioBufferMut<'a, T>) -> ChannelsMut<'a, 'b, T> {
         let nbr_channels = buffer.channels();
         ChannelsMut {
-            buf: buffer as &'b mut dyn AudioBuffer<'a, T>,
+            buf: buffer as &'b mut dyn AudioBufferMut<'a, T>,
             channel: 0,
             nbr_channels,
         }
@@ -941,7 +1083,7 @@ where
         // The compiler doesn't know that the iterator never returns the same value twice.
         // Therefore it will not let us return a mutable reference with lifetime 'a.
         // Go via a raw pointer to bypass this.
-        let buf_ptr = self.buf as *mut dyn AudioBuffer<'a, T>;
+        let buf_ptr = self.buf as *mut dyn AudioBufferMut<'a, T>;
         let return_buf = unsafe { &mut *buf_ptr };
         let val = ChannelSamplesMut::new(return_buf, self.channel).unwrap();
         self.channel += 1;
@@ -951,7 +1093,7 @@ where
 
 /// An iterator that yields a [FrameSamplesMut] iterator for each frame of an [AudioBuffer].
 pub struct FramesMut<'a, 'b, T> {
-    buf: &'b mut dyn AudioBuffer<'a, T>,
+    buf: &'b mut dyn AudioBufferMut<'a, T>,
     nbr_frames: usize,
     frame: usize,
 }
@@ -960,10 +1102,10 @@ impl<'a, 'b, T> FramesMut<'a, 'b, T>
 where
     T: Clone,
 {
-    pub fn new(buffer: &'b mut dyn AudioBuffer<'a, T>) -> FramesMut<'a, 'b, T> {
+    pub fn new(buffer: &'b mut dyn AudioBufferMut<'a, T>) -> FramesMut<'a, 'b, T> {
         let nbr_frames = buffer.frames();
         FramesMut {
-            buf: buffer as &'b mut dyn AudioBuffer<'a, T>,
+            buf: buffer as &'b mut dyn AudioBufferMut<'a, T>,
             frame: 0,
             nbr_frames,
         }
@@ -983,7 +1125,7 @@ where
         // The compiler doesn't know that the iterator never returns the same value twice.
         // Therefore it will not let us return a mutable reference with lifetime 'a.
         // Go via a raw pointer to bypass this.
-        let buf_ptr = self.buf as *mut dyn AudioBuffer<'a, T>;
+        let buf_ptr = self.buf as *mut dyn AudioBufferMut<'a, T>;
         let return_buf = unsafe { &mut *buf_ptr };
         let val = FrameSamplesMut::new(return_buf, self.frame).unwrap();
         self.frame += 1;
@@ -1001,7 +1143,7 @@ where
 mod tests {
     use super::*;
 
-    fn insert_data(buffer: &mut dyn AudioBuffer<i32>) {
+    fn insert_data(buffer: &mut dyn AudioBufferMut<i32>) {
         *buffer.get_mut(0, 0).unwrap() = 1;
         *buffer.get_mut(0, 1).unwrap() = 2;
         *buffer.get_mut(0, 2).unwrap() = 3;
@@ -1010,7 +1152,7 @@ mod tests {
         *buffer.get_mut(1, 2).unwrap() = 6;
     }
 
-    fn test_get(buffer: &mut dyn AudioBuffer<i32>) {
+    fn test_get(buffer: &mut dyn AudioBufferMut<i32>) {
         insert_data(buffer);
         assert_eq!(*buffer.get(0, 0).unwrap(), 1);
         assert_eq!(*buffer.get(0, 1).unwrap(), 2);
@@ -1020,7 +1162,7 @@ mod tests {
         assert_eq!(*buffer.get(1, 2).unwrap(), 6);
     }
 
-    fn test_iter(buffer: &mut dyn AudioBuffer<i32>) {
+    fn test_iter(buffer: &mut dyn AudioBufferMut<i32>) {
         insert_data(buffer);
         let mut iter1 = buffer.iter_channel(0).unwrap();
         assert_eq!(iter1.next(), Some(&1));
@@ -1034,7 +1176,7 @@ mod tests {
         assert_eq!(iter2.next(), None);
     }
 
-    fn test_iter_mut(buffer: &mut dyn AudioBuffer<i32>) {
+    fn test_iter_mut(buffer: &mut dyn AudioBufferMut<i32>) {
         insert_data(buffer);
         let mut sum = 0;
         for channel in buffer.iter_channels() {
@@ -1054,7 +1196,7 @@ mod tests {
         assert_eq!(sum, 42);
     }
 
-    fn test_slice_channel(buffer: &mut dyn AudioBuffer<i32>) {
+    fn test_slice_channel(buffer: &mut dyn AudioBufferMut<i32>) {
         insert_data(buffer);
         let mut other1 = vec![0; 2];
         let mut other2 = vec![0; 4];
@@ -1068,7 +1210,7 @@ mod tests {
         assert_eq!(other2[3], 0);
     }
 
-    fn test_slice_frame(buffer: &mut dyn AudioBuffer<i32>) {
+    fn test_slice_frame(buffer: &mut dyn AudioBufferMut<i32>) {
         insert_data(buffer);
         let mut other1 = vec![0; 1];
         let mut other2 = vec![0; 3];
@@ -1080,7 +1222,7 @@ mod tests {
         assert_eq!(other2[2], 0);
     }
 
-    fn test_mut_slice_channel(buffer: &mut dyn AudioBuffer<i32>) {
+    fn test_mut_slice_channel(buffer: &mut dyn AudioBufferMut<i32>) {
         insert_data(buffer);
         let other1 = vec![8, 9];
         let other2 = vec![10, 11, 12, 13];
@@ -1094,7 +1236,7 @@ mod tests {
         assert_eq!(*buffer.get(1, 2).unwrap(), 12);
     }
 
-    fn test_mut_slice_frame(buffer: &mut dyn AudioBuffer<i32>) {
+    fn test_mut_slice_frame(buffer: &mut dyn AudioBufferMut<i32>) {
         insert_data(buffer);
         let other1 = vec![8];
         let other2 = vec![10, 11, 12];
@@ -1111,7 +1253,7 @@ mod tests {
     #[test]
     fn vec_of_channels() {
         let mut data = vec![vec![0_i32; 3], vec![0_i32; 3]];
-        let mut buffer = SliceOfChannelVecs::new(&mut data, 2, 3).unwrap();
+        let mut buffer = SequentialSliceOfVecs::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
         test_iter(&mut buffer);
         test_iter_mut(&mut buffer);
@@ -1124,7 +1266,7 @@ mod tests {
     #[test]
     fn vec_of_frames() {
         let mut data = vec![vec![1_i32, 4], vec![2_i32, 5], vec![3, 6]];
-        let mut buffer = SliceOfFrameVecs::new(&mut data, 2, 3).unwrap();
+        let mut buffer = InterleavedSliceOfVecs::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
         test_iter(&mut buffer);
         test_iter_mut(&mut buffer);
@@ -1137,7 +1279,7 @@ mod tests {
     #[test]
     fn interleaved() {
         let mut data = vec![1_i32, 4, 2, 5, 3, 6];
-        let mut buffer = InterleavedSlice::new(&mut data, 2, 3).unwrap();
+        let mut buffer = InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
         test_iter(&mut buffer);
         test_iter_mut(&mut buffer);
@@ -1150,7 +1292,7 @@ mod tests {
     #[test]
     fn sequential() {
         let mut data = vec![1_i32, 2, 3, 4, 5, 6];
-        let mut buffer = SequentialSlice::new(&mut data, 2, 3).unwrap();
+        let mut buffer = SequentialSlice::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
         test_iter(&mut buffer);
         test_iter_mut(&mut buffer);

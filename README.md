@@ -5,7 +5,7 @@
 A simple library for making it easier to work with buffers of audio data.
 
 Audio data can be stored in many different ways,
-where both the layout o the data, and the numerical representation can vary.
+where both the layout of the data, and the numerical representation can vary.
 This crate aims at helping with the differences in layout.
 
 ### Background
@@ -15,6 +15,10 @@ If a project combines libraries that store their audio data differently,
 any data passed between them must be converted
 by copying the data from a buffer using one layout
 to another buffer using the other layout.
+
+### Interleaved and sequential
+
+explain! Sequential, planar or non-interleaved.
 
 ### Abstracting the data layout
 This crate provedes a trait [AudioBuffer] that provides simple methods
@@ -34,6 +38,10 @@ There are default implementations for the functions that read and write slices.
 These loop over the elements to read or write and clone element by element.
 These may be overriden if the wrapped data structure provides a more efficient way
 of cloning the data, such as `clone_from_slice()`.
+
+### TODO
+RMS and peak calculation for numerical types 
+
 
 ### License: MIT
 
