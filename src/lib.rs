@@ -3,39 +3,69 @@
 //! A simple library for making it easier to work with buffers of audio data.
 //!
 //! Audio data can be stored in many different ways,
-//! where both the layout o the data, and the numerical representation can vary.
+//! where both the layout of the data, and the numerical representation can vary.
 //! This crate aims at helping with the differences in layout.
 //!
-//! ## Background
-//! Libraries and appications that process audio usually use
+//! ### Background
+//! Libraries and applications that process audio usually use
 //! a single layout for the audio data internally.
 //! If a project combines libraries that store their audio data differently,
 //! any data passed between them must be converted
 //! by copying the data from a buffer using one layout
 //! to another buffer using the other layout.
 //!
-//! ## Abstracting the data layout
+//! ### Channels and frames
+//! When audio data has more than one channel is made up of a series of _frames_.
+//! A frame consists of the samples for all channels, belonging to one time point.
+//! For normal stereo, a frame consists of one sample for the left channel
+//! and one for the right, usually in that order.
+//!
+//! ### Interleaved and sequential
+//! When the audio data is stored in a file or in memory,
+//! the data can be arranged in two main ways.
+//! - Keeping all samples for each channel together,
+//!   and storing each channel after the previous.
+//!   This is normally called _sequential_, _non-interleaved_ or _planar_.
+//!   The sample order of a stereo file with 3 frames becomes:
+//!   `L1, L2, L3, R1, R2, R3`
+//! - Keeping all samples for each frame together,
+//!   and storing each frame after the previous.
+//!   This is normally called _interleaved_, and this is how the data in a .wav file is ordered.
+//!   The sample order of a stereo file with 3 frames becomes:
+//!   `L1, R1, L2, R2, L3, R3`
+//!
+//! ### Abstracting the data layout
 //! This crate provedes a trait [AudioBuffer] that provides simple methods
 //! for accessing the audio samples of a buffer.
 //! It also provides wrappers for a number of common data structures
 //! used for storing audio data.
+//! Any type implementing [std::clone::Clone] can be used as the type for the samples.
 //!
 //! By accessing the audio data via the trait methods instead
 //! of indexing the data structure directly,
 //! an application or library becomes independant of the data layout.
 //!
-//! ## Supporting new data structures
+//! ### Supporting new data structures
 //! The required trait methods are simple, to make is easy to implement them for
 //! data structures not covered by the built-in wrappers.
 //!
 //! There are default implementations for the functions that read and write slices.
 //! These loop over the elements to read or write and clone element by element.
 //! These may be overriden if the wrapped data structure provides a more efficient way
-//! of cloning the data, such as `clone_from_slice()`.
+//! of cloning the data, such as [slice::clone_from_slice()].
 //!
-//! ## License: MIT
+//! ### RMS and peak calculation
+//!
+//! The `AudioBufferStats` trait provides methods for calculating the RMS and peak-to-peak values
+//! for channels and frames.  
+//! This is only available when the samples are of a numerical kind, such as integers or floats,
+//! and cannot be used when the samples are for example arrays of bytes such as `[u8; 4]`.
+//!
+//!
+//! ### License: MIT
 //!
 
+use num_traits::{Num, ToPrimitive};
 use std::error;
 use std::fmt;
 
@@ -83,7 +113,7 @@ macro_rules! implement_iterators {
         fn iter_frames(&self) -> Frames<'a, '_, T> {
             Frames::new(self)
         }
-    }
+    };
 }
 
 macro_rules! implement_iterators_mut {
@@ -115,10 +145,9 @@ macro_rules! implement_size_getters {
         fn frames(&self) -> usize {
             self.frames
         }
-    }
+    };
 }
 
-/* 
 /// Wrapper for a slice of length `channels`, containing vectors of length `frames`.
 /// Each vector contains the samples for all frames of one channel.
 pub struct SequentialSliceOfVecs<U> {
@@ -127,14 +156,42 @@ pub struct SequentialSliceOfVecs<U> {
     channels: usize,
 }
 
-impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
+impl<'a, T> SequentialSliceOfVecs<&'a [Vec<T>]> {
     /// Create a new `SliceOfChannelVecs` to wrap a slice of vectors.
     /// The slice must contain at least `channels` vectors,
     /// and each vector must be at least `frames` long.
     /// They are allowed to be longer than needed,
     /// but these extra frames or channels cannot
     /// be accessed via the `AudioBuffer` trait methods.
-    pub fn new(
+    pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
+        if buf.len() < channels {
+            return Err(BufferSizeError {
+                desc: format!("Too few channels, {} < {}", buf.len(), channels),
+            });
+        }
+        for (idx, chan) in buf.iter().enumerate() {
+            if chan.len() < frames {
+                return Err(BufferSizeError {
+                    desc: format!("Channel {} is too short, {} < {}", idx, chan.len(), frames),
+                });
+            }
+        }
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
+    /// Create a new `SliceOfChannelVecs` to wrap a mutable slice of vectors.
+    /// The slice must contain at least `channels` vectors,
+    /// and each vector must be at least `frames` long.
+    /// They are allowed to be longer than needed,
+    /// but these extra frames or channels cannot
+    /// be accessed via the `AudioBuffer` trait methods.
+    pub fn new_mut(
         buf: &'a mut [Vec<T>],
         channels: usize,
         frames: usize,
@@ -159,7 +216,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
+impl<'a, T> AudioBuffer<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
@@ -167,32 +224,9 @@ where
         return self.buf.get_unchecked(channel).get_unchecked(frame);
     }
 
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        return self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame);
-    }
-
-    fn channels(&self) -> usize {
-        self.channels
-    }
-
-    fn frames(&self) -> usize {
-        self.frames
-    }
+    implement_size_getters!();
 
     implement_iterators!();
-
-    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
-        if channel >= self.channels || start >= self.frames {
-            return 0;
-        }
-        let frames_to_read = if (self.frames - start) < slice.len() {
-            self.frames - start
-        } else {
-            slice.len()
-        };
-        self.buf[channel][start..start + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
-        frames_to_read
-    }
 
     fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
         if channel >= self.channels || start >= self.frames {
@@ -208,7 +242,57 @@ where
         frames_to_write
     }
 }
-*/
+
+impl<'a, T> AudioBuffer<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
+where
+    T: Clone,
+{
+    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+        return self.buf.get_unchecked(channel).get_unchecked(frame);
+    }
+
+    implement_size_getters!();
+
+    implement_iterators!();
+
+    fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || start >= self.frames {
+            return 0;
+        }
+        let frames_to_write = if (self.frames - start) < slice.len() {
+            self.frames - start
+        } else {
+            slice.len()
+        };
+        slice[..frames_to_write]
+            .clone_from_slice(&self.buf[channel][start..start + frames_to_write]);
+        frames_to_write
+    }
+}
+
+impl<'a, T> AudioBufferMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
+where
+    T: Clone,
+{
+    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+        return self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame);
+    }
+
+    implement_iterators_mut!();
+
+    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
+        if channel >= self.channels || start >= self.frames {
+            return 0;
+        }
+        let frames_to_read = if (self.frames - start) < slice.len() {
+            self.frames - start
+        } else {
+            slice.len()
+        };
+        self.buf[channel][start..start + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
+        frames_to_read
+    }
+}
 
 /// Wrapper for a slice of length `frames`, containing vectors of length `channels`.
 /// Each vector contains the samples for all channels of one frame.
@@ -225,11 +309,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a [Vec<T>]> {
     /// They are allowed to be longer than needed,
     /// but these extra frames or channels cannot
     /// be accessed via the `AudioBuffer` trait methods.
-    pub fn new(
-        buf: &'a [Vec<T>],
-        channels: usize,
-        frames: usize,
-    ) -> Result<Self, BufferSizeError> {
+    pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
         if buf.len() < frames {
             return Err(BufferSizeError {
                 desc: format!("Too few frames, {} < {}", buf.len(), frames),
@@ -251,6 +331,12 @@ impl<'a, T> InterleavedSliceOfVecs<&'a [Vec<T>]> {
 }
 
 impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
+    /// Create a new `InterleavedWrapper` to wrap a mutable slice of vectors.
+    /// The slice must contain at least `frames` vectors,
+    /// and each vector must be at least `channels` long.
+    /// They are allowed to be longer than needed,
+    /// but these extra frames or channels cannot
+    /// be accessed via the `AudioBuffer` trait methods.
     pub fn new_mut(
         buf: &'a mut [Vec<T>],
         channels: usize,
@@ -334,7 +420,6 @@ impl<'a, T> AudioBufferMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-
     unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
         return self.buf.get_unchecked_mut(frame).get_unchecked_mut(channel);
     }
@@ -356,7 +441,6 @@ where
     }
 }
 
-/* 
 /// Wrapper for a slice of length `frames * channels`.
 /// The samples are stored in _interleaved_ order,
 /// where all the samples for one frame are stored consecutively,
@@ -369,13 +453,19 @@ pub struct InterleavedSlice<U> {
     channels: usize,
 }
 
-impl<'a, T> InterleavedSlice<&'a mut [T]> {
+impl<U> InterleavedSlice<U> {
+    fn calc_index(&self, channel: usize, frame: usize) -> usize {
+        frame * self.channels + channel
+    }
+}
+
+impl<'a, T> InterleavedSlice<&'a [T]> {
     /// Create a new `InterleavedWrapper` to wrap a slice.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `AudioBuffer` trait methods.
-    pub fn new(buf: &'a mut [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
+    pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
         if buf.len() < frames * channels {
             return Err(BufferSizeError {
                 desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
@@ -389,42 +479,42 @@ impl<'a, T> InterleavedSlice<&'a mut [T]> {
     }
 }
 
-impl<'a, T> AudioBuffer<'a, T> for InterleavedSlice<&'a mut [T]>
+impl<'a, T> InterleavedSlice<&'a mut [T]> {
+    /// Create a new `InterleavedWrapper` to wrap a mutable slice.
+    /// The slice length must be at least `frames*channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `AudioBuffer` trait methods.
+    pub fn new_mut(
+        buf: &'a mut [T],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, BufferSizeError> {
+        if buf.len() < frames * channels {
+            return Err(BufferSizeError {
+                desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
+            });
+        }
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, T> AudioBuffer<'a, T> for InterleavedSlice<&'a [T]>
 where
     T: Clone,
 {
     unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
-        return self.buf.get_unchecked(frame * self.channels + channel);
+        let index = self.calc_index(channel, frame);
+        return self.buf.get_unchecked(index);
     }
 
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        return self.buf.get_unchecked_mut(frame * self.channels + channel);
-    }
-
-    fn channels(&self) -> usize {
-        self.channels
-    }
-
-    fn frames(&self) -> usize {
-        self.frames
-    }
+    implement_size_getters!();
 
     implement_iterators!();
-
-    fn read_into_frame_from_slice(&mut self, frame: usize, start: usize, slice: &[T]) -> usize {
-        if frame >= self.frames || start >= self.channels {
-            return 0;
-        }
-        let channels_to_read = if (self.channels - start) < slice.len() {
-            self.channels - start
-        } else {
-            slice.len()
-        };
-        let buffer_start = start + frame * self.channels;
-        self.buf[buffer_start..buffer_start + channels_to_read]
-            .clone_from_slice(&slice[..channels_to_read]);
-        channels_to_read
-    }
 
     fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
         if frame >= self.frames || start >= self.channels {
@@ -435,13 +525,68 @@ where
         } else {
             slice.len()
         };
-        let buffer_start = start + frame * self.channels;
+        let buffer_start = self.calc_index(start, frame);
         slice[..channels_to_write]
             .clone_from_slice(&self.buf[buffer_start..buffer_start + channels_to_write]);
         channels_to_write
     }
 }
-*/
+
+impl<'a, T> AudioBuffer<'a, T> for InterleavedSlice<&'a mut [T]>
+where
+    T: Clone,
+{
+    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+        let index = self.calc_index(channel, frame);
+        return self.buf.get_unchecked(index);
+    }
+
+    implement_size_getters!();
+
+    implement_iterators!();
+
+    fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
+        if frame >= self.frames || start >= self.channels {
+            return 0;
+        }
+        let channels_to_write = if (self.channels - start) < slice.len() {
+            self.channels - start
+        } else {
+            slice.len()
+        };
+        let buffer_start = self.calc_index(start, frame);
+        slice[..channels_to_write]
+            .clone_from_slice(&self.buf[buffer_start..buffer_start + channels_to_write]);
+        channels_to_write
+    }
+}
+
+impl<'a, T> AudioBufferMut<'a, T> for InterleavedSlice<&'a mut [T]>
+where
+    T: Clone,
+{
+    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+        let index = self.calc_index(channel, frame);
+        return self.buf.get_unchecked_mut(index);
+    }
+
+    implement_iterators_mut!();
+
+    fn read_into_frame_from_slice(&mut self, frame: usize, start: usize, slice: &[T]) -> usize {
+        if frame >= self.frames || start >= self.channels {
+            return 0;
+        }
+        let channels_to_read = if (self.channels - start) < slice.len() {
+            self.channels - start
+        } else {
+            slice.len()
+        };
+        let buffer_start = self.calc_index(start, frame);
+        self.buf[buffer_start..buffer_start + channels_to_read]
+            .clone_from_slice(&slice[..channels_to_read]);
+        channels_to_read
+    }
+}
 
 /// Wrapper for a slice of length `frames * channels`.
 /// The samples are stored in _sequential_ order,
@@ -482,12 +627,16 @@ impl<'a, T> SequentialSlice<&'a [T]> {
 }
 
 impl<'a, T> SequentialSlice<&'a mut [T]> {
-    /// Create a new `SequentialWrapper` to wrap a slice.
+    /// Create a new `SequentialWrapper` to wrap a mutable slice.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `AudioBuffer` trait methods.
-    pub fn new_mut(buf: &'a mut [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
+    pub fn new_mut(
+        buf: &'a mut [T],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, BufferSizeError> {
         if buf.len() < frames * channels {
             return Err(BufferSizeError {
                 desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
@@ -585,9 +734,9 @@ where
     }
 }
 
-
 // -------------------- The main buffer trait --------------------
 
+/// A trait for providing immutable access to samples in a buffer.
 pub trait AudioBuffer<'a, T: Clone + 'a> {
     /// Get an immutable reference to the sample at
     /// a given combination of frame and channel.
@@ -636,13 +785,11 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
         } else {
             slice.len()
         };
-        for n in 0..frames_to_write {
-            unsafe { slice[n] = self.get_unchecked(channel, start + n).clone() };
+        for (n, item) in slice.iter_mut().enumerate().take(frames_to_write) {
+            unsafe { *item = self.get_unchecked(channel, start + n).clone() };
         }
         frames_to_write
     }
-
-
 
     /// Write values from a frame of the `AudioBuffer` to a slice.
     /// The `start` argument is the offset into the `AudioBuffer` frame
@@ -663,8 +810,8 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
         } else {
             slice.len()
         };
-        for n in 0..channels_to_write {
-            unsafe { slice[n] = self.get_unchecked(start + n, frame).clone() };
+        for (n, item) in slice.iter_mut().enumerate().take(channels_to_write) {
+            unsafe { *item = self.get_unchecked(start + n, frame).clone() };
         }
         channels_to_write
     }
@@ -682,13 +829,10 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
     /// Returns an iterator that runs over the available frames of the `AudioBuffer`.
     /// Each element is an iterator that yields immutable references to the samples of the frame.
     fn iter_frames(&self) -> Frames<'a, '_, T>;
-
 }
 
-
+/// A trait for providing mutable access to samples in a buffer.
 pub trait AudioBufferMut<'a, T: Clone + 'a>: AudioBuffer<'a, T> {
-
-
     /// Get a mutable reference to the sample at
     /// a given combination of frame and channel.
     ///
@@ -730,13 +874,11 @@ pub trait AudioBufferMut<'a, T: Clone + 'a>: AudioBuffer<'a, T> {
         } else {
             slice.len()
         };
-        for n in 0..frames_to_read {
-            unsafe { *self.get_unchecked_mut(channel, start + n) = slice[n].clone() };
+        for (n, item) in slice.iter().enumerate().take(frames_to_read) {
+            unsafe { *self.get_unchecked_mut(channel, start + n) = item.clone() };
         }
         frames_to_read
     }
-
-
 
     /// Read values from a slice into a frame of the `AudioBuffer`.
     /// The `start` argument is the offset into the `AudioBuffer` frame
@@ -757,8 +899,8 @@ pub trait AudioBufferMut<'a, T: Clone + 'a>: AudioBuffer<'a, T> {
         } else {
             slice.len()
         };
-        for n in 0..channels_to_read {
-            unsafe { *self.get_unchecked_mut(start + n, frame) = slice[n].clone() };
+        for (n, item) in slice.iter().enumerate().take(channels_to_read) {
+            unsafe { *self.get_unchecked_mut(start + n, frame) = item.clone() };
         }
         channels_to_read
     }
@@ -1133,6 +1275,78 @@ where
     }
 }
 
+/// A trait providing methods to calculate the RMS and peak-to-peak values of a channel or frame.
+/// This requires that the samples are of a numerical type, that also implement the
+/// [num_traits::ToPrimitive], [num_traits::Num] and [core::cmp::PartialOrd] traits.
+/// This includes all the built in numerical types such as `i16`, `i32`, `f32` etc.
+pub trait AudioBufferStats<'a, T>: AudioBuffer<'a, T>
+where
+    T: Clone + ToPrimitive + Num + PartialOrd + 'a,
+{
+    /// Calculate the RMS value of the given channel.
+    /// The result is returned as `f64`.
+    fn channel_rms(&self, channel: usize) -> Option<f64> {
+        let (square_sum, nbr_values) = self.iter_channel(channel)?.fold((0.0, 0), |acc, x| {
+            (acc.0 + x.to_f64().unwrap_or_default().powi(2), acc.1 + 1)
+        });
+        if nbr_values == 0 {
+            return None;
+        }
+        Some((square_sum / nbr_values as f64).sqrt())
+    }
+
+    /// Calculate the RMS value of the given channel.
+    /// The result is returned as `f64`.
+    fn frame_rms(&self, frame: usize) -> Option<f64> {
+        let (square_sum, nbr_values) = self.iter_frame(frame)?.fold((0.0, 0), |acc, x| {
+            (acc.0 + x.to_f64().unwrap_or_default().powi(2), acc.1 + 1)
+        });
+        if nbr_values == 0 {
+            return None;
+        }
+        Some((square_sum / nbr_values as f64).sqrt())
+    }
+
+    /// Calculate the peak-to-peak value of the given channel.
+    /// The result is returned as the same type as the samples.
+    fn channel_peak_to_peak(&self, channel: usize) -> Option<T> {
+        let [min, max] = self
+            .iter_channel(channel)?
+            .fold([T::zero(), T::zero()], |mut acc, x| {
+                if *x < acc[0] {
+                    acc[0] = x.clone();
+                } else if *x > acc[1] {
+                    acc[1] = x.clone();
+                }
+                acc
+            });
+        Some(max - min)
+    }
+
+    /// Calculate the peak-to-peak value of the given frame.
+    /// The result is returned as the same type as the samples.
+    fn frame_peak_to_peak(&self, frame: usize) -> Option<T> {
+        let [min, max] = self
+            .iter_frame(frame)?
+            .fold([T::zero(), T::zero()], |mut acc, x| {
+                if *x < acc[0] {
+                    acc[0] = x.clone();
+                } else if *x > acc[1] {
+                    acc[1] = x.clone();
+                }
+                acc
+            });
+        Some(max - min)
+    }
+}
+
+impl<'a, T, U> AudioBufferStats<'a, T> for U
+where
+    T: Clone + ToPrimitive + Num + PartialOrd + 'a,
+    U: AudioBuffer<'a, T>,
+{
+}
+
 //   _____         _
 //  |_   _|__  ___| |_ ___
 //    | |/ _ \/ __| __/ __|
@@ -1309,5 +1523,21 @@ mod tests {
         let boxed: Box<dyn AudioBuffer<i32>> =
             Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
         assert_eq!(*boxed.get(0, 0).unwrap(), 1);
+    }
+
+    #[test]
+    fn stats_integer() {
+        let data = vec![1_i32, -1, 1, -1, 1, -1, 1, -1];
+        let buffer = SequentialSlice::new(&data, 2, 4).unwrap();
+        assert_eq!(buffer.channel_rms(0).unwrap(), 1.0);
+        assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2);
+    }
+
+    #[test]
+    fn stats_float() {
+        let data = vec![1.0_f32, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0];
+        let buffer = SequentialSlice::new(&data, 2, 4).unwrap();
+        assert_eq!(buffer.channel_rms(0).unwrap(), 1.0);
+        assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2.0);
     }
 }

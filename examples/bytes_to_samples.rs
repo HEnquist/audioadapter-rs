@@ -5,7 +5,7 @@
 // The samples values are then read using the AudioBuffer trait methods
 // and converted to i16 with i16::from_le_bytes().
 
-use audiobuffer::{InterleavedSlice, AudioBuffer};
+use audiobuffer::{AudioBuffer, InterleavedSlice};
 
 fn main() {
     let channels = 2;
@@ -19,7 +19,7 @@ fn main() {
     // When combining them two by two to make 16-bit integers,
     // the dummy sample values become 0x11 = 257.
     let mut byte_data = vec![1_u8; channels * frames * 2];
-    
+
     // Create a view of the data with as a slice of [u8; 2]
     let data_view = unsafe {
         let ptr = byte_data.as_mut_ptr() as *mut [u8; 2];
@@ -34,7 +34,10 @@ fn main() {
     for (ch_idx, channel) in buffer.iter_channels().enumerate() {
         for (frame_idx, sample_bytes) in channel.enumerate() {
             let value = i16::from_le_bytes(*sample_bytes);
-            println!("Channel: {}, frame: {}, value: {}", ch_idx, frame_idx, value);
-        } 
+            println!(
+                "Channel: {}, frame: {}, value: {}",
+                ch_idx, frame_idx, value
+            );
+        }
     }
 }
