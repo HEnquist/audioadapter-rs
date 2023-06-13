@@ -9,7 +9,7 @@ edition = "2021"
 num-traits = "0.2.15"
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.5"
 
 [[bench]]
 name = "iteration"
