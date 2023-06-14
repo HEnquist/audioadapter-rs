@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 num-traits = "0.2.15"
+rawsample = "0.2.0"
 
 [dev-dependencies]
 criterion = "0.5"

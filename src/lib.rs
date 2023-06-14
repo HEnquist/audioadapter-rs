@@ -69,7 +69,9 @@ use std::error;
 use std::fmt;
 
 mod stats;
+mod convert;
 pub use stats::AudioBufferStats;
+pub use convert::{ConvertingAudioBuffer, ConvertingInterleavedS32};
 
 /// Error returned when the wrapped data structure has the wrong dimensions,
 /// typically that it is too short.
@@ -98,6 +100,7 @@ impl BufferSizeError {
     }
 }
 
+#[macro_export]
 macro_rules! implement_iterators {
     () => {
         fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>> {
@@ -138,6 +141,7 @@ macro_rules! implement_iterators_mut {
     };
 }
 
+#[macro_export]
 macro_rules! implement_size_getters {
     () => {
         fn channels(&self) -> usize {
