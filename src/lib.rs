@@ -68,10 +68,16 @@
 use std::error;
 use std::fmt;
 
-mod stats;
 mod convert;
+mod stats;
+pub use convert::{
+    ConvertingAudioBuffer, ConvertingAudioBufferMut, ConvertingInterleavedF32BE,
+    ConvertingInterleavedF32LE, ConvertingInterleavedF64BE, ConvertingInterleavedF64LE,
+    ConvertingInterleavedI16BE, ConvertingInterleavedI16LE, ConvertingInterleavedI243BE,
+    ConvertingInterleavedI243LE, ConvertingInterleavedI244BE, ConvertingInterleavedI244LE,
+    ConvertingInterleavedI32BE, ConvertingInterleavedI32LE,
+};
 pub use stats::AudioBufferStats;
-pub use convert::{ConvertingAudioBuffer, ConvertingInterleavedS32};
 
 /// Error returned when the wrapped data structure has the wrong dimensions,
 /// typically that it is too short.
@@ -150,6 +156,46 @@ macro_rules! implement_size_getters {
 
         fn frames(&self) -> usize {
             self.frames
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! check_slice_length {
+    ($samples:expr, $length:expr, $desc:expr) => {
+        if $length < $samples {
+            return Err(BufferSizeError {
+                desc: format!(
+                    "{} is too short, {} < {}",
+                    stringify!($desc),
+                    $length,
+                    $samples
+                ),
+            });
+        }
+    };
+    ($channels:expr , $frames:expr, $length:expr, $desc:expr) => {
+        if $length < $frames * $channels {
+            return Err(BufferSizeError {
+                desc: format!(
+                    "{} is too short, {} < {}",
+                    stringify!($desc),
+                    $length,
+                    $frames * $channels
+                ),
+            });
+        }
+    };
+    ($channels:expr , $frames:expr, $length:expr, $elements_per_sample:expr, $desc:expr) => {
+        if $length < $frames * $channels * $elements_per_sample {
+            return Err(BufferSizeError {
+                desc: format!(
+                    "{} is too short, {} < {}",
+                    stringify!($desc),
+                    $length,
+                    $frames * $channels * $elements_per_sample
+                ),
+            });
         }
     };
 }
@@ -472,11 +518,7 @@ impl<'a, T> InterleavedSlice<&'a [T]> {
     /// but these extra values cannot
     /// be accessed via the `AudioBuffer` trait methods.
     pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
-        if buf.len() < frames * channels {
-            return Err(BufferSizeError {
-                desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
-            });
-        }
+        check_slice_length!(channels, frames, buf.len(), Slice);
         Ok(Self {
             buf,
             frames,
@@ -619,11 +661,7 @@ impl<'a, T> SequentialSlice<&'a [T]> {
     /// but these extra values cannot
     /// be accessed via the `AudioBuffer` trait methods.
     pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
-        if buf.len() < frames * channels {
-            return Err(BufferSizeError {
-                desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
-            });
-        }
+        check_slice_length!(channels, frames, buf.len(), Slice);
         Ok(Self {
             buf,
             frames,
@@ -643,11 +681,7 @@ impl<'a, T> SequentialSlice<&'a mut [T]> {
         channels: usize,
         frames: usize,
     ) -> Result<Self, BufferSizeError> {
-        if buf.len() < frames * channels {
-            return Err(BufferSizeError {
-                desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
-            });
-        }
+        check_slice_length!(channels, frames, buf.len(), Slice);
         Ok(Self {
             buf,
             frames,
