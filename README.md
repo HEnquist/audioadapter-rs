@@ -23,8 +23,8 @@ For normal stereo, a frame consists of one sample for the left channel
 and one for the right, usually in that order.
 
 #### Interleaved and sequential
-When the audio data is stored in a file or in memory,
-the data can be arranged in two main ways.
+When audio data is stored in a file or in memory,
+the data can be ordered in two main ways.
 - Keeping all samples for each channel together,
   and storing each channel after the previous.
   This is normally called _sequential_, _non-interleaved_ or _planar_.
@@ -35,6 +35,13 @@ the data can be arranged in two main ways.
   This is normally called _interleaved_, and this is how the data in a .wav file is ordered.
   The sample order of a stereo file with 3 frames becomes:
   `L1, R1, L2, R2, L3, R3`
+In a more general sense, the same applies when storing
+any multi-dimensional array in linear storage such as RAM or a file.
+A 2D matrix can then be stored in _row-major_ or _column-major_ order.
+The only difference here compared to a general 2D matrix is that the names `row` and `column`
+are replaced by the audio-specific `channel` and `frame`.
+Using the general notation, _interleaved_ corresponds to _frame-major_ order,
+and _sequential_ to _channel-major_ order.
 
 #### Abstracting the data layout
 This crate provedes a trait [AudioBuffer] that provides simple methods
@@ -65,4 +72,11 @@ and cannot be used when the samples are for example arrays of bytes such as `[u8
 
 
 #### License: MIT
+
+
+- MaybeInterleaved
+- AbstractAudio
+- AnyOrder
+InterleaveItOrNot
+IWantToInterleave
 
