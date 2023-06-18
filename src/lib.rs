@@ -150,6 +150,52 @@ macro_rules! implement_size_getters {
     };
 }
 
+macro_rules! check_slice_length {
+    ($channels:expr , $frames:expr, $length:expr) => {
+        if $length < $frames * $channels {
+            return Err(BufferSizeError {
+                desc: format!("Slice is too short, {} < {}", $length, $frames * $channels),
+            });
+        }
+    };
+}
+
+macro_rules! check_slice_and_vec_length {
+    ($buf:expr, $channels:expr, $frames:expr, sequential) => {
+        if $buf.len() < $channels {
+            return Err(BufferSizeError {
+                desc: format!("Too few channels, {} < {}", $buf.len(), $channels),
+            });
+        }
+        for (idx, chan) in $buf.iter().enumerate() {
+            if chan.len() < $frames {
+                return Err(BufferSizeError {
+                    desc: format!("Channel {} is too short, {} < {}", idx, chan.len(), $frames),
+                });
+            }
+        }
+    };
+    ($buf:expr, $channels:expr, $frames:expr, interleaved) => {
+        if $buf.len() < $frames {
+            return Err(BufferSizeError {
+                desc: format!("Too few frames, {} < {}", $buf.len(), $frames),
+            });
+        }
+        for (idx, frame) in $buf.iter().enumerate() {
+            if frame.len() < $channels {
+                return Err(BufferSizeError {
+                    desc: format!(
+                        "Frame {} is too short, {} < {}",
+                        idx,
+                        frame.len(),
+                        $channels
+                    ),
+                });
+            }
+        }
+    };
+}
+
 /// Wrapper for a slice of length `channels`, containing vectors of length `frames`.
 /// Each vector contains the samples for all frames of one channel.
 pub struct SequentialSliceOfVecs<U> {
@@ -166,18 +212,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a [Vec<T>]> {
     /// but these extra frames or channels cannot
     /// be accessed via the `AudioBuffer` trait methods.
     pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
-        if buf.len() < channels {
-            return Err(BufferSizeError {
-                desc: format!("Too few channels, {} < {}", buf.len(), channels),
-            });
-        }
-        for (idx, chan) in buf.iter().enumerate() {
-            if chan.len() < frames {
-                return Err(BufferSizeError {
-                    desc: format!("Channel {} is too short, {} < {}", idx, chan.len(), frames),
-                });
-            }
-        }
+        check_slice_and_vec_length!(buf, channels, frames, sequential);
         Ok(Self {
             buf,
             frames,
@@ -198,18 +233,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
         channels: usize,
         frames: usize,
     ) -> Result<Self, BufferSizeError> {
-        if buf.len() < channels {
-            return Err(BufferSizeError {
-                desc: format!("Too few channels, {} < {}", buf.len(), channels),
-            });
-        }
-        for (idx, chan) in buf.iter().enumerate() {
-            if chan.len() < frames {
-                return Err(BufferSizeError {
-                    desc: format!("Channel {} is too short, {} < {}", idx, chan.len(), frames),
-                });
-            }
-        }
+        check_slice_and_vec_length!(buf, channels, frames, sequential);
         Ok(Self {
             buf,
             frames,
@@ -312,18 +336,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a [Vec<T>]> {
     /// but these extra frames or channels cannot
     /// be accessed via the `AudioBuffer` trait methods.
     pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
-        if buf.len() < frames {
-            return Err(BufferSizeError {
-                desc: format!("Too few frames, {} < {}", buf.len(), frames),
-            });
-        }
-        for (idx, frame) in buf.iter().enumerate() {
-            if frame.len() < channels {
-                return Err(BufferSizeError {
-                    desc: format!("Frame {} is too short, {} < {}", idx, frame.len(), channels),
-                });
-            }
-        }
+        check_slice_and_vec_length!(buf, channels, frames, interleaved);
         Ok(Self {
             buf,
             frames,
@@ -344,18 +357,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
         channels: usize,
         frames: usize,
     ) -> Result<Self, BufferSizeError> {
-        if buf.len() < frames {
-            return Err(BufferSizeError {
-                desc: format!("Too few frames, {} < {}", buf.len(), frames),
-            });
-        }
-        for (idx, frame) in buf.iter().enumerate() {
-            if frame.len() < channels {
-                return Err(BufferSizeError {
-                    desc: format!("Frame {} is too short, {} < {}", idx, frame.len(), channels),
-                });
-            }
-        }
+        check_slice_and_vec_length!(buf, channels, frames, interleaved);
         Ok(Self {
             buf,
             frames,
@@ -468,11 +470,7 @@ impl<'a, T> InterleavedSlice<&'a [T]> {
     /// but these extra values cannot
     /// be accessed via the `AudioBuffer` trait methods.
     pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
-        if buf.len() < frames * channels {
-            return Err(BufferSizeError {
-                desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
-            });
-        }
+        check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             buf,
             frames,
@@ -492,11 +490,7 @@ impl<'a, T> InterleavedSlice<&'a mut [T]> {
         channels: usize,
         frames: usize,
     ) -> Result<Self, BufferSizeError> {
-        if buf.len() < frames * channels {
-            return Err(BufferSizeError {
-                desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
-            });
-        }
+        check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             buf,
             frames,
@@ -615,11 +609,7 @@ impl<'a, T> SequentialSlice<&'a [T]> {
     /// but these extra values cannot
     /// be accessed via the `AudioBuffer` trait methods.
     pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
-        if buf.len() < frames * channels {
-            return Err(BufferSizeError {
-                desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
-            });
-        }
+        check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             buf,
             frames,
@@ -639,11 +629,7 @@ impl<'a, T> SequentialSlice<&'a mut [T]> {
         channels: usize,
         frames: usize,
     ) -> Result<Self, BufferSizeError> {
-        if buf.len() < frames * channels {
-            return Err(BufferSizeError {
-                desc: format!("Buffer is too short, {} < {}", buf.len(), frames * channels),
-            });
-        }
+        check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             buf,
             frames,
