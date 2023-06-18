@@ -2,11 +2,11 @@
 
 ## AudioBuffer
 
-A simple library for making it easier to work with buffers of audio data.
+A library for making it easier to work with buffers of audio data.
 
 Audio data can be stored in many different ways,
 where both the layout of the data, and the numerical representation can vary.
-This crate aims at helping with the differences in layout.
+This crate aims at helping with the differences in layout both layout and data type.
 
 #### Background
 Libraries and applications that process audio usually use
@@ -44,7 +44,7 @@ Using the general notation, _interleaved_ corresponds to _frame-major_ order,
 and _sequential_ to _channel-major_ order.
 
 #### Abstracting the data layout
-This crate provedes a trait [AudioBuffer] that provides simple methods
+This crate provedes a trait [traits::AudioBuffer] that provides simple methods
 for accessing the audio samples of a buffer.
 It also provides wrappers for a number of common data structures
 used for storing audio data.
@@ -74,9 +74,8 @@ and cannot be used when the samples are for example arrays of bytes such as `[u8
 #### License: MIT
 
 
-- MaybeInterleaved
-- AbstractAudio
-- AnyOrder
-InterleaveItOrNot
-IWantToInterleave
-
+TODO:
+move stats trait to traits
+impl converting for direct wrappers
+make converring a supertrait of AudioBuffer
+rename Converring and AudioBuffer

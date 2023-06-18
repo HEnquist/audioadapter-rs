@@ -1,6 +1,6 @@
 use num_traits::{Num, ToPrimitive};
 
-use crate::AudioBuffer;
+use crate::traits::AudioBuffer;
 
 /// A trait providing methods to calculate the RMS and peak-to-peak values of a channel or frame.
 /// This requires that the samples are of a numerical type, that also implement the
@@ -82,7 +82,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use crate::AudioBufferStats;
+    use crate::direct::SequentialSlice;
 
     #[test]
     fn stats_integer() {
@@ -100,3 +101,4 @@ mod tests {
         assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2.0);
     }
 }
+
