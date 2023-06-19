@@ -1,12 +1,12 @@
 // This example shows a way to read 16-bit integer samples from raw bytes.
 // The conversion is done by first creating a view of the raw bytes as
 // a slice of 2-byte arrays, &[[u8; 2]], and wrapping this view
-// as an AudioBuffer.
-// The samples values are then read using the AudioBuffer trait methods
+// as an Direct.
+// The samples values are then read using the Direct trait methods
 // and converted to i16 with i16::from_le_bytes().
 
-use audiobuffer::traits::AudioBuffer;
 use audiobuffer::direct::InterleavedSlice;
+use audiobuffer::traits::Direct;
 
 fn main() {
     let channels = 2;
@@ -28,7 +28,7 @@ fn main() {
         std::slice::from_raw_parts_mut(ptr, len / 2)
     };
 
-    // Create an AudioBuffer for the [u8; 2] view
+    // Create an Direct for the [u8; 2] view
     let buffer = InterleavedSlice::new(data_view, channels, frames).unwrap();
 
     // Loop over all samples and print their values

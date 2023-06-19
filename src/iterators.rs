@@ -1,10 +1,10 @@
-use crate::traits::{AudioBuffer, AudioBufferMut};
+use crate::traits::{Direct, DirectMut};
 
 // -------------------- Iterators returning immutable samples --------------------
 
 /// An iterator that yields immutable references to the samples of a channel.
 pub struct ChannelSamples<'a, 'b, T> {
-    buf: &'b dyn AudioBuffer<'a, T>,
+    buf: &'b dyn Direct<'a, T>,
     frame: usize,
     nbr_frames: usize,
     channel: usize,
@@ -14,16 +14,13 @@ impl<'a, 'b, T> ChannelSamples<'a, 'b, T>
 where
     T: Clone,
 {
-    pub fn new(
-        buffer: &'b dyn AudioBuffer<'a, T>,
-        channel: usize,
-    ) -> Option<ChannelSamples<'a, 'b, T>> {
+    pub fn new(buffer: &'b dyn Direct<'a, T>, channel: usize) -> Option<ChannelSamples<'a, 'b, T>> {
         if channel >= buffer.channels() {
             return None;
         }
         let nbr_frames = buffer.frames();
         Some(ChannelSamples {
-            buf: buffer as &'b dyn AudioBuffer<'a, T>,
+            buf: buffer as &'b dyn Direct<'a, T>,
             frame: 0,
             nbr_frames,
             channel,
@@ -49,7 +46,7 @@ where
 
 /// An iterator that yields immutable references to the samples of a frame.
 pub struct FrameSamples<'a, 'b, T> {
-    buf: &'b dyn AudioBuffer<'a, T>,
+    buf: &'b dyn Direct<'a, T>,
     frame: usize,
     nbr_channels: usize,
     channel: usize,
@@ -59,16 +56,13 @@ impl<'a, 'b, T> FrameSamples<'a, 'b, T>
 where
     T: Clone,
 {
-    pub fn new(
-        buffer: &'b dyn AudioBuffer<'a, T>,
-        frame: usize,
-    ) -> Option<FrameSamples<'a, 'b, T>> {
+    pub fn new(buffer: &'b dyn Direct<'a, T>, frame: usize) -> Option<FrameSamples<'a, 'b, T>> {
         if frame >= buffer.frames() {
             return None;
         }
         let nbr_channels = buffer.channels();
         Some(FrameSamples {
-            buf: buffer as &'b dyn AudioBuffer<'a, T>,
+            buf: buffer as &'b dyn Direct<'a, T>,
             channel: 0,
             nbr_channels,
             frame,
@@ -94,9 +88,9 @@ where
 
 // -------------------- Iterators returning immutable iterators --------------------
 
-/// An iterator that yields a [ChannelSamples] iterator for each channel of an [AudioBuffer].
+/// An iterator that yields a [ChannelSamples] iterator for each channel of an [Direct].
 pub struct Channels<'a, 'b, T> {
-    buf: &'b dyn AudioBuffer<'a, T>,
+    buf: &'b dyn Direct<'a, T>,
     nbr_channels: usize,
     channel: usize,
 }
@@ -105,10 +99,10 @@ impl<'a, 'b, T> Channels<'a, 'b, T>
 where
     T: Clone,
 {
-    pub fn new(buffer: &'b dyn AudioBuffer<'a, T>) -> Channels<'a, 'b, T> {
+    pub fn new(buffer: &'b dyn Direct<'a, T>) -> Channels<'a, 'b, T> {
         let nbr_channels = buffer.channels();
         Channels {
-            buf: buffer as &'b dyn AudioBuffer<'a, T>,
+            buf: buffer as &'b dyn Direct<'a, T>,
             channel: 0,
             nbr_channels,
         }
@@ -131,9 +125,9 @@ where
     }
 }
 
-/// An iterator that yields a [FrameSamples] iterator for each frame of an [AudioBuffer].
+/// An iterator that yields a [FrameSamples] iterator for each frame of an [Direct].
 pub struct Frames<'a, 'b, T> {
-    buf: &'b dyn AudioBuffer<'a, T>,
+    buf: &'b dyn Direct<'a, T>,
     nbr_frames: usize,
     frame: usize,
 }
@@ -142,10 +136,10 @@ impl<'a, 'b, T> Frames<'a, 'b, T>
 where
     T: Clone,
 {
-    pub fn new(buffer: &'b dyn AudioBuffer<'a, T>) -> Frames<'a, 'b, T> {
+    pub fn new(buffer: &'b dyn Direct<'a, T>) -> Frames<'a, 'b, T> {
         let nbr_frames = buffer.frames();
         Frames {
-            buf: buffer as &'b dyn AudioBuffer<'a, T>,
+            buf: buffer as &'b dyn Direct<'a, T>,
             frame: 0,
             nbr_frames,
         }
@@ -172,7 +166,7 @@ where
 
 /// An iterator that yields mutable references to the samples of a channel.
 pub struct ChannelSamplesMut<'a, 'b, T> {
-    buf: &'b mut dyn AudioBufferMut<'a, T>,
+    buf: &'b mut dyn DirectMut<'a, T>,
     frame: usize,
     nbr_frames: usize,
     channel: usize,
@@ -183,7 +177,7 @@ where
     T: Clone,
 {
     pub fn new(
-        buffer: &'b mut dyn AudioBufferMut<'a, T>,
+        buffer: &'b mut dyn DirectMut<'a, T>,
         channel: usize,
     ) -> Option<ChannelSamplesMut<'a, 'b, T>> {
         if channel >= buffer.channels() {
@@ -191,7 +185,7 @@ where
         }
         let nbr_frames = buffer.frames();
         Some(ChannelSamplesMut {
-            buf: buffer as &'b mut dyn AudioBufferMut<'a, T>,
+            buf: buffer as &'b mut dyn DirectMut<'a, T>,
             frame: 0,
             nbr_frames,
             channel,
@@ -222,7 +216,7 @@ where
 
 /// An iterator that yields mutable references to the samples of a frame.
 pub struct FrameSamplesMut<'a, 'b, T> {
-    buf: &'b mut dyn AudioBufferMut<'a, T>,
+    buf: &'b mut dyn DirectMut<'a, T>,
     frame: usize,
     nbr_channels: usize,
     channel: usize,
@@ -233,7 +227,7 @@ where
     T: Clone,
 {
     pub fn new(
-        buffer: &'b mut dyn AudioBufferMut<'a, T>,
+        buffer: &'b mut dyn DirectMut<'a, T>,
         frame: usize,
     ) -> Option<FrameSamplesMut<'a, 'b, T>> {
         if frame >= buffer.frames() {
@@ -241,7 +235,7 @@ where
         }
         let nbr_channels = buffer.channels();
         Some(FrameSamplesMut {
-            buf: buffer as &'b mut dyn AudioBufferMut<'a, T>,
+            buf: buffer as &'b mut dyn DirectMut<'a, T>,
             channel: 0,
             nbr_channels,
             frame,
@@ -272,9 +266,9 @@ where
 
 // -------------------- Iterators returning mutable iterators --------------------
 
-/// An iterator that yields a [ChannelSamplesMut] iterator for each channel of an [AudioBuffer].
+/// An iterator that yields a [ChannelSamplesMut] iterator for each channel of an [Direct].
 pub struct ChannelsMut<'a, 'b, T> {
-    buf: &'b mut dyn AudioBufferMut<'a, T>,
+    buf: &'b mut dyn DirectMut<'a, T>,
     nbr_channels: usize,
     channel: usize,
 }
@@ -283,10 +277,10 @@ impl<'a, 'b, T> ChannelsMut<'a, 'b, T>
 where
     T: Clone,
 {
-    pub fn new(buffer: &'b mut dyn AudioBufferMut<'a, T>) -> ChannelsMut<'a, 'b, T> {
+    pub fn new(buffer: &'b mut dyn DirectMut<'a, T>) -> ChannelsMut<'a, 'b, T> {
         let nbr_channels = buffer.channels();
         ChannelsMut {
-            buf: buffer as &'b mut dyn AudioBufferMut<'a, T>,
+            buf: buffer as &'b mut dyn DirectMut<'a, T>,
             channel: 0,
             nbr_channels,
         }
@@ -306,7 +300,7 @@ where
         // The compiler doesn't know that the iterator never returns the same value twice.
         // Therefore it will not let us return a mutable reference with lifetime 'a.
         // Go via a raw pointer to bypass this.
-        let buf_ptr = self.buf as *mut dyn AudioBufferMut<'a, T>;
+        let buf_ptr = self.buf as *mut dyn DirectMut<'a, T>;
         let return_buf = unsafe { &mut *buf_ptr };
         let val = ChannelSamplesMut::new(return_buf, self.channel).unwrap();
         self.channel += 1;
@@ -314,9 +308,9 @@ where
     }
 }
 
-/// An iterator that yields a [FrameSamplesMut] iterator for each frame of an [AudioBuffer].
+/// An iterator that yields a [FrameSamplesMut] iterator for each frame of an [Direct].
 pub struct FramesMut<'a, 'b, T> {
-    buf: &'b mut dyn AudioBufferMut<'a, T>,
+    buf: &'b mut dyn DirectMut<'a, T>,
     nbr_frames: usize,
     frame: usize,
 }
@@ -325,10 +319,10 @@ impl<'a, 'b, T> FramesMut<'a, 'b, T>
 where
     T: Clone,
 {
-    pub fn new(buffer: &'b mut dyn AudioBufferMut<'a, T>) -> FramesMut<'a, 'b, T> {
+    pub fn new(buffer: &'b mut dyn DirectMut<'a, T>) -> FramesMut<'a, 'b, T> {
         let nbr_frames = buffer.frames();
         FramesMut {
-            buf: buffer as &'b mut dyn AudioBufferMut<'a, T>,
+            buf: buffer as &'b mut dyn DirectMut<'a, T>,
             frame: 0,
             nbr_frames,
         }
@@ -348,7 +342,7 @@ where
         // The compiler doesn't know that the iterator never returns the same value twice.
         // Therefore it will not let us return a mutable reference with lifetime 'a.
         // Go via a raw pointer to bypass this.
-        let buf_ptr = self.buf as *mut dyn AudioBufferMut<'a, T>;
+        let buf_ptr = self.buf as *mut dyn DirectMut<'a, T>;
         let return_buf = unsafe { &mut *buf_ptr };
         let val = FrameSamplesMut::new(return_buf, self.frame).unwrap();
         self.frame += 1;

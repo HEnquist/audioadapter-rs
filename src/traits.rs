@@ -1,31 +1,34 @@
 //! # audiobuffer_traits
-//! 
+//!
 //! A set of traits for making it easier to work with buffers of audio data.
-//! 
+//!
 //! Audio data can be stored in many different ways,
 //! where both the layout of the data, and the numerical representation can vary.
 //! This crate aims at providing traits that make it easy to write applications
 //! that can handle any data type in any data layout.
-//! 
-//! 
+//!
+//!
 //! ## Abstracting the data layout
 //! This module provides several "layers" of traits that add more functionality.
-//! The most basic traits are [Converter] and [ConverterMut]. These provide basic reading and writing.
-//! 
-//! The next level is the [AudioBuffer] and [AudioBufferMut] traits, that add immutable and mutable
-//! borrowing, and iterators.
-//! 
-//! The last level is [AudioBufferStats] that is used to calculate some properties of the audio data.
-//! This is implemented for every structure implementing [AudioBuffer] for a numeric type.
-//! 
+//! The most basic traits are [traits::Indirect] and [traits::IndirectMut].
+//! These enable basic reading and writing, with methods that access the sample values
+//! indirectly.
+//!
+//! The next level is the [traits::Direct] and [traits::DirectMut] traits,
+//! adding methods that access the samples directly.
+//! This includes immutable and immutable borrowing, as well as iterators.
+//!
+//! The last level is [Numeric] that is used to calculate some properties of the audio data.
+//! This is implemented for every structure implementing [traits::Direct] for a numeric type.
+//!
 //! By accessing the audio data via the trait methods instead
 //! of indexing the data structure directly,
 //! an application or library becomes independant of the data layout.
-//! 
+//!
 //! ## Supporting new data structures
 //! The required trait methods are simple, to make is easy to implement them for
-//! data structures not covered by the existing wrappers in [audioboiler_buffer].
-//! 
+//! data structures not covered by the existing wrappers in [direct] and [converting].
+//!
 //! There are default implementations for most methods.
 //! These may be overriden if the wrapped data structure provides a more efficient way
 //! of performing the operation.
@@ -33,16 +36,15 @@
 //! simply loops over the elements to copy.
 //! But when the underlying data structure is a sequential slice, then this
 //! can be implemented more efficiently by using [slice::clone_from_slice()].
-//! 
-//! 
+//!
+//!
 //! ## License: MIT
 //!
 
-
-use crate::iterators::{Frames, FramesMut, Channels, ChannelsMut, ChannelSamples, ChannelSamplesMut, FrameSamples, FrameSamplesMut};
-
-
-
+use crate::iterators::{
+    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
+    Frames, FramesMut,
+};
 
 #[macro_export]
 macro_rules! implement_iterators {
@@ -86,12 +88,11 @@ macro_rules! implement_iterators_mut {
     };
 }
 
-
 // -------------------- The main buffer trait --------------------
 
-/// A trait for providing immutable access to samples in a buffer.
+/// A trait for reading samples from a buffer.
 /// Samples are converted from the raw format on the fly.
-pub trait Converter<'a, T: 'a> {
+pub trait Indirect<'a, T: 'a> {
     /// Read and convert the sample at
     /// a given combination of frame and channel.
     ///
@@ -106,7 +107,7 @@ pub trait Converter<'a, T: 'a> {
     /// Read and convert the sample at
     /// a given combination of frame and channel.
     /// Returns `None` if the frame or channel is
-    /// out of bounds of the `Converter`.
+    /// out of bounds of the buffer.
     fn read(&self, channel: usize, frame: usize) -> Option<T> {
         if channel >= self.channels() || frame >= self.frames() {
             return None;
@@ -114,16 +115,16 @@ pub trait Converter<'a, T: 'a> {
         Some(unsafe { self.read_unchecked(channel, frame) })
     }
 
-    /// Get the number of channels stored in this `Converter`.
+    /// Get the number of channels stored in this buffer.
     fn channels(&self) -> usize;
 
-    /// Get the number of frames stored in this `Converter`.
+    /// Get the number of frames stored in this buffer.
     fn frames(&self) -> usize;
 
-    /// Convert and write values from a channel of the `Converter` to a slice.
-    /// The `start` argument is the offset into the `Converter` channel
+    /// Convert and write values from a channel of the buffer to a slice.
+    /// The `start` argument is the offset into the buffer channel
     /// where the first value will be read from.
-    /// If the slice is longer than the available number of values in the `Converter` channel,
+    /// If the slice is longer than the available number of values in the channel of the buffer,
     /// then only the available number of samples will be written.
     ///
     /// Returns the number of values written.
@@ -145,10 +146,10 @@ pub trait Converter<'a, T: 'a> {
         frames_to_write
     }
 
-    /// Convert and write values from a frame of the `Converter` to a slice.
-    /// The `start` argument is the offset into the `Converter` frame
+    /// Convert and write values from a frame of the buffer to a slice.
+    /// The `start` argument is the offset into the buffer frame
     /// where the first value will be read from.
-    /// If the slice is longer than the available number of values in the `Converter` frame,
+    /// If the slice is longer than the available number of values in the buffer frame,
     /// then only the available number of samples will be written.
     ///
     /// Returns the number of values written.
@@ -171,14 +172,16 @@ pub trait Converter<'a, T: 'a> {
     }
 }
 
-/// A trait for providing mutable access to samples in a buffer.
+/// A trait for writing samples to a buffer.
 /// Samples are converted to the raw format on the fly.
-pub trait ConverterMut<'a, T>: Converter<'a, T>
+pub trait IndirectMut<'a, T>: Indirect<'a, T>
 where
     T: Clone + 'a,
 {
     /// Convert and write a sample to the
     /// given combination of frame and channel.
+    /// Returns a boolean indicating if the sample value
+    /// was clipped during conversion.
     ///
     /// # Safety
     ///
@@ -190,8 +193,10 @@ where
 
     /// Convert and write a sample to the
     /// given combination of frame and channel.
+    /// Returns a boolean indicating if the sample value
+    /// was clipped during conversion.
     /// Returns `None` if the frame or channel is
-    /// out of bounds of the `Converter`.
+    /// out of bounds of the buffer.
     fn write(&mut self, channel: usize, frame: usize, value: &T) -> Option<bool> {
         if channel >= self.channels() || frame >= self.frames() {
             return None;
@@ -199,10 +204,10 @@ where
         Some(unsafe { self.write_unchecked(channel, frame, value) })
     }
 
-    /// Write values from a slice into a channel of the `Converter`.
-    /// The `start` argument is the offset into the `Converter` channel
+    /// Write values from a slice into a channel of the buffer.
+    /// The `start` argument is the offset into the buffer channel
     /// where the first value will be written.
-    /// If the slice is longer than the available space in the `Converter` channel,
+    /// If the slice is longer than the available space in the buffer channel,
     /// then only the number of samples that fit will be read.
     ///
     /// Returns a tuple of two numbers.
@@ -232,10 +237,10 @@ where
         (frames_to_read, nbr_clipped)
     }
 
-    /// Write values from a slice into a frame of the `Converter`.
-    /// The `start` argument is the offset into the `Converter` frame
+    /// Write values from a slice into a frame of the buffer.
+    /// The `start` argument is the offset into the buffer frame
     /// where the first value will be written.
-    /// If the slice is longer than the available space in the `Converter` frame,
+    /// If the slice is longer than the available space in the buffer frame,
     /// then only the number of samples that fit will be read.
     ///
     /// Returns a tuple of two numbers.
@@ -266,11 +271,13 @@ where
     }
 }
 
-
 // -------------------- The main buffer trait --------------------
 
-/// A trait for providing immutable access to samples in a buffer.
-pub trait AudioBuffer<'a, T: Clone + 'a> {
+/// A trait for providing immutable direct access to samples in a buffer.
+pub trait Direct<'a, T>: Indirect<'a, T>
+where
+    T: Clone + 'a,
+{
     /// Get an immutable reference to the sample at
     /// a given combination of frame and channel.
     ///
@@ -285,7 +292,7 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
     /// Get an immutable reference to the sample at
     /// a given combination of frame and channel.
     /// Returns `None` if the frame or channel is
-    /// out of bounds of the `AudioBuffer`.
+    /// out of bounds of the buffer.
     fn get(&self, channel: usize, frame: usize) -> Option<&T> {
         if channel >= self.channels() || frame >= self.frames() {
             return None;
@@ -293,79 +300,23 @@ pub trait AudioBuffer<'a, T: Clone + 'a> {
         Some(unsafe { self.get_unchecked(channel, frame) })
     }
 
-    /// Get the number of channels stored in this `AudioBuffer`.
-    fn channels(&self) -> usize;
-
-    /// Get the number of frames stored in this `AudioBuffer`.
-    fn frames(&self) -> usize;
-
-    /// Write values from channel of the `AudioBuffer` to a slice.
-    /// The `start` argument is the offset into the `AudioBuffer` channel
-    /// where the first value will be read from.
-    /// If the slice is longer than the available number of values in the `AudioBuffer` channel,
-    /// then only the available number of samples will be written.
-    ///
-    /// Returns the number of values written.
-    /// If an invalid channel number is given,
-    /// or if `start` is larger than the length of the channel,
-    /// no samples will be written and zero is returned.
-    fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
-        if channel >= self.channels() || start >= self.frames() {
-            return 0;
-        }
-        let frames_to_write = if (self.frames() - start) < slice.len() {
-            self.frames() - start
-        } else {
-            slice.len()
-        };
-        for (n, item) in slice.iter_mut().enumerate().take(frames_to_write) {
-            unsafe { *item = self.get_unchecked(channel, start + n).clone() };
-        }
-        frames_to_write
-    }
-
-    /// Write values from a frame of the `AudioBuffer` to a slice.
-    /// The `start` argument is the offset into the `AudioBuffer` frame
-    /// where the first value will be read from.
-    /// If the slice is longer than the available number of values in the `AudioBuffer` frame,
-    /// then only the available number of samples will be written.
-    ///
-    /// Returns the number of values written.
-    /// If an invalid frame number is given,
-    /// or if `start` is larger than the length of the frame,
-    /// no samples will be written and zero is returned.
-    fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
-        if frame >= self.frames() || start >= self.channels() {
-            return 0;
-        }
-        let channels_to_write = if (self.channels() - start) < slice.len() {
-            self.channels() - start
-        } else {
-            slice.len()
-        };
-        for (n, item) in slice.iter_mut().enumerate().take(channels_to_write) {
-            unsafe { *item = self.get_unchecked(start + n, frame).clone() };
-        }
-        channels_to_write
-    }
-
     /// Returns an iterator that yields immutable references to the samples of a channel.
     fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>>;
 
-    /// Returns an iterator that runs over the available channels of the `AudioBuffer`.
+    /// Returns an iterator that runs over the available channels of the buffer.
     /// Each element is an iterator that yields immutable references to the samples of the channel.
     fn iter_channels(&self) -> Channels<'a, '_, T>;
 
     /// Returns an iterator that yields immutable references to the samples of a frame.
     fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T>>;
 
-    /// Returns an iterator that runs over the available frames of the `AudioBuffer`.
+    /// Returns an iterator that runs over the available frames of the buffer.
     /// Each element is an iterator that yields immutable references to the samples of the frame.
     fn iter_frames(&self) -> Frames<'a, '_, T>;
 }
 
-/// A trait for providing mutable access to samples in a buffer.
-pub trait AudioBufferMut<'a, T: Clone + 'a>: AudioBuffer<'a, T> {
+/// A trait for providing mutable direct access to samples in a buffer.
+pub trait DirectMut<'a, T: Clone + 'a>: Direct<'a, T> + IndirectMut<'a, T> {
     /// Get a mutable reference to the sample at
     /// a given combination of frame and channel.
     ///
@@ -380,7 +331,7 @@ pub trait AudioBufferMut<'a, T: Clone + 'a>: AudioBuffer<'a, T> {
     /// Get a mutable reference to the sample at
     /// a given combination of frame and channel.
     /// Returns `None` if the frame or channel is
-    /// out of bounds of the `AudioBuffer`.
+    /// out of bounds of the buffer.
     fn get_mut(&mut self, channel: usize, frame: usize) -> Option<&mut T> {
         if channel >= self.channels() || frame >= self.frames() {
             return None;
@@ -388,69 +339,17 @@ pub trait AudioBufferMut<'a, T: Clone + 'a>: AudioBuffer<'a, T> {
         Some(unsafe { self.get_unchecked_mut(channel, frame) })
     }
 
-    /// Read values from a slice into a channel of the `AudioBuffer`.
-    /// The `start` argument is the offset into the `AudioBuffer` channel
-    /// where the first value will be written.
-    /// If the slice is longer than the available space in the `AudioBuffer` channel,
-    /// then only the number of samples that fit will be read.
-    ///
-    /// Returns the number of values read.
-    /// If an invalid channel number is given,
-    /// or if `start` is larger than the length of the channel,
-    /// no samples will be read and zero is returned.
-    fn read_into_channel_from_slice(&mut self, channel: usize, start: usize, slice: &[T]) -> usize {
-        if channel >= self.channels() || start >= self.frames() {
-            return 0;
-        }
-        let frames_to_read = if (self.frames() - start) < slice.len() {
-            self.frames() - start
-        } else {
-            slice.len()
-        };
-        for (n, item) in slice.iter().enumerate().take(frames_to_read) {
-            unsafe { *self.get_unchecked_mut(channel, start + n) = item.clone() };
-        }
-        frames_to_read
-    }
-
-    /// Read values from a slice into a frame of the `AudioBuffer`.
-    /// The `start` argument is the offset into the `AudioBuffer` frame
-    /// where the first value will be written.
-    /// If the slice is longer than the available space in the `AudioBuffer` frame,
-    /// then only the number of samples that fit will be read.
-    ///
-    /// Returns the number of values read.
-    /// If an invalid frame number is given,
-    /// or if `start` is larger than the length of the frame,
-    /// no samples will be read and zero is returned.
-    fn read_into_frame_from_slice(&mut self, frame: usize, start: usize, slice: &[T]) -> usize {
-        if frame >= self.frames() || start >= self.channels() {
-            return 0;
-        }
-        let channels_to_read = if (self.channels() - start) < slice.len() {
-            self.channels() - start
-        } else {
-            slice.len()
-        };
-        for (n, item) in slice.iter().enumerate().take(channels_to_read) {
-            unsafe { *self.get_unchecked_mut(start + n, frame) = item.clone() };
-        }
-        channels_to_read
-    }
-
     /// Returns an iterator that yields mutable references to the samples of a channel.
     fn iter_channel_mut(&mut self, channel: usize) -> Option<ChannelSamplesMut<'a, '_, T>>;
 
-    /// Returns an iterator that runs over the available channels of the `AudioBuffer`.
+    /// Returns an iterator that runs over the available channels of the buffer.
     /// Each element is an iterator that yields mutable references to the samples of the channel.
     fn iter_channels_mut(&mut self) -> ChannelsMut<'a, '_, T>;
 
     /// Returns an iterator that yields mutable references to the samples of a frame.
     fn iter_frame_mut(&mut self, frame: usize) -> Option<FrameSamplesMut<'a, '_, T>>;
 
-    /// Returns an iterator that runs over the available frames of the `AudioBuffer`.
+    /// Returns an iterator that runs over the available frames of the buffer.
     /// Each element is an iterator that yields mutable references to the samples of the frame.
     fn iter_frames_mut(&mut self) -> FramesMut<'a, '_, T>;
 }
-
-

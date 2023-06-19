@@ -7,15 +7,16 @@ pub mod direct;
 /// The traits for accessing samples in buffers.
 pub mod traits;
 
-
 use std::error;
 use std::fmt;
 
-mod stats;
 mod iterators;
-pub use stats::AudioBufferStats;
-pub use iterators::{Frames, FramesMut, Channels, ChannelsMut, ChannelSamples, ChannelSamplesMut, FrameSamples, FrameSamplesMut};
-
+mod stats;
+pub use iterators::{
+    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
+    Frames, FramesMut,
+};
+pub use stats::Numeric;
 
 /// Error returned when the wrapped data structure has the wrong dimensions,
 /// typically that it is too short.
@@ -43,7 +44,6 @@ impl BufferSizeError {
         }
     }
 }
-
 
 #[macro_export]
 macro_rules! implement_size_getters {
@@ -78,7 +78,6 @@ macro_rules! check_slice_length {
         }
     };
 }
-
 
 #[macro_export]
 macro_rules! check_slice_and_vec_length {
@@ -116,5 +115,3 @@ macro_rules! check_slice_and_vec_length {
         }
     };
 }
-
-

@@ -1,12 +1,12 @@
 use num_traits::{Num, ToPrimitive};
 
-use crate::traits::AudioBuffer;
+use crate::traits::Direct;
 
 /// A trait providing methods to calculate the RMS and peak-to-peak values of a channel or frame.
 /// This requires that the samples are of a numerical type, that also implement the
 /// [num_traits::ToPrimitive], [num_traits::Num] and [core::cmp::PartialOrd] traits.
 /// This includes all the built in numerical types such as `i16`, `i32`, `f32` etc.
-pub trait AudioBufferStats<'a, T>: AudioBuffer<'a, T>
+pub trait Numeric<'a, T>: Direct<'a, T>
 where
     T: Clone + ToPrimitive + Num + PartialOrd + 'a,
 {
@@ -67,10 +67,10 @@ where
     }
 }
 
-impl<'a, T, U> AudioBufferStats<'a, T> for U
+impl<'a, T, U> Numeric<'a, T> for U
 where
     T: Clone + ToPrimitive + Num + PartialOrd + 'a,
-    U: AudioBuffer<'a, T>,
+    U: Direct<'a, T>,
 {
 }
 
@@ -82,8 +82,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::AudioBufferStats;
     use crate::direct::SequentialSlice;
+    use crate::Numeric;
 
     #[test]
     fn stats_integer() {
@@ -101,4 +101,3 @@ mod tests {
         assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2.0);
     }
 }
-

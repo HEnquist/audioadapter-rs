@@ -3,7 +3,7 @@
 //! The wrapper enables reading and writing samples from/to the byte slice with
 //! on-the-fly format conversion.
 //!
-//! The wrappers implement the traits [crate::traits::Converter] and [crate::traits::ConverterMut],
+//! The wrappers implement the traits [crate::traits::Indirect] and [crate::traits::IndirectMut],
 //! that provide simple methods for accessing the audio samples of a buffer.
 //!
 //! ### Data order
@@ -18,7 +18,7 @@
 //! and print all the values.
 //! ```
 //! use audiobuffer::converting::InterleavedS16LE;
-//! use audiobuffer::traits::Converter;
+//! use audiobuffer::traits::Indirect;
 //!
 //! // make a vector with some fake data.
 //! // 2 channels * 3 frames * 2 bytes per sample => 12 bytes
@@ -41,13 +41,10 @@
 
 use std::convert::TryInto;
 
-use rawsample::Sample;
-use crate::traits::{Converter, ConverterMut};
+use crate::traits::{Indirect, IndirectMut};
 use crate::BufferSizeError;
 use crate::{check_slice_length, implement_size_getters};
-
-
-
+use rawsample::Sample;
 
 macro_rules! create_structs {
     ($type:expr, $read_func:ident, $write_func:ident, $bytes:expr, $typename:ident) => {
@@ -100,7 +97,7 @@ macro_rules! impl_traits {
                 #[doc = "The slice length must be at least `" $bytes "*frames*channels`."]
                 #[doc = "It is allowed to be longer than needed,"]
                 #[doc = "but these extra values cannot"]
-                #[doc = "be accessed via the `Converter` trait methods."]
+                #[doc = "be accessed via the `Indirect` trait methods."]
                 pub fn new(
                     buf: &'a [u8],
                     channels: usize,
@@ -127,7 +124,7 @@ macro_rules! impl_traits {
                 #[doc = "The slice length must be at least `" $bytes " *frames*channels`."]
                 #[doc = "It is allowed to be longer than needed,"]
                 #[doc = "but these extra values cannot"]
-                #[doc = "be accessed via the `Converter` trait methods."]
+                #[doc = "be accessed via the `Indirect` trait methods."]
                 pub fn new_mut(
                     buf: &'a mut [u8],
                     channels: usize,
@@ -144,7 +141,7 @@ macro_rules! impl_traits {
                 }
             }
 
-            impl<'a, T> Converter<'a, T> for [< $order $typename >]<&'a [u8], T>
+            impl<'a, T> Indirect<'a, T> for [< $order $typename >]<&'a [u8], T>
             where
                 T: Sample<T> + 'a,
             {
@@ -160,7 +157,7 @@ macro_rules! impl_traits {
                 implement_size_getters!();
             }
 
-            impl<'a, T> Converter<'a, T> for [< $order $typename >]<&'a mut [u8], T>
+            impl<'a, T> Indirect<'a, T> for [< $order $typename >]<&'a mut [u8], T>
             where
                 T: Sample<T> + Clone + 'a,
             {
@@ -176,7 +173,7 @@ macro_rules! impl_traits {
                 implement_size_getters!();
             }
 
-            impl<'a, T> ConverterMut<'a, T> for [< $order $typename >]<&'a mut [u8], T>
+            impl<'a, T> IndirectMut<'a, T> for [< $order $typename >]<&'a mut [u8], T>
             where
                 T: Sample<T> + Clone + 'a,
             {

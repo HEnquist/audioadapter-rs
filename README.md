@@ -1,6 +1,6 @@
 # audiobuffer
 
-## AudioBuffer
+## Direct
 
 A library for making it easier to work with buffers of audio data.
 
@@ -44,7 +44,7 @@ Using the general notation, _interleaved_ corresponds to _frame-major_ order,
 and _sequential_ to _channel-major_ order.
 
 #### Abstracting the data layout
-This crate provedes a trait [traits::AudioBuffer] that provides simple methods
+This crate provedes a trait [traits::Direct] that provides simple methods
 for accessing the audio samples of a buffer.
 It also provides wrappers for a number of common data structures
 used for storing audio data.
@@ -65,7 +65,7 @@ of cloning the data, such as [slice::clone_from_slice()].
 
 #### RMS and peak calculation
 
-The `AudioBufferStats` trait provides methods for calculating the RMS and peak-to-peak values
+The `Numeric` trait provides methods for calculating the RMS and peak-to-peak values
 for channels and frames.
 This is only available when the samples are of a numerical kind, such as integers or floats,
 and cannot be used when the samples are for example arrays of bytes such as `[u8; 4]`.
@@ -77,5 +77,10 @@ and cannot be used when the samples are for example arrays of bytes such as `[u8
 TODO:
 move stats trait to traits
 impl converting for direct wrappers
-make converring a supertrait of AudioBuffer
-rename Converring and AudioBuffer
+make converting a supertrait of Direct
+move slice copying to Converting
+rename Converting and Direct
+Converter(Mut) -> Indirect(Mut)
+Direct(Mut) -> Direct(Mut)
+Numeric -> Numeric
+add copy_frame/channel_from other to Converting, copy_channel_from_other(from_channel, to_channel, skip, take)
