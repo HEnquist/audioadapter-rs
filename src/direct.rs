@@ -926,4 +926,24 @@ mod tests {
         assert_eq!(buffer.channel_rms(0).unwrap(), 1.0);
         assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2.0);
     }
+
+    #[test]
+    fn copy_channel_from_other() {
+        let data_other = vec![1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let other = SequentialSlice::new(&data_other, 2, 3).unwrap();
+        let mut data = vec![0.0; 6];
+        let mut buffer = SequentialSlice::new_mut(&mut data, 2, 3).unwrap();
+        // copy second and third element of second channel of other to first and second element of first channel
+        let res1 = buffer.write_from_other_to_channel(&other, 1, 0, 1, 0, 2);
+        // copy first and second element of first channel of other to second and third element of second channel
+        let res2 = buffer.write_from_other_to_channel(&other, 0, 1, 0, 1, 2);
+        assert_eq!(res1, Some(0));
+        assert_eq!(res2, Some(0));
+        assert_eq!(*buffer.get(0, 0).unwrap(), 5.0);
+        assert_eq!(*buffer.get(0, 1).unwrap(), 6.0);
+        assert_eq!(*buffer.get(0, 2).unwrap(), 0.0);
+        assert_eq!(*buffer.get(1, 0).unwrap(), 0.0);
+        assert_eq!(*buffer.get(1, 1).unwrap(), 1.0);
+        assert_eq!(*buffer.get(1, 2).unwrap(), 2.0);
+    }
 }

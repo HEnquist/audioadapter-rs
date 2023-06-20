@@ -269,6 +269,41 @@ where
         }
         (channels_to_read, nbr_clipped)
     }
+
+    /// Copy values from a channel of another buffer to self.
+    /// The `self_skip` and `other_skip` arguments are the offsets
+    /// in frames for where copying starts in the two buffers.
+    /// The method copies `take` values.
+    /// 
+    /// Returns the the number of values that were clipped during conversion.
+    /// If an invalid channel number is given,
+    /// or if either of the buffers is to short to copy `take` values,
+    /// no values will be copied and `None` is returned.
+    fn write_from_other_to_channel(
+        &mut self,
+        other: &dyn Indirect<'a, T>,
+        other_channel: usize,
+        self_channel: usize,
+        other_skip: usize,
+        self_skip: usize,
+        take: usize,
+    ) -> Option<usize> {
+        if self_channel >= self.channels()
+            || take + self_skip > self.frames()
+            || other_channel >= other.channels()
+            || take + other_skip > other.frames()
+        {
+            return None;
+        }
+        let mut nbr_clipped = 0;
+        for n in 0..take {
+            unsafe {
+                let value = other.read_unchecked(other_channel, n + other_skip);
+                nbr_clipped += self.write_unchecked(self_channel, n + self_skip, &value) as usize
+            };
+        }
+        Some(nbr_clipped)
+    }
 }
 
 // -------------------- The main buffer trait --------------------
