@@ -1,12 +1,12 @@
 # audiobuffer
 
-## AudioBuffer
+## Direct
 
-A simple library for making it easier to work with buffers of audio data.
+A library for making it easier to work with buffers of audio data.
 
 Audio data can be stored in many different ways,
 where both the layout of the data, and the numerical representation can vary.
-This crate aims at helping with the differences in layout.
+This crate aims at helping with the differences in layout both layout and data type.
 
 #### Background
 Libraries and applications that process audio usually use
@@ -23,8 +23,8 @@ For normal stereo, a frame consists of one sample for the left channel
 and one for the right, usually in that order.
 
 #### Interleaved and sequential
-When the audio data is stored in a file or in memory,
-the data can be arranged in two main ways.
+When audio data is stored in a file or in memory,
+the data can be ordered in two main ways.
 - Keeping all samples for each channel together,
   and storing each channel after the previous.
   This is normally called _sequential_, _non-interleaved_ or _planar_.
@@ -35,9 +35,16 @@ the data can be arranged in two main ways.
   This is normally called _interleaved_, and this is how the data in a .wav file is ordered.
   The sample order of a stereo file with 3 frames becomes:
   `L1, R1, L2, R2, L3, R3`
+In a more general sense, the same applies when storing
+any multi-dimensional array in linear storage such as RAM or a file.
+A 2D matrix can then be stored in _row-major_ or _column-major_ order.
+The only difference here compared to a general 2D matrix is that the names `row` and `column`
+are replaced by the audio-specific `channel` and `frame`.
+Using the general notation, _interleaved_ corresponds to _frame-major_ order,
+and _sequential_ to _channel-major_ order.
 
 #### Abstracting the data layout
-This crate provedes a trait [AudioBuffer] that provides simple methods
+This crate provedes a trait [traits::Direct] that provides simple methods
 for accessing the audio samples of a buffer.
 It also provides wrappers for a number of common data structures
 used for storing audio data.
@@ -58,7 +65,7 @@ of cloning the data, such as [slice::clone_from_slice()].
 
 #### RMS and peak calculation
 
-The `AudioBufferStats` trait provides methods for calculating the RMS and peak-to-peak values
+The `Numeric` trait provides methods for calculating the RMS and peak-to-peak values
 for channels and frames.
 This is only available when the samples are of a numerical kind, such as integers or floats,
 and cannot be used when the samples are for example arrays of bytes such as `[u8; 4]`.
@@ -66,3 +73,14 @@ and cannot be used when the samples are for example arrays of bytes such as `[u8
 
 #### License: MIT
 
+
+TODO:
+move stats trait to traits
+impl converting for direct wrappers
+make converting a supertrait of Direct
+move slice copying to Converting
+rename Converting and Direct
+Converter(Mut) -> Indirect(Mut)
+Direct(Mut) -> Direct(Mut)
+Numeric -> Numeric
+add copy_frame/channel_from other to Converting, copy_channel_from_other(from_channel, to_channel, skip, take)
