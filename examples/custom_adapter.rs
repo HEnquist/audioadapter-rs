@@ -45,8 +45,8 @@ fn main() {
         data,
         channels: 2,
     };
-    for channel in 0..2 {
-        for frame in 0..3 {
+    for channel in 0..adapter.channels() {
+        for frame in 0..adapter.frames() {
             let value = adapter.read(channel, frame).unwrap();
             println!("Channel: {}, frame: {}, value: {}", channel, frame, value);
         }
