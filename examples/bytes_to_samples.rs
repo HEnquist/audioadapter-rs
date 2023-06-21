@@ -1,7 +1,7 @@
 // This example shows a way to read 16-bit integer samples from raw bytes.
 // The conversion is done by first creating a view of the raw bytes as
 // a slice of 2-byte arrays, &[[u8; 2]], and wrapping this view
-// as an Direct.
+// as a Direct.
 // The samples values are then read using the Direct trait methods
 // and converted to i16 with i16::from_le_bytes().
 
