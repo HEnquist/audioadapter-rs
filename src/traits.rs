@@ -274,7 +274,7 @@ where
     /// The `self_skip` and `other_skip` arguments are the offsets
     /// in frames for where copying starts in the two buffers.
     /// The method copies `take` values.
-    /// 
+    ///
     /// Returns the the number of values that were clipped during conversion.
     /// If an invalid channel number is given,
     /// or if either of the buffers is to short to copy `take` values,

@@ -329,4 +329,15 @@ mod tests {
         assert_eq!(values_left, expected_left);
         assert_eq!(values_right, expected_right);
     }
+
+    // Check that a buffer is Send + Sync,
+    // meaning it can be sent between threads.
+    // This test is not designed to be run, only to compile.
+    #[allow(dead_code)]
+    fn test_adapter_send_and_sync<T: Sync + Send + Clone>() {
+        fn is_send<T: Send>() {}
+        fn is_sync<T: Sync>() {}
+        is_send::<InterleavedF32LE<&[u8], f32>>();
+        is_sync::<InterleavedF32LE<&[u8], f32>>();
+    }
 }

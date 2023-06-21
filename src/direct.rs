@@ -903,12 +903,25 @@ mod tests {
         test_mut_slice_frame(&mut buffer);
     }
 
-    // This tests that an Direct is object safe.
+    // This tests that a Direct is object safe.
     #[test]
     fn boxed_buffer() {
         let mut data = vec![1_i32, 2, 3, 4, 5, 6];
         let boxed: Box<dyn Direct<i32>> = Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
         assert_eq!(*boxed.get(0, 0).unwrap(), 1);
+    }
+
+    // Check that a buffer is Send + Sync,
+    // meaning it can be sent between threads.
+    // This test is not designed to be run, only to compile.
+    #[allow(dead_code)]
+    fn test_adapter_send_and_sync<T: Sync + Send + Clone>() {
+        fn is_send<T: Send>() {}
+        fn is_sync<T: Sync>() {}
+        is_send::<InterleavedSlice<f32>>();
+        is_sync::<InterleavedSlice<f32>>();
+        is_send::<InterleavedSliceOfVecs<f32>>();
+        is_sync::<InterleavedSliceOfVecs<f32>>();
     }
 
     #[test]
