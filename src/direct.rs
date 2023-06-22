@@ -18,8 +18,8 @@
 //! Wrap a Vec of i32 as an interleaved buffer
 //! and print all the values.
 //! ```
-//! use audiobuffer::direct::InterleavedSlice;
-//! use audiobuffer::traits::Direct;
+//! use audioadapter::direct::InterleavedSlice;
+//! use audioadapter::traits::Direct;
 //!
 //! // make a vector with some fake data.
 //! // 2 channels * 3 frames => 6 samples

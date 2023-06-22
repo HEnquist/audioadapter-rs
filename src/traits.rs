@@ -1,4 +1,4 @@
-//! # audiobuffer_traits
+//! # audioadapter traits
 //!
 //! A set of traits for making it easier to work with buffers of audio data.
 //!
@@ -19,27 +19,13 @@
 //! This includes immutable and immutable borrowing, as well as iterators.
 //!
 //! The last level is [Numeric] that is used to calculate some properties of the audio data.
-//! This is implemented for every structure implementing [traits::Direct] for a numeric type.
+//! This is implemented for every structure implementing [traits::Direct],
+//! and is only available when the samples are of a numerical kind, such as integers or floats.
+//! It cannot be used when the samples are for example arrays of bytes such as `[u8; 4]`.
 //!
 //! By accessing the audio data via the trait methods instead
 //! of indexing the data structure directly,
 //! an application or library becomes independant of the data layout.
-//!
-//! ## Supporting new data structures
-//! The required trait methods are simple, to make is easy to implement them for
-//! data structures not covered by the existing wrappers in [direct] and [converting].
-//!
-//! There are default implementations for most methods.
-//! These may be overriden if the wrapped data structure provides a more efficient way
-//! of performing the operation.
-//! For example, the default implementation of `write_from_channel_to_slice()`
-//! simply loops over the elements to copy.
-//! But when the underlying data structure is a sequential slice, then this
-//! can be implemented more efficiently by using [slice::clone_from_slice()].
-//!
-//!
-//! ## License: MIT
-//!
 
 use crate::iterators::{
     ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,

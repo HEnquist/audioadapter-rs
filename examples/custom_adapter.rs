@@ -3,7 +3,7 @@
 // The data here is a vector of strings,
 // that get converted to numbers on reading.
 
-use audiobuffer::traits::Indirect;
+use audioadapter::traits::Indirect;
 use num_traits::Zero;
 use std::str::FromStr;
 

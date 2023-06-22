@@ -1,6 +1,4 @@
-# audiobuffer
-
-## Direct
+# audioadapter
 
 A library for making it easier to work with buffers of audio data.
 
@@ -8,7 +6,7 @@ Audio data can be stored in many different ways,
 where both the layout of the data, and the numerical representation can vary.
 This crate aims at helping with the differences in layout both layout and data type.
 
-#### Background
+## Background
 Libraries and applications that process audio usually use
 a single layout for the audio data internally.
 If a project combines libraries that store their audio data differently,
@@ -16,13 +14,13 @@ any data passed between them must be converted
 by copying the data from a buffer using one layout
 to another buffer using the other layout.
 
-#### Channels and frames
+## Channels and frames
 When audio data has more than one channel is made up of a series of _frames_.
 A frame consists of the samples for all channels, belonging to one time point.
 For normal stereo, a frame consists of one sample for the left channel
 and one for the right, usually in that order.
 
-#### Interleaved and sequential
+## Interleaved and sequential
 When audio data is stored in a file or in memory,
 the data can be ordered in two main ways.
 - Keeping all samples for each channel together,
@@ -43,18 +41,23 @@ are replaced by the audio-specific `channel` and `frame`.
 Using the general notation, _interleaved_ corresponds to _frame-major_ order,
 and _sequential_ to _channel-major_ order.
 
-#### Abstracting the data layout
-This crate provedes a trait [traits::Direct] that provides simple methods
+## Abstracting the data layout
+This crate provedes a traits [traits::Indirect] and [traits::IndirectMut] that provide simple methods
 for accessing the audio samples of a buffer.
-It also provides wrappers for a number of common data structures
-used for storing audio data.
+The [traits::Direct] and [traits::DirectMut] traits add immutable and mutable borrowing of the elements,
+and iterators.
+Finally the [traits::Numeric] trait adds methods for
+calculating some properties of the audio data.
+
+The crate also provides wrappers that implement these some or all of these traits
+for a number of common data structures used for storing audio data.
 Any type implementing [std::clone::Clone] can be used as the type for the samples.
 
 By accessing the audio data via the trait methods instead
 of indexing the data structure directly,
 an application or library becomes independant of the data layout.
 
-#### Supporting new data structures
+## Supporting new data structures
 The required trait methods are simple, to make is easy to implement them for
 data structures not covered by the built-in wrappers.
 
@@ -63,24 +66,8 @@ These loop over the elements to read or write and clone element by element.
 These may be overriden if the wrapped data structure provides a more efficient way
 of cloning the data, such as [slice::clone_from_slice()].
 
-#### RMS and peak calculation
+See also the `custom_adapter` example.
+This shows an implementation of [traits::Indirect]
+for a vector of strings.
 
-The `Numeric` trait provides methods for calculating the RMS and peak-to-peak values
-for channels and frames.
-This is only available when the samples are of a numerical kind, such as integers or floats,
-and cannot be used when the samples are for example arrays of bytes such as `[u8; 4]`.
-
-
-#### License: MIT
-
-
-TODO:
-move stats trait to traits
-impl converting for direct wrappers
-make converting a supertrait of Direct
-move slice copying to Converting
-rename Converting and Direct
-Converter(Mut) -> Indirect(Mut)
-Direct(Mut) -> Direct(Mut)
-Numeric -> Numeric
-add copy_frame/channel_from other to Converting, copy_channel_from_other(from_channel, to_channel, skip, take)
+## License: MIT

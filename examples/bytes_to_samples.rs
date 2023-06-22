@@ -5,8 +5,8 @@
 // The samples values are then read using the Direct trait methods
 // and converted to i16 with i16::from_le_bytes().
 
-use audiobuffer::direct::InterleavedSlice;
-use audiobuffer::traits::Direct;
+use audioadapter::direct::InterleavedSlice;
+use audioadapter::traits::Direct;
 
 fn main() {
     let channels = 2;

@@ -1,4 +1,4 @@
-use audiobuffer::*;
+use audioadapter::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn iter_with_iterator(buf: &SequentialSliceOfVecs<&[Vec<i32>]>) -> i32 {

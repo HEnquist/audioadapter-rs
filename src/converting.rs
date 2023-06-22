@@ -17,8 +17,8 @@
 //! Wrap a Vec of bytes as an interleaved buffer of 16-bit integer samples
 //! and print all the values.
 //! ```
-//! use audiobuffer::converting::InterleavedS16LE;
-//! use audiobuffer::traits::Indirect;
+//! use audioadapter::converting::InterleavedS16LE;
+//! use audioadapter::traits::Indirect;
 //!
 //! // make a vector with some fake data.
 //! // 2 channels * 3 frames * 2 bytes per sample => 12 bytes
