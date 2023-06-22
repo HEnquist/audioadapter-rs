@@ -43,7 +43,7 @@
 
 use crate::SizeError;
 
-use super::{check_slice_and_vec_length, check_slice_length, implement_size_getters};
+use super::{check_slice_length, implement_size_getters};
 use crate::iterators::{
     ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
     Frames, FramesMut,
@@ -51,18 +51,59 @@ use crate::iterators::{
 use crate::traits::{Direct, DirectMut, Indirect, IndirectMut};
 use crate::{implement_iterators, implement_iterators_mut};
 
+#[cfg(feature = "std")]
+macro_rules! check_slice_and_vec_length {
+    ($buf:expr, $channels:expr, $frames:expr, sequential) => {
+        if $buf.len() < $channels {
+            return Err(SizeError::Frame {
+                index: 0,
+                actual: $buf.len(),
+                required: $channels,
+            });
+        }
+        for (idx, chan) in $buf.iter().enumerate() {
+            if chan.len() < $frames {
+                return Err(SizeError::Channel {
+                    index: idx,
+                    actual: chan.len(),
+                    required: $frames,
+                });
+            }
+        }
+    };
+    ($buf:expr, $channels:expr, $frames:expr, interleaved) => {
+        if $buf.len() < $frames {
+            return Err(SizeError::Channel {
+                index: 0,
+                actual: $buf.len(),
+                required: $frames,
+            });
+        }
+        for (idx, frame) in $buf.iter().enumerate() {
+            if frame.len() < $channels {
+                return Err(SizeError::Frame {
+                    index: idx,
+                    actual: frame.len(),
+                    required: $channels,
+                });
+            }
+        }
+    };
+}
 //
 // =========================== SequentialSliceOfVecs ===========================
 //
 
 /// Wrapper for a slice of length `channels`, containing vectors of length `frames`.
 /// Each vector contains the samples for all frames of one channel.
+#[cfg(feature = "std")]
 pub struct SequentialSliceOfVecs<U> {
     buf: U,
     frames: usize,
     channels: usize,
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> SequentialSliceOfVecs<&'a [Vec<T>]> {
     /// Create a new `SliceOfChannelVecs` to wrap a slice of vectors.
     /// The slice must contain at least `channels` vectors,
@@ -80,6 +121,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a [Vec<T>]> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
     /// Create a new `SliceOfChannelVecs` to wrap a mutable slice of vectors.
     /// The slice must contain at least `channels` vectors,
@@ -101,6 +143,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> Indirect<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
@@ -126,6 +169,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> Direct<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
@@ -137,6 +181,7 @@ where
     implement_iterators!();
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> Indirect<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
@@ -162,6 +207,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> Direct<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
@@ -173,6 +219,7 @@ where
     implement_iterators!();
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> IndirectMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
@@ -201,6 +248,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> DirectMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
@@ -218,12 +266,14 @@ where
 
 /// Wrapper for a slice of length `frames`, containing vectors of length `channels`.
 /// Each vector contains the samples for all channels of one frame.
+#[cfg(feature = "std")]
 pub struct InterleavedSliceOfVecs<U> {
     buf: U,
     frames: usize,
     channels: usize,
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> InterleavedSliceOfVecs<&'a [Vec<T>]> {
     /// Create a new `InterleavedWrapper` to wrap a slice of vectors.
     /// The slice must contain at least `frames` vectors,
@@ -241,6 +291,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a [Vec<T>]> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
     /// Create a new `InterleavedWrapper` to wrap a mutable slice of vectors.
     /// The slice must contain at least `frames` vectors,
@@ -262,6 +313,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> Indirect<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
@@ -287,6 +339,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> Direct<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
@@ -298,6 +351,7 @@ where
     implement_iterators!();
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> Indirect<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
@@ -323,6 +377,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> Direct<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
@@ -334,6 +389,7 @@ where
     implement_iterators!();
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> IndirectMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
@@ -363,6 +419,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, T> DirectMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
@@ -791,8 +848,8 @@ mod tests {
 
     fn test_slice_channel(buffer: &mut dyn DirectMut<i32>) {
         insert_data(buffer);
-        let mut other1 = vec![0; 2];
-        let mut other2 = vec![0; 4];
+        let mut other1 = [0; 2];
+        let mut other2 = [0; 4];
         buffer.write_from_channel_to_slice(0, 1, &mut other1);
         buffer.write_from_channel_to_slice(1, 0, &mut other2);
         assert_eq!(other1[0], 2);
@@ -805,8 +862,8 @@ mod tests {
 
     fn test_slice_frame(buffer: &mut dyn DirectMut<i32>) {
         insert_data(buffer);
-        let mut other1 = vec![0; 1];
-        let mut other2 = vec![0; 3];
+        let mut other1 = [0; 1];
+        let mut other2 = [0; 3];
         buffer.write_from_frame_to_slice(0, 1, &mut other1);
         buffer.write_from_frame_to_slice(1, 0, &mut other2);
         assert_eq!(other1[0], 4);
@@ -817,8 +874,8 @@ mod tests {
 
     fn test_mut_slice_channel(buffer: &mut dyn DirectMut<i32>) {
         insert_data(buffer);
-        let other1 = vec![8, 9];
-        let other2 = vec![10, 11, 12, 13];
+        let other1 = [8, 9];
+        let other2 = [10, 11, 12, 13];
         buffer.write_from_slice_to_channel(0, 1, &other1);
         buffer.write_from_slice_to_channel(1, 0, &other2);
         assert_eq!(*buffer.get(0, 0).unwrap(), 1);
@@ -831,8 +888,8 @@ mod tests {
 
     fn test_mut_slice_frame(buffer: &mut dyn DirectMut<i32>) {
         insert_data(buffer);
-        let other1 = vec![8];
-        let other2 = vec![10, 11, 12];
+        let other1 = [8];
+        let other2 = [10, 11, 12];
         buffer.write_from_slice_to_frame(0, 0, &other1);
         buffer.write_from_slice_to_frame(1, 0, &other2);
         assert_eq!(*buffer.get(0, 0).unwrap(), 8);
@@ -843,6 +900,7 @@ mod tests {
         assert_eq!(*buffer.get(1, 2).unwrap(), 6);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn vec_of_channels() {
         let mut data = vec![vec![0_i32; 3], vec![0_i32; 3]];
@@ -856,6 +914,7 @@ mod tests {
         test_mut_slice_frame(&mut buffer);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn vec_of_frames() {
         let mut data = vec![vec![1_i32, 4], vec![2_i32, 5], vec![3, 6]];
@@ -871,7 +930,7 @@ mod tests {
 
     #[test]
     fn interleaved() {
-        let mut data = vec![1_i32, 4, 2, 5, 3, 6];
+        let mut data = [1_i32, 4, 2, 5, 3, 6];
         let mut buffer = InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
         test_iter(&mut buffer);
@@ -884,7 +943,7 @@ mod tests {
 
     #[test]
     fn sequential() {
-        let mut data = vec![1_i32, 2, 3, 4, 5, 6];
+        let mut data = [1_i32, 2, 3, 4, 5, 6];
         let mut buffer = SequentialSlice::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
         test_iter(&mut buffer);
@@ -896,9 +955,10 @@ mod tests {
     }
 
     // This tests that a Direct is object safe.
+    #[cfg(feature = "std")]
     #[test]
     fn boxed_buffer() {
-        let mut data = vec![1_i32, 2, 3, 4, 5, 6];
+        let mut data = [1_i32, 2, 3, 4, 5, 6];
         let boxed: Box<dyn Direct<i32>> = Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
         assert_eq!(*boxed.get(0, 0).unwrap(), 1);
     }
@@ -912,13 +972,15 @@ mod tests {
         fn is_sync<T: Sync>() {}
         is_send::<InterleavedSlice<f32>>();
         is_sync::<InterleavedSlice<f32>>();
+        #[cfg(feature = "std")]
         is_send::<InterleavedSliceOfVecs<f32>>();
+        #[cfg(feature = "std")]
         is_sync::<InterleavedSliceOfVecs<f32>>();
     }
 
     #[test]
     fn stats_integer() {
-        let data = vec![1_i32, -1, 1, -1, 1, -1, 1, -1];
+        let data = [1_i32, -1, 1, -1, 1, -1, 1, -1];
         let buffer = SequentialSlice::new(&data, 2, 4).unwrap();
         assert_eq!(buffer.channel_rms(0).unwrap(), 1.0);
         assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2);
@@ -926,7 +988,7 @@ mod tests {
 
     #[test]
     fn stats_float() {
-        let data = vec![1.0_f32, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0];
+        let data = [1.0_f32, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0];
         let buffer = SequentialSlice::new(&data, 2, 4).unwrap();
         assert_eq!(buffer.channel_rms(0).unwrap(), 1.0);
         assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2.0);
@@ -934,9 +996,9 @@ mod tests {
 
     #[test]
     fn copy_channel_from_other() {
-        let data_other = vec![1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let data_other = [1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0];
         let other = SequentialSlice::new(&data_other, 2, 3).unwrap();
-        let mut data = vec![0.0; 6];
+        let mut data = [0.0; 6];
         let mut buffer = SequentialSlice::new_mut(&mut data, 2, 3).unwrap();
         // copy second and third element of second channel of other to first and second element of first channel
         let res1 = buffer.write_from_other_to_channel(&other, 1, 0, 1, 0, 2);

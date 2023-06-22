@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 /// Wrappers providing conversion between raw bytes and floating point samples.
 pub mod converting;
@@ -7,7 +8,9 @@ pub mod direct;
 /// The traits for accessing samples in buffers.
 pub mod traits;
 
+#[cfg(feature = "std")]
 use std::error::Error;
+#[cfg(feature = "std")]
 use std::fmt;
 
 mod iterators;
@@ -38,8 +41,10 @@ pub enum SizeError {
     },
 }
 
+#[cfg(feature = "std")]
 impl Error for SizeError {}
 
+#[cfg(feature = "std")]
 impl fmt::Display for SizeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let desc = match self {
@@ -96,46 +101,6 @@ macro_rules! check_slice_length {
                 actual: $length,
                 required: $frames * $channels * $elements_per_sample,
             });
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! check_slice_and_vec_length {
-    ($buf:expr, $channels:expr, $frames:expr, sequential) => {
-        if $buf.len() < $channels {
-            return Err(SizeError::Frame {
-                index: 0,
-                actual: $buf.len(),
-                required: $channels,
-            });
-        }
-        for (idx, chan) in $buf.iter().enumerate() {
-            if chan.len() < $frames {
-                return Err(SizeError::Channel {
-                    index: idx,
-                    actual: chan.len(),
-                    required: $frames,
-                });
-            }
-        }
-    };
-    ($buf:expr, $channels:expr, $frames:expr, interleaved) => {
-        if $buf.len() < $frames {
-            return Err(SizeError::Channel {
-                index: 0,
-                actual: $buf.len(),
-                required: $frames,
-            });
-        }
-        for (idx, frame) in $buf.iter().enumerate() {
-            if frame.len() < $channels {
-                return Err(SizeError::Frame {
-                    index: idx,
-                    actual: frame.len(),
-                    required: $channels,
-                });
-            }
         }
     };
 }
