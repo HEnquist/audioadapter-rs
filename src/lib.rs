@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 /// Wrappers providing conversion between raw bytes and floating point samples.
 pub mod converting;
@@ -7,7 +8,9 @@ pub mod direct;
 /// The traits for accessing samples in buffers.
 pub mod traits;
 
-use std::error;
+#[cfg(feature = "std")]
+use std::error::Error;
+#[cfg(feature = "std")]
 use std::fmt;
 
 mod iterators;
@@ -21,27 +24,52 @@ pub use stats::Numeric;
 /// Error returned when the wrapped data structure has the wrong dimensions,
 /// typically that it is too short.
 #[derive(Debug)]
-pub struct BufferSizeError {
-    pub desc: String,
+pub enum SizeError {
+    Channel {
+        index: usize,
+        actual: usize,
+        required: usize,
+    },
+    Frame {
+        index: usize,
+        actual: usize,
+        required: usize,
+    },
+    Total {
+        actual: usize,
+        required: usize,
+    },
 }
 
-impl fmt::Display for BufferSizeError {
+#[cfg(feature = "std")]
+impl Error for SizeError {}
+
+#[cfg(feature = "std")]
+impl fmt::Display for SizeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.desc)
-    }
-}
-
-impl error::Error for BufferSizeError {
-    fn description(&self) -> &str {
-        &self.desc
-    }
-}
-
-impl BufferSizeError {
-    pub fn new(desc: &str) -> Self {
-        BufferSizeError {
-            desc: desc.to_owned(),
-        }
+        let desc = match self {
+            SizeError::Channel {
+                index,
+                actual,
+                required,
+            } => format!(
+                "Buffer for channel {} is too short, got: {}, required: {}",
+                index, actual, required
+            ),
+            SizeError::Frame {
+                index,
+                actual,
+                required,
+            } => format!(
+                "Buffer for frame {} is too short, got: {}, required: {}",
+                index, actual, required
+            ),
+            SizeError::Total { actual, required } => format!(
+                "Buffer is too short, got: {}, required: {}",
+                actual, required
+            ),
+        };
+        write!(f, "{}", &desc)
     }
 }
 
@@ -59,59 +87,20 @@ macro_rules! implement_size_getters {
 }
 #[macro_export]
 macro_rules! check_slice_length {
-    ($channels:expr , $frames:expr, $length:expr) => {
+    ($channels:expr , $frames:expr, $length:expr ) => {
         if $length < $frames * $channels {
-            return Err(BufferSizeError {
-                desc: format!("Slice is too short, {} < {}", $length, $frames * $channels),
+            return Err(SizeError::Total {
+                actual: $length,
+                required: $frames * $channels,
             });
         }
     };
     ($channels:expr , $frames:expr, $length:expr, $elements_per_sample:expr) => {
         if $length < $frames * $channels * $elements_per_sample {
-            return Err(BufferSizeError {
-                desc: format!(
-                    "Slice is too short, {} < {}",
-                    $length,
-                    $frames * $channels * $elements_per_sample
-                ),
+            return Err(SizeError::Total {
+                actual: $length,
+                required: $frames * $channels * $elements_per_sample,
             });
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! check_slice_and_vec_length {
-    ($buf:expr, $channels:expr, $frames:expr, sequential) => {
-        if $buf.len() < $channels {
-            return Err(BufferSizeError {
-                desc: format!("Too few channels, {} < {}", $buf.len(), $channels),
-            });
-        }
-        for (idx, chan) in $buf.iter().enumerate() {
-            if chan.len() < $frames {
-                return Err(BufferSizeError {
-                    desc: format!("Channel {} is too short, {} < {}", idx, chan.len(), $frames),
-                });
-            }
-        }
-    };
-    ($buf:expr, $channels:expr, $frames:expr, interleaved) => {
-        if $buf.len() < $frames {
-            return Err(BufferSizeError {
-                desc: format!("Too few frames, {} < {}", $buf.len(), $frames),
-            });
-        }
-        for (idx, frame) in $buf.iter().enumerate() {
-            if frame.len() < $channels {
-                return Err(BufferSizeError {
-                    desc: format!(
-                        "Frame {} is too short, {} < {}",
-                        idx,
-                        frame.len(),
-                        $channels
-                    ),
-                });
-            }
         }
     };
 }

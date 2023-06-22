@@ -39,10 +39,10 @@
 //! }
 //! ```
 
-use std::convert::TryInto;
+use core::convert::TryInto;
 
 use crate::traits::{Indirect, IndirectMut};
-use crate::BufferSizeError;
+use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use rawsample::Sample;
 
@@ -102,7 +102,7 @@ macro_rules! impl_traits {
                     buf: &'a [u8],
                     channels: usize,
                     frames: usize,
-                ) -> Result<Self, BufferSizeError> {
+                ) -> Result<Self, SizeError> {
                     check_slice_length!(channels, frames, buf.len(), $bytes);
                     Ok(Self {
                         _phantom: core::marker::PhantomData,
@@ -129,7 +129,7 @@ macro_rules! impl_traits {
                     buf: &'a mut [u8],
                     channels: usize,
                     frames: usize,
-                ) -> Result<Self, BufferSizeError> {
+                ) -> Result<Self, SizeError> {
                     check_slice_length!(channels, frames, buf.len(), $bytes);
                     Ok(Self {
                         _phantom: core::marker::PhantomData,
@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn read_i32() {
-        let data: Vec<u8> = vec![
+        let data: [u8; 24] = [
             0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 64, 0, 0, 0, 192, 0, 0, 0, 32, 0, 0, 0, 224,
         ];
         let buffer: InterleavedS32LE<&[u8], f32> = InterleavedS32LE::new(&data, 2, 3).unwrap();
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn read_i16() {
-        let data: Vec<u8> = vec![0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
         let buffer: InterleavedS16LE<&[u8], f32> = InterleavedS16LE::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read(1, 0).unwrap(), -1.0);
@@ -265,10 +265,10 @@ mod tests {
 
     #[test]
     fn write_i32() {
-        let expected: Vec<u8> = vec![
+        let expected: [u8; 24] = [
             0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 64, 0, 0, 0, 192, 0, 0, 0, 32, 0, 0, 0, 224,
         ];
-        let mut data = vec![0; 24];
+        let mut data = [0; 24];
         let mut buffer: InterleavedS32LE<&mut [u8], f32> =
             InterleavedS32LE::new_mut(&mut data, 2, 3).unwrap();
 
@@ -283,8 +283,8 @@ mod tests {
 
     #[test]
     fn write_i16() {
-        let expected: Vec<u8> = vec![0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
-        let mut data = vec![0; 12];
+        let expected: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let mut data = [0; 12];
         let mut buffer: InterleavedS16LE<&mut [u8], f32> =
             InterleavedS16LE::new_mut(&mut data, 2, 3).unwrap();
 
@@ -299,12 +299,12 @@ mod tests {
 
     #[test]
     fn from_slice_i32() {
-        let expected_data: Vec<u8> = vec![
+        let expected_data: [u8; 24] = [
             0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 64, 0, 0, 0, 192, 0, 0, 0, 32, 0, 0, 0, 224,
         ];
-        let values_left = vec![0.0, 0.5, 0.25];
-        let values_right = vec![-1.0, -0.5, -0.25];
-        let mut data = vec![0; 24];
+        let values_left = [0.0, 0.5, 0.25];
+        let values_right = [-1.0, -0.5, -0.25];
+        let mut data = [0; 24];
         let mut buffer: InterleavedS32LE<&mut [u8], f32> =
             InterleavedS32LE::new_mut(&mut data, 2, 3).unwrap();
 
@@ -315,13 +315,13 @@ mod tests {
 
     #[test]
     fn to_slice_i32() {
-        let data: Vec<u8> = vec![
+        let data: [u8; 24] = [
             0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 64, 0, 0, 0, 192, 0, 0, 0, 32, 0, 0, 0, 224,
         ];
-        let expected_left = vec![0.0, 0.5, 0.25];
-        let expected_right = vec![-1.0, -0.5, -0.25];
-        let mut values_left = vec![0.0; 3];
-        let mut values_right = vec![0.0; 3];
+        let expected_left = [0.0, 0.5, 0.25];
+        let expected_right = [-1.0, -0.5, -0.25];
+        let mut values_left = [0.0; 3];
+        let mut values_right = [0.0; 3];
         let buffer: InterleavedS32LE<&[u8], f32> = InterleavedS32LE::new(&data, 2, 3).unwrap();
 
         buffer.write_from_channel_to_slice(0, 0, &mut values_left);

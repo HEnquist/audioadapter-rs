@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn stats_integer() {
-        let data = vec![1_i32, -1, 1, -1, 1, -1, 1, -1];
+        let data = [1_i32, -1, 1, -1, 1, -1, 1, -1];
         let buffer = SequentialSlice::new(&data, 2, 4).unwrap();
         assert_eq!(buffer.channel_rms(0).unwrap(), 1.0);
         assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2);
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn stats_float() {
-        let data = vec![1.0_f32, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0];
+        let data = [1.0_f32, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0];
         let buffer = SequentialSlice::new(&data, 2, 4).unwrap();
         assert_eq!(buffer.channel_rms(0).unwrap(), 1.0);
         assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2.0);
