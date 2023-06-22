@@ -42,7 +42,7 @@
 use std::convert::TryInto;
 
 use crate::traits::{Indirect, IndirectMut};
-use crate::BufferSizeError;
+use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use rawsample::Sample;
 
@@ -102,7 +102,7 @@ macro_rules! impl_traits {
                     buf: &'a [u8],
                     channels: usize,
                     frames: usize,
-                ) -> Result<Self, BufferSizeError> {
+                ) -> Result<Self, SizeError> {
                     check_slice_length!(channels, frames, buf.len(), $bytes);
                     Ok(Self {
                         _phantom: core::marker::PhantomData,
@@ -129,7 +129,7 @@ macro_rules! impl_traits {
                     buf: &'a mut [u8],
                     channels: usize,
                     frames: usize,
-                ) -> Result<Self, BufferSizeError> {
+                ) -> Result<Self, SizeError> {
                     check_slice_length!(channels, frames, buf.len(), $bytes);
                     Ok(Self {
                         _phantom: core::marker::PhantomData,

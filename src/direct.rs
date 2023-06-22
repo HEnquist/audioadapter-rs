@@ -41,7 +41,7 @@
 //! ## License: MIT
 //!
 
-use crate::BufferSizeError;
+use crate::SizeError;
 
 use super::{check_slice_and_vec_length, check_slice_length, implement_size_getters};
 use crate::iterators::{
@@ -70,7 +70,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a [Vec<T>]> {
     /// They are allowed to be longer than needed,
     /// but these extra frames or channels cannot
     /// be accessed via the `Direct` trait methods.
-    pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
+    pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_and_vec_length!(buf, channels, frames, sequential);
         Ok(Self {
             buf,
@@ -91,7 +91,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
         buf: &'a mut [Vec<T>],
         channels: usize,
         frames: usize,
-    ) -> Result<Self, BufferSizeError> {
+    ) -> Result<Self, SizeError> {
         check_slice_and_vec_length!(buf, channels, frames, sequential);
         Ok(Self {
             buf,
@@ -231,7 +231,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a [Vec<T>]> {
     /// They are allowed to be longer than needed,
     /// but these extra frames or channels cannot
     /// be accessed via the `Direct` trait methods.
-    pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
+    pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_and_vec_length!(buf, channels, frames, interleaved);
         Ok(Self {
             buf,
@@ -252,7 +252,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
         buf: &'a mut [Vec<T>],
         channels: usize,
         frames: usize,
-    ) -> Result<Self, BufferSizeError> {
+    ) -> Result<Self, SizeError> {
         check_slice_and_vec_length!(buf, channels, frames, interleaved);
         Ok(Self {
             buf,
@@ -402,7 +402,7 @@ impl<'a, T> InterleavedSlice<&'a [T]> {
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Direct` trait methods.
-    pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
+    pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             buf,
@@ -418,11 +418,7 @@ impl<'a, T> InterleavedSlice<&'a mut [T]> {
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Direct` trait methods.
-    pub fn new_mut(
-        buf: &'a mut [T],
-        channels: usize,
-        frames: usize,
-    ) -> Result<Self, BufferSizeError> {
+    pub fn new_mut(buf: &'a mut [T], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             buf,
@@ -581,7 +577,7 @@ impl<'a, T> SequentialSlice<&'a [T]> {
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Direct` trait methods.
-    pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, BufferSizeError> {
+    pub fn new(buf: &'a [T], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             buf,
@@ -597,11 +593,7 @@ impl<'a, T> SequentialSlice<&'a mut [T]> {
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Direct` trait methods.
-    pub fn new_mut(
-        buf: &'a mut [T],
-        channels: usize,
-        frames: usize,
-    ) -> Result<Self, BufferSizeError> {
+    pub fn new_mut(buf: &'a mut [T], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             buf,
