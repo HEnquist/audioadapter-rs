@@ -9,12 +9,12 @@ in layout both layout and data type.
 
 This crate does not provide any data structures of its own
 for storing the audio data.
-Instead if functions as that of an adapter.
+Instead it functions as an adapter.
 The "raw" audio data should be stored in existing structures
 such as the built-in vectors and arrays.
 The crate then provides adapters for these.
-The adapters consist of wrapping structures that provide
-a set of methods for reading and writing the sample values
+An adapter consist of a wrapping structure that provides
+a set of common methods for reading and writing the sample values
 from the wrapped data structure. 
 
 
