@@ -53,6 +53,36 @@ are replaced by the audio-specific `channel` and `frame`.
 Using the general notation, _interleaved_ corresponds to _frame-major_ order,
 and _sequential_ to _channel-major_ order.
 
+### Choosing the best order
+A project that uses `audioadapter` supports both sequential and interleaved buffers,
+but depending on how the data is processed, one order may give better performance than the other.
+
+To get the best performance, use the layout that stores the samples in memory
+in the same order as they are accessed during processing.
+This makes memory accesses very predicable, which helps the CPU cache to maximize memory throughput.
+If there is no obvious most common processing order,
+try both and measure the performance.
+
+#### Interleaved
+Use this if the project processes the data frame by frame, such as this dummy loop:
+```ignore
+for frame in 0..data.frames() {
+    for channel in 0..data.channels() {
+        do_something(&data, channel, frame);
+    }
+}
+```
+
+#### Sequential
+Use this if the project processes the data channel by channel:
+```ignore
+for channel in 0..data.channels() {
+    for frame in 0..data.frames() {
+        do_something(&data, channel, frame);
+    }
+}
+```
+
 ## Abstracting the data layout
 This crate provedes a traits [traits::Indirect] and [traits::IndirectMut] that provide simple methods
 for accessing the audio samples of a buffer.
