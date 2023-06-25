@@ -120,4 +120,14 @@ See also the `custom_adapter` example.
 This shows an implementation of [Indirect]
 for a vector of strings.
 
+## TODO
+- Add method for clearing a buffer
+- Add wrapper for `audio` crate buffers
+
+### Possible future improvements
+- separate length and capacity
+- methods for resizing (within data capacity)
+- methods for selective clearing (frame 0..n, n..end etc)
+- wrappers for `&[AsRef<T>]`?
+
 ## License: MIT
