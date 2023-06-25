@@ -3,7 +3,7 @@
 //! The wrapper enables reading and writing samples from/to the slice with
 //! on-the-fly format conversion between integer and float.
 //!
-//! The wrappers implement the traits [crate::traits::Indirect] and [crate::traits::IndirectMut],
+//! The wrappers implement the traits [crate::Indirect] and [crate::IndirectMut],
 //! that provide simple methods for accessing the audio samples of a buffer.
 //!
 //! ### Data order
@@ -11,11 +11,11 @@
 //! one for interleaved and one for sequential data.
 //!
 //! ### Example
-//! Wrap a Vec of 16-bit integer samples as an interleaved buffer 
+//! Wrap a Vec of 16-bit integer samples as an interleaved buffer
 //! and print all the values.
 //! ```
 //! use audioadapter::integers::InterleavedI16;
-//! use audioadapter::traits::Indirect;
+//! use audioadapter::Indirect;
 //!
 //! // make a vector with some data.
 //! // 2 channels * 3 frames => 6 samples
@@ -36,9 +36,9 @@
 //! }
 //! ```
 
-use crate::traits::{Indirect, IndirectMut};
 use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
+use crate::{Indirect, IndirectMut};
 use rawsample::IntegerSample;
 
 macro_rules! create_structs {
@@ -183,7 +183,6 @@ impl_traits!(i32, from_i32, to_i32, I32, Interleaved);
 impl_traits!(i16, from_i16, to_i16, I16, Sequential);
 impl_traits!(i32, from_i32, to_i32, I32, Sequential);
 
-
 //   _____         _
 //  |_   _|__  ___| |_ ___
 //    | |/ _ \/ __| __/ __|
@@ -196,9 +195,7 @@ mod tests {
 
     #[test]
     fn read_i32() {
-        let data: [i32; 6] = [
-            0, -2<<30, 2<<29, -2<<29, 2<<28, -2<<28
-        ];
+        let data: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
         let buffer: InterleavedI32<&[i32], f32> = InterleavedI32::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read(1, 0).unwrap(), -1.0);
@@ -210,9 +207,7 @@ mod tests {
 
     #[test]
     fn read_i16() {
-        let data: [i16; 6] = [
-            0, -2<<14, 2<<13, -2<<13, 2<<12, -2<<12
-        ];
+        let data: [i16; 6] = [0, -2 << 14, 2 << 13, -2 << 13, 2 << 12, -2 << 12];
         let buffer: InterleavedI16<&[i16], f32> = InterleavedI16::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read(1, 0).unwrap(), -1.0);
@@ -224,9 +219,7 @@ mod tests {
 
     #[test]
     fn write_i32() {
-        let expected: [i32; 6] = [
-            0, -2<<30, 2<<29, -2<<29, 2<<28, -2<<28
-        ];
+        let expected: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
         let mut data = [0; 6];
         let mut buffer: InterleavedI32<&mut [i32], f32> =
             InterleavedI32::new_mut(&mut data, 2, 3).unwrap();
@@ -242,9 +235,7 @@ mod tests {
 
     #[test]
     fn write_i16() {
-        let expected: [i16; 6] = [
-            0, -2<<14, 2<<13, -2<<13, 2<<12, -2<<12
-        ];
+        let expected: [i16; 6] = [0, -2 << 14, 2 << 13, -2 << 13, 2 << 12, -2 << 12];
         let mut data = [0; 6];
         let mut buffer: InterleavedI16<&mut [i16], f32> =
             InterleavedI16::new_mut(&mut data, 2, 3).unwrap();
@@ -260,9 +251,7 @@ mod tests {
 
     #[test]
     fn from_slice_i32() {
-        let expected_data: [i32; 6] = [
-            0, -2<<30, 2<<29, -2<<29, 2<<28, -2<<28
-        ];
+        let expected_data: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
         let values_left = [0.0, 0.5, 0.25];
         let values_right = [-1.0, -0.5, -0.25];
         let mut data = [0; 6];
@@ -276,9 +265,7 @@ mod tests {
 
     #[test]
     fn to_slice_i32() {
-        let data: [i32; 6] = [
-            0, -2<<30, 2<<29, -2<<29, 2<<28, -2<<28
-        ];
+        let data: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
         let expected_left = [0.0, 0.5, 0.25];
         let expected_right = [-1.0, -0.5, -0.25];
         let mut values_left = [0.0; 3];
@@ -301,5 +288,4 @@ mod tests {
         is_send::<InterleavedI32<&[i32], f32>>();
         is_sync::<InterleavedI32<&[i32], f32>>();
     }
-
 }

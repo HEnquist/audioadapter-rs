@@ -1,4 +1,4 @@
-use crate::traits::{Direct, DirectMut};
+use crate::{Direct, DirectMut};
 
 // -------------------- Iterators returning immutable samples --------------------
 

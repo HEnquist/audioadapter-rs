@@ -1,31 +1,6 @@
 //! # audioadapter traits
 //!
 //! A set of traits for making it easier to work with buffers of audio data.
-//!
-//! Audio data can be stored in many different ways,
-//! where both the layout of the data, and the numerical representation can vary.
-//! This crate aims at providing traits that make it easy to write applications
-//! that can handle any data type in any data layout.
-//!
-//!
-//! ## Abstracting the data layout
-//! This module provides several "layers" of traits that add more functionality.
-//! The most basic traits are [traits::Indirect] and [traits::IndirectMut].
-//! These enable basic reading and writing, with methods that access the sample values
-//! indirectly.
-//!
-//! The next level is the [traits::Direct] and [traits::DirectMut] traits,
-//! adding methods that access the samples directly.
-//! This includes immutable and immutable borrowing, as well as iterators.
-//!
-//! The last level is [Numeric] that is used to calculate some properties of the audio data.
-//! This is implemented for every structure implementing [traits::Direct],
-//! and is only available when the samples are of a numerical kind, such as integers or floats.
-//! It cannot be used when the samples are for example arrays of bytes such as `[u8; 4]`.
-//!
-//! By accessing the audio data via the trait methods instead
-//! of indexing the data structure directly,
-//! an application or library becomes independant of the data layout.
 
 use crate::iterators::{
     ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
@@ -77,9 +52,11 @@ macro_rules! implement_iterators_mut {
 // -------------------- The main buffer trait --------------------
 
 /// A trait for reading samples from a buffer.
-/// Samples are converted from the raw format on the fly.
+/// Samples accessed indirectly by a ´read´ method.
+/// Implementations may perform any needed transformation
+/// of the sample value before returning it.
 pub trait Indirect<'a, T: 'a> {
-    /// Read and convert the sample at
+    /// Read the sample at
     /// a given combination of frame and channel.
     ///
     /// # Safety
@@ -90,7 +67,7 @@ pub trait Indirect<'a, T: 'a> {
     /// for example returning an invalid value or panicking.
     unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T;
 
-    /// Read and convert the sample at
+    /// Read the sample at
     /// a given combination of frame and channel.
     /// Returns `None` if the frame or channel is
     /// out of bounds of the buffer.
@@ -107,7 +84,7 @@ pub trait Indirect<'a, T: 'a> {
     /// Get the number of frames stored in this buffer.
     fn frames(&self) -> usize;
 
-    /// Convert and write values from a channel of the buffer to a slice.
+    /// Write values from a channel of the buffer to a slice.
     /// The `start` argument is the offset into the buffer channel
     /// where the first value will be read from.
     /// If the slice is longer than the available number of values in the channel of the buffer,
@@ -132,7 +109,7 @@ pub trait Indirect<'a, T: 'a> {
         frames_to_write
     }
 
-    /// Convert and write values from a frame of the buffer to a slice.
+    /// Write values from a frame of the buffer to a slice.
     /// The `start` argument is the offset into the buffer frame
     /// where the first value will be read from.
     /// If the slice is longer than the available number of values in the buffer frame,
@@ -159,15 +136,19 @@ pub trait Indirect<'a, T: 'a> {
 }
 
 /// A trait for writing samples to a buffer.
-/// Samples are converted to the raw format on the fly.
+/// Samples are accessed indirectly by a ´write´ method.
+/// Implementations may perform any needed transformation
+/// of the sample value before writing to the underlying buffer.
 pub trait IndirectMut<'a, T>: Indirect<'a, T>
 where
     T: Clone + 'a,
 {
-    /// Convert and write a sample to the
+    /// Write a sample to the
     /// given combination of frame and channel.
     /// Returns a boolean indicating if the sample value
     /// was clipped during conversion.
+    /// Implementations that do not perform any conversion
+    /// always return `false`.
     ///
     /// # Safety
     ///
@@ -177,10 +158,12 @@ where
     /// for example returning an invalid value or panicking.
     unsafe fn write_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool;
 
-    /// Convert and write a sample to the
+    /// Write a sample to the
     /// given combination of frame and channel.
     /// Returns a boolean indicating if the sample value
     /// was clipped during conversion.
+    /// Implementations that do not perform any conversion
+    /// always return `false`.
     /// Returns `None` if the frame or channel is
     /// out of bounds of the buffer.
     fn write(&mut self, channel: usize, frame: usize, value: &T) -> Option<bool> {
@@ -199,6 +182,8 @@ where
     /// Returns a tuple of two numbers.
     /// The first is the number of values written,
     /// and the second is the number of values that were clipped during conversion.
+    /// Implementations that do not perform any conversion
+    /// always return zero clipped samples.
     /// If an invalid channel number is given,
     /// or if `start` is larger than the length of the channel,
     /// no samples will be read and (0, 0) is returned.
@@ -232,6 +217,8 @@ where
     /// Returns a tuple of two numbers.
     /// The first is the number of values written,
     /// and the second is the number of values that were clipped during conversion.
+    /// Implementations that do not perform any conversion
+    /// always return zero clipped samples.
     /// If an invalid frame number is given,
     /// or if `start` is larger than the length of the frame,
     /// no samples will be read and (0, 0) is returned.
@@ -262,6 +249,9 @@ where
     /// The method copies `take` values.
     ///
     /// Returns the the number of values that were clipped during conversion.
+    /// Implementations that do not perform any conversion
+    /// always return zero clipped samples.
+    ///
     /// If an invalid channel number is given,
     /// or if either of the buffers is to short to copy `take` values,
     /// no values will be copied and `None` is returned.

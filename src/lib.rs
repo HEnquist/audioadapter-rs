@@ -3,12 +3,12 @@
 
 /// Wrappers providing conversion between raw bytes and floating point samples.
 pub mod bytes;
-/// Wrappers providing conversion between integers and floating point samples.
-pub mod integers;
 /// Wrappers providing direct access to samples in buffers.
 pub mod direct;
+/// Wrappers providing conversion between integers and floating point samples.
+pub mod integers;
 /// The traits for accessing samples in buffers.
-pub mod traits;
+mod traits;
 
 #[cfg(feature = "std")]
 use std::error::Error;
@@ -17,11 +17,13 @@ use std::fmt;
 
 mod iterators;
 mod stats;
+
 pub use iterators::{
     ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
     Frames, FramesMut,
 };
 pub use stats::Numeric;
+pub use traits::{Direct, DirectMut, Indirect, IndirectMut};
 
 /// Error returned when the wrapped data structure has the wrong dimensions,
 /// typically that it is too short.

@@ -3,7 +3,7 @@
 //! The wrapper enables reading and writing samples from/to the byte slice with
 //! on-the-fly format conversion.
 //!
-//! The wrappers implement the traits [crate::traits::Indirect] and [crate::traits::IndirectMut],
+//! The wrappers implement the traits [crate::Indirect] and [crate::IndirectMut],
 //! that provide simple methods for accessing the audio samples of a buffer.
 //!
 //! ### Data order
@@ -18,7 +18,7 @@
 //! and print all the values.
 //! ```
 //! use audioadapter::bytes::InterleavedS16LE;
-//! use audioadapter::traits::Indirect;
+//! use audioadapter::Indirect;
 //!
 //! // make a vector with some fake data.
 //! // 2 channels * 3 frames * 2 bytes per sample => 12 bytes
@@ -41,9 +41,9 @@
 
 use core::convert::TryInto;
 
-use crate::traits::{Indirect, IndirectMut};
 use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
+use crate::{Indirect, IndirectMut};
 use rawsample::Sample;
 
 macro_rules! create_structs {

@@ -1,6 +1,6 @@
 use num_traits::{Num, ToPrimitive};
 
-use crate::traits::Direct;
+use crate::Direct;
 
 /// A trait providing methods to calculate the RMS and peak-to-peak values of a channel or frame.
 /// This requires that the samples are of a numerical type, that also implement the
