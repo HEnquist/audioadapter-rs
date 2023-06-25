@@ -3,6 +3,8 @@
 
 /// Wrappers providing conversion between raw bytes and floating point samples.
 pub mod bytes;
+/// Wrappers providing conversion between integers and floating point samples.
+pub mod integers;
 /// Wrappers providing direct access to samples in buffers.
 pub mod direct;
 /// The traits for accessing samples in buffers.
