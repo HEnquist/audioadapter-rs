@@ -1,25 +1,27 @@
 //! # direct wrappers
 //!
 //! This module is a collection of wrappers that implement the
-//! [crate::traits] traits for various data structures.
+//! `audioadapter` traits for various data structures.
 //!
 //! These wrap data structures where
 //! the samples are already stored in the desired format.
-//! The wrappers implement the [crate::traits::Direct] and
-//! [crate::traits::DirectMut] traits.
-//! TODO! They also implement the [crate::traits::Indirect] and
-//! [crate::traits::IndirectMut] (TODO! and rename these)
+//! The wrappers implement the [crate::Direct] and
+//! [crate::DirectMut] traits.
+//! They also implement the [crate::Indirect] and
+//! [crate::IndirectMut] traits.
 //!
 //! ## Available wrappers
 //! Wrappers are available for plain slices, `&[T]`,
 //! and slices of vectors, `&[Vec<T>]`.
+//!
+//! Each wrapper exist in an _interleaved_ and _sequential_ version.
 //!
 //! ### Example
 //! Wrap a Vec of i32 as an interleaved buffer
 //! and print all the values.
 //! ```
 //! use audioadapter::direct::InterleavedSlice;
-//! use audioadapter::traits::Direct;
+//! use audioadapter::Direct;
 //!
 //! // make a vector with some fake data.
 //! // 2 channels * 3 frames => 6 samples
@@ -48,8 +50,8 @@ use crate::iterators::{
     ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
     Frames, FramesMut,
 };
-use crate::traits::{Direct, DirectMut, Indirect, IndirectMut};
 use crate::{implement_iterators, implement_iterators_mut};
+use crate::{Direct, DirectMut, Indirect, IndirectMut};
 
 #[cfg(feature = "std")]
 macro_rules! check_slice_and_vec_length {

@@ -84,12 +84,19 @@ for channel in 0..data.channels() {
 ```
 
 ## Abstracting the data layout
-This crate provedes a traits [traits::Indirect] and [traits::IndirectMut] that provide simple methods
-for accessing the audio samples of a buffer.
-The [traits::Direct] and [traits::DirectMut] traits add immutable and mutable borrowing of the elements,
-and iterators.
-Finally the [traits::Numeric] trait adds methods for
-calculating some properties of the audio data.
+This module provides several "layers" of traits that add more functionality.
+The most basic traits are [Indirect] and [IndirectMut].
+These enable basic reading and writing, with methods that access the sample values
+indirectly.
+
+The next level is the [Direct] and [DirectMut] traits,
+adding methods that access the samples directly.
+This includes immutable and immutable borrowing, as well as iterators.
+
+The last level is [Numeric] that is used to calculate some properties of the audio data.
+This is implemented for every structure implementing [Direct],
+and is only available when the samples are of a numerical kind, such as integers or floats.
+It cannot be used when the samples are for example arrays of bytes such as `[u8; 4]`.
 
 The crate also provides wrappers that implement these some or all of these traits
 for a number of common data structures used for storing audio data.
@@ -98,6 +105,7 @@ Any type implementing [std::clone::Clone] can be used as the type for the sample
 By accessing the audio data via the trait methods instead
 of indexing the data structure directly,
 an application or library becomes independant of the data layout.
+
 
 ## Supporting new data structures
 The required trait methods are simple, to make is easy to implement them for
@@ -109,7 +117,7 @@ These may be overriden if the wrapped data structure provides a more efficient w
 of cloning the data, such as [slice::clone_from_slice()].
 
 See also the `custom_adapter` example.
-This shows an implementation of [traits::Indirect]
+This shows an implementation of [Indirect]
 for a vector of strings.
 
 ## License: MIT
