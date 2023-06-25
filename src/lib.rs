@@ -2,7 +2,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 /// Wrappers providing conversion between raw bytes and floating point samples.
-pub mod converting;
+pub mod bytes;
 /// Wrappers providing direct access to samples in buffers.
 pub mod direct;
 /// The traits for accessing samples in buffers.

@@ -1,4 +1,4 @@
-//! # Converting wrappers
+//! # Converting wrappers for raw bytes
 //! This module provides wrappers for slices of bytes.
 //! The wrapper enables reading and writing samples from/to the byte slice with
 //! on-the-fly format conversion.
@@ -17,7 +17,7 @@
 //! Wrap a Vec of bytes as an interleaved buffer of 16-bit integer samples
 //! and print all the values.
 //! ```
-//! use audioadapter::converting::InterleavedS16LE;
+//! use audioadapter::bytes::InterleavedS16LE;
 //! use audioadapter::traits::Indirect;
 //!
 //! // make a vector with some fake data.
