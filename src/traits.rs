@@ -85,51 +85,51 @@ pub trait Indirect<'a, T: 'a> {
     fn frames(&self) -> usize;
 
     /// Write values from a channel of the buffer to a slice.
-    /// The `start` argument is the offset into the buffer channel
+    /// The `skip` argument is the offset into the buffer channel
     /// where the first value will be read from.
     /// If the slice is longer than the available number of values in the channel of the buffer,
     /// then only the available number of samples will be written.
     ///
     /// Returns the number of values written.
     /// If an invalid channel number is given,
-    /// or if `start` is larger than the length of the channel,
+    /// or if `skip` is larger than the length of the channel,
     /// no samples will be written and zero is returned.
-    fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
-        if channel >= self.channels() || start >= self.frames() {
+    fn write_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels() || skip >= self.frames() {
             return 0;
         }
-        let frames_to_write = if (self.frames() - start) < slice.len() {
-            self.frames() - start
+        let frames_to_write = if (self.frames() - skip) < slice.len() {
+            self.frames() - skip
         } else {
             slice.len()
         };
         for (n, item) in slice.iter_mut().enumerate().take(frames_to_write) {
-            unsafe { *item = self.read_unchecked(channel, start + n) };
+            unsafe { *item = self.read_unchecked(channel, skip + n) };
         }
         frames_to_write
     }
 
     /// Write values from a frame of the buffer to a slice.
-    /// The `start` argument is the offset into the buffer frame
+    /// The `skip` argument is the offset into the buffer frame
     /// where the first value will be read from.
     /// If the slice is longer than the available number of values in the buffer frame,
     /// then only the available number of samples will be written.
     ///
     /// Returns the number of values written.
     /// If an invalid frame number is given,
-    /// or if `start` is larger than the length of the frame,
+    /// or if `skip` is larger than the length of the frame,
     /// no samples will be written and zero is returned.
-    fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
-        if frame >= self.frames() || start >= self.channels() {
+    fn write_from_frame_to_slice(&self, frame: usize, skip: usize, slice: &mut [T]) -> usize {
+        if frame >= self.frames() || skip >= self.channels() {
             return 0;
         }
-        let channels_to_write = if (self.channels() - start) < slice.len() {
-            self.channels() - start
+        let channels_to_write = if (self.channels() - skip) < slice.len() {
+            self.channels() - skip
         } else {
             slice.len()
         };
         for (n, item) in slice.iter_mut().enumerate().take(channels_to_write) {
-            unsafe { *item = self.read_unchecked(start + n, frame) };
+            unsafe { *item = self.read_unchecked(skip + n, frame) };
         }
         channels_to_write
     }
@@ -174,7 +174,7 @@ where
     }
 
     /// Write values from a slice into a channel of the buffer.
-    /// The `start` argument is the offset into the buffer channel
+    /// The `skip` argument is the offset into the buffer channel
     /// where the first value will be written.
     /// If the slice is longer than the available space in the buffer channel,
     /// then only the number of samples that fit will be read.
@@ -185,31 +185,31 @@ where
     /// Implementations that do not perform any conversion
     /// always return zero clipped samples.
     /// If an invalid channel number is given,
-    /// or if `start` is larger than the length of the channel,
+    /// or if `skip` is larger than the length of the channel,
     /// no samples will be read and (0, 0) is returned.
     fn write_from_slice_to_channel(
         &mut self,
         channel: usize,
-        start: usize,
+        skip: usize,
         slice: &[T],
     ) -> (usize, usize) {
-        if channel >= self.channels() || start >= self.frames() {
+        if channel >= self.channels() || skip >= self.frames() {
             return (0, 0);
         }
-        let frames_to_read = if (self.frames() - start) < slice.len() {
-            self.frames() - start
+        let frames_to_read = if (self.frames() - skip) < slice.len() {
+            self.frames() - skip
         } else {
             slice.len()
         };
         let mut nbr_clipped = 0;
         for (n, item) in slice.iter().enumerate().take(frames_to_read) {
-            unsafe { nbr_clipped += self.write_unchecked(channel, start + n, item) as usize };
+            unsafe { nbr_clipped += self.write_unchecked(channel, skip + n, item) as usize };
         }
         (frames_to_read, nbr_clipped)
     }
 
     /// Write values from a slice into a frame of the buffer.
-    /// The `start` argument is the offset into the buffer frame
+    /// The `skip` argument is the offset into the buffer frame
     /// where the first value will be written.
     /// If the slice is longer than the available space in the buffer frame,
     /// then only the number of samples that fit will be read.
@@ -220,25 +220,25 @@ where
     /// Implementations that do not perform any conversion
     /// always return zero clipped samples.
     /// If an invalid frame number is given,
-    /// or if `start` is larger than the length of the frame,
+    /// or if `skip` is larger than the length of the frame,
     /// no samples will be read and (0, 0) is returned.
     fn write_from_slice_to_frame(
         &mut self,
         frame: usize,
-        start: usize,
+        skip: usize,
         slice: &[T],
     ) -> (usize, usize) {
-        if frame >= self.frames() || start >= self.channels() {
+        if frame >= self.frames() || skip >= self.channels() {
             return (0, 0);
         }
-        let channels_to_read = if (self.channels() - start) < slice.len() {
-            self.channels() - start
+        let channels_to_read = if (self.channels() - skip) < slice.len() {
+            self.channels() - skip
         } else {
             slice.len()
         };
         let mut nbr_clipped = 0;
         for (n, item) in slice.iter().enumerate().take(channels_to_read) {
-            unsafe { nbr_clipped += self.write_unchecked(start + n, frame, item) as usize };
+            unsafe { nbr_clipped += self.write_unchecked(skip + n, frame, item) as usize };
         }
         (channels_to_read, nbr_clipped)
     }

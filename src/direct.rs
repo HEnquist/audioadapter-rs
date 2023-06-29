@@ -156,17 +156,17 @@ where
 
     implement_size_getters!();
 
-    fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
-        if channel >= self.channels || start >= self.frames {
+    fn write_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || skip >= self.frames {
             return 0;
         }
-        let frames_to_write = if (self.frames - start) < slice.len() {
-            self.frames - start
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
         } else {
             slice.len()
         };
         slice[..frames_to_write]
-            .clone_from_slice(&self.buf[channel][start..start + frames_to_write]);
+            .clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
         frames_to_write
     }
 }
@@ -194,17 +194,17 @@ where
 
     implement_size_getters!();
 
-    fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
-        if channel >= self.channels || start >= self.frames {
+    fn write_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || skip >= self.frames {
             return 0;
         }
-        let frames_to_write = if (self.frames - start) < slice.len() {
-            self.frames - start
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
         } else {
             slice.len()
         };
         slice[..frames_to_write]
-            .clone_from_slice(&self.buf[channel][start..start + frames_to_write]);
+            .clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
         frames_to_write
     }
 }
@@ -234,18 +234,18 @@ where
     fn write_from_slice_to_channel(
         &mut self,
         channel: usize,
-        start: usize,
+        skip: usize,
         slice: &[T],
     ) -> (usize, usize) {
-        if channel >= self.channels || start >= self.frames {
+        if channel >= self.channels || skip >= self.frames {
             return (0, 0);
         }
-        let frames_to_read = if (self.frames - start) < slice.len() {
-            self.frames - start
+        let frames_to_read = if (self.frames - skip) < slice.len() {
+            self.frames - skip
         } else {
             slice.len()
         };
-        self.buf[channel][start..start + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
+        self.buf[channel][skip..skip + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
         (frames_to_read, 0)
     }
 }
@@ -326,17 +326,17 @@ where
 
     implement_size_getters!();
 
-    fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
-        if frame >= self.frames || start >= self.channels {
+    fn write_from_frame_to_slice(&self, frame: usize, skip: usize, slice: &mut [T]) -> usize {
+        if frame >= self.frames || skip >= self.channels {
             return 0;
         }
-        let channels_to_write = if (self.channels - start) < slice.len() {
-            self.channels - start
+        let channels_to_write = if (self.channels - skip) < slice.len() {
+            self.channels - skip
         } else {
             slice.len()
         };
         slice[..channels_to_write]
-            .clone_from_slice(&self.buf[frame][start..start + channels_to_write]);
+            .clone_from_slice(&self.buf[frame][skip..skip + channels_to_write]);
         channels_to_write
     }
 }
@@ -364,17 +364,17 @@ where
 
     implement_size_getters!();
 
-    fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
-        if frame >= self.frames || start >= self.channels {
+    fn write_from_frame_to_slice(&self, frame: usize, skip: usize, slice: &mut [T]) -> usize {
+        if frame >= self.frames || skip >= self.channels {
             return 0;
         }
-        let channels_to_write = if (self.channels - start) < slice.len() {
-            self.channels - start
+        let channels_to_write = if (self.channels - skip) < slice.len() {
+            self.channels - skip
         } else {
             slice.len()
         };
         slice[..channels_to_write]
-            .clone_from_slice(&self.buf[frame][start..start + channels_to_write]);
+            .clone_from_slice(&self.buf[frame][skip..skip + channels_to_write]);
         channels_to_write
     }
 }
@@ -404,18 +404,18 @@ where
     fn write_from_slice_to_frame(
         &mut self,
         frame: usize,
-        start: usize,
+        skip: usize,
         slice: &[T],
     ) -> (usize, usize) {
-        if frame >= self.frames || start >= self.channels {
+        if frame >= self.frames || skip >= self.channels {
             return (0, 0);
         }
-        let channels_to_read = if (self.channels - start) < slice.len() {
-            self.channels - start
+        let channels_to_read = if (self.channels - skip) < slice.len() {
+            self.channels - skip
         } else {
             slice.len()
         };
-        self.buf[frame][start..start + channels_to_read]
+        self.buf[frame][skip..skip + channels_to_read]
             .clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
@@ -498,18 +498,18 @@ where
 
     implement_size_getters!();
 
-    fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
-        if frame >= self.frames || start >= self.channels {
+    fn write_from_frame_to_slice(&self, frame: usize, skip: usize, slice: &mut [T]) -> usize {
+        if frame >= self.frames || skip >= self.channels {
             return 0;
         }
-        let channels_to_write = if (self.channels - start) < slice.len() {
-            self.channels - start
+        let channels_to_write = if (self.channels - skip) < slice.len() {
+            self.channels - skip
         } else {
             slice.len()
         };
-        let buffer_start = self.calc_index(start, frame);
+        let buffer_skip = self.calc_index(skip, frame);
         slice[..channels_to_write]
-            .clone_from_slice(&self.buf[buffer_start..buffer_start + channels_to_write]);
+            .clone_from_slice(&self.buf[buffer_skip..buffer_skip + channels_to_write]);
         channels_to_write
     }
 }
@@ -537,18 +537,18 @@ where
 
     implement_size_getters!();
 
-    fn write_from_frame_to_slice(&self, frame: usize, start: usize, slice: &mut [T]) -> usize {
-        if frame >= self.frames || start >= self.channels {
+    fn write_from_frame_to_slice(&self, frame: usize, skip: usize, slice: &mut [T]) -> usize {
+        if frame >= self.frames || skip >= self.channels {
             return 0;
         }
-        let channels_to_write = if (self.channels - start) < slice.len() {
-            self.channels - start
+        let channels_to_write = if (self.channels - skip) < slice.len() {
+            self.channels - skip
         } else {
             slice.len()
         };
-        let buffer_start = self.calc_index(start, frame);
+        let buffer_skip = self.calc_index(skip, frame);
         slice[..channels_to_write]
-            .clone_from_slice(&self.buf[buffer_start..buffer_start + channels_to_write]);
+            .clone_from_slice(&self.buf[buffer_skip..buffer_skip + channels_to_write]);
         channels_to_write
     }
 }
@@ -578,19 +578,19 @@ where
     fn write_from_slice_to_frame(
         &mut self,
         frame: usize,
-        start: usize,
+        skip: usize,
         slice: &[T],
     ) -> (usize, usize) {
-        if frame >= self.frames || start >= self.channels {
+        if frame >= self.frames || skip >= self.channels {
             return (0, 0);
         }
-        let channels_to_read = if (self.channels - start) < slice.len() {
-            self.channels - start
+        let channels_to_read = if (self.channels - skip) < slice.len() {
+            self.channels - skip
         } else {
             slice.len()
         };
-        let buffer_start = self.calc_index(start, frame);
-        self.buf[buffer_start..buffer_start + channels_to_read]
+        let buffer_skip = self.calc_index(skip, frame);
+        self.buf[buffer_skip..buffer_skip + channels_to_read]
             .clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
@@ -673,18 +673,18 @@ where
 
     implement_size_getters!();
 
-    fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
-        if channel >= self.channels || start >= self.frames {
+    fn write_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || skip >= self.frames {
             return 0;
         }
-        let frames_to_write = if (self.frames - start) < slice.len() {
-            self.frames - start
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
         } else {
             slice.len()
         };
-        let buffer_start = self.calc_index(channel, start);
+        let buffer_skip = self.calc_index(channel, skip);
         slice[..frames_to_write]
-            .clone_from_slice(&self.buf[buffer_start..buffer_start + frames_to_write]);
+            .clone_from_slice(&self.buf[buffer_skip..buffer_skip + frames_to_write]);
         frames_to_write
     }
 }
@@ -713,18 +713,18 @@ where
 
     implement_size_getters!();
 
-    fn write_from_channel_to_slice(&self, channel: usize, start: usize, slice: &mut [T]) -> usize {
-        if channel >= self.channels || start >= self.frames {
+    fn write_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || skip >= self.frames {
             return 0;
         }
-        let frames_to_write = if (self.frames - start) < slice.len() {
-            self.frames - start
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
         } else {
             slice.len()
         };
-        let buffer_start = self.calc_index(channel, start);
+        let buffer_skip = self.calc_index(channel, skip);
         slice[..frames_to_write]
-            .clone_from_slice(&self.buf[buffer_start..buffer_start + frames_to_write]);
+            .clone_from_slice(&self.buf[buffer_skip..buffer_skip + frames_to_write]);
         frames_to_write
     }
 }
@@ -754,19 +754,19 @@ where
     fn write_from_slice_to_channel(
         &mut self,
         channel: usize,
-        start: usize,
+        skip: usize,
         slice: &[T],
     ) -> (usize, usize) {
-        if channel >= self.channels || start >= self.frames {
+        if channel >= self.channels || skip >= self.frames {
             return (0, 0);
         }
-        let frames_to_read = if (self.frames - start) < slice.len() {
-            self.frames - start
+        let frames_to_read = if (self.frames - skip) < slice.len() {
+            self.frames - skip
         } else {
             slice.len()
         };
-        let buffer_start = self.calc_index(channel, start);
-        self.buf[buffer_start..buffer_start + frames_to_read]
+        let buffer_skip = self.calc_index(channel, skip);
+        self.buf[buffer_skip..buffer_skip + frames_to_read]
             .clone_from_slice(&slice[..frames_to_read]);
         (frames_to_read, 0)
     }
