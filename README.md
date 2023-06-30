@@ -122,7 +122,7 @@ for a vector of strings.
 
 ## TODO
 - Add method for clearing a buffer
-- Add wrapper for `audio` crate buffers
+- Implement `Direct` for `audio` crate buffers
 
 ### Possible future improvements
 - separate length and capacity
