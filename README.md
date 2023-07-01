@@ -106,6 +106,22 @@ By accessing the audio data via the trait methods instead
 of indexing the data structure directly,
 an application or library becomes independant of the data layout.
 
+## Compatibility with the [audio] crate
+In addition to the provided wrappers, the [Indirect], [IndirectMut],
+[Direct] (TODO) and [DirectMut] (TODO) traits are implemented for
+buffers implementing the [audio_core::Buf], [audio_core::BufMut] and [audio_core::ExactSizeBuf]
+traits from the [audio] crate.
+This is enabled via the `audio` Cargo feature, which is enabled by default.
+
+Example: Create a buffer and access it using [Indirect] methods.
+```
+use audioadapter::Indirect;
+use audio;
+
+let buf: audio::buf::Interleaved<i32> = audio::buf::Interleaved::with_topology(2, 4);
+buf.read(0,0);
+```
+
 
 ## Supporting new data structures
 The required trait methods are simple, to make is easy to implement them for

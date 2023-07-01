@@ -1,18 +1,8 @@
-//! # audio wrappers
+//! # `audio` crate compatibility
 //!
 //! This module implements the `audioadapter` traits
-//! for buffers from the `audio` crate.
-//!
-//! ### Example
-//! Create a buffer implementing `Buf` from `audio-core`
-//! and access it using `Indirect` methods.
-//! ```
-//! use audioadapter::Indirect;
-//! use audio::wrap;
-//! let buf = wrap::interleaved(&[1, 2, 3, 4, 5, 6, 7, 8], 2);
-//! buf.read(0,0);
-//! ```
-//!
+//! for `ExactSizeBuf` buffers from the `audio` crate.
+
 
 //use crate::iterators::{
 //    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
@@ -21,19 +11,19 @@
 //use crate::{implement_iterators, implement_iterators_mut};
 use crate::{Direct, DirectMut, Indirect, IndirectMut};
 
-use audio_core::{Buf, BufMut, Sample, Channel, ChannelMut};
+use audio_core::{ExactSizeBuf, Buf, BufMut, Sample, Channel, ChannelMut};
 
 impl<'a, T, U> Indirect<'a, T> for U
 where
     T: Clone + Sample + 'a,
-    U: Buf<Sample = T>,
+    U: Buf<Sample = T> + ExactSizeBuf<Sample = T>,
 {
     fn channels(&self) -> usize {
-        Buf::channels(self)
+        self.channels()
     }
 
     fn frames(&self) -> usize {
-        self.frames_hint().unwrap_or_default()
+        self.frames()
     }
 
     unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
@@ -46,7 +36,7 @@ where
 impl<'a, T, U> IndirectMut<'a, T> for U
 where
     T: Clone + Sample + 'a,
-    U: BufMut<Sample = T>,
+    U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,
 {
 
     unsafe fn write_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
@@ -69,8 +59,6 @@ where
 mod tests {
     use super::*;
     use audio::wrap;
-    
-    /// let mut to = audio::buf::Interleaved::with_topology(2, 4);
 
     #[test]
     fn read_indirect() {

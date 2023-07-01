@@ -25,7 +25,7 @@ pub use iterators::{
 pub use stats::Numeric;
 pub use traits::{Direct, DirectMut, Indirect, IndirectMut};
 
-#[cfg(feature = "audio_wrapper")]
+#[cfg(feature = "audio")]
 pub mod audio;
 
 /// Error returned when the wrapped data structure has the wrong dimensions,
