@@ -275,7 +275,8 @@ where
         for n in 0..take {
             unsafe {
                 let value = other.read_sample_unchecked(other_channel, n + other_skip);
-                nbr_clipped += self.write_sample_unchecked(self_channel, n + self_skip, &value) as usize
+                nbr_clipped +=
+                    self.write_sample_unchecked(self_channel, n + self_skip, &value) as usize
             };
         }
         Some(nbr_clipped)

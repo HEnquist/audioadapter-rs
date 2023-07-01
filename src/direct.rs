@@ -165,8 +165,7 @@ where
         } else {
             slice.len()
         };
-        slice[..frames_to_write]
-            .clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
+        slice[..frames_to_write].clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
         frames_to_write
     }
 }
@@ -203,8 +202,7 @@ where
         } else {
             slice.len()
         };
-        slice[..frames_to_write]
-            .clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
+        slice[..frames_to_write].clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
         frames_to_write
     }
 }
@@ -415,8 +413,7 @@ where
         } else {
             slice.len()
         };
-        self.buf[frame][skip..skip + channels_to_read]
-            .clone_from_slice(&slice[..channels_to_read]);
+        self.buf[frame][skip..skip + channels_to_read].clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
 }
