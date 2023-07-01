@@ -4,11 +4,11 @@
 //! for `ExactSizeBuf` buffers from the `audio` crate.
 
 
-//use crate::iterators::{
-//    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
-//    Frames, FramesMut,
-//};
-//use crate::{implement_iterators, implement_iterators_mut};
+use crate::iterators::{
+    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
+    Frames, FramesMut,
+};
+use crate::{implement_iterators, implement_iterators_mut};
 use crate::{Direct, DirectMut, Indirect, IndirectMut};
 
 use audio_core::{ExactSizeBuf, Buf, BufMut, Sample, Channel, ChannelMut};
@@ -76,7 +76,37 @@ where
     }
 }
 
-// TODO implement Direct and DirectMut
+
+impl<'a, T, U> Direct<'a, T> for U
+where
+    T: Clone + Sample + 'a,
+    U: Buf<Sample = T> + ExactSizeBuf<Sample = T>,
+{
+    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+        //unsafe { &mut *(self.ptr.as_ptr() as *mut T).add(add) })
+        let val = &self.get(channel).unwrap().get(frame).unwrap();
+        let val_ptr = val as *const T;
+        unsafe { & *val_ptr }
+    }
+
+    implement_iterators!();
+}
+
+impl<'a, T, U> DirectMut<'a, T> for U
+where
+    T: Clone + Sample + 'a,
+    U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,
+{
+    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+        let mut chan = self.get_mut(channel).unwrap();
+        let val = chan.get_mut(frame).unwrap();
+        let val_ptr = val as *mut T;
+        unsafe { &mut *val_ptr }
+    }
+
+    implement_iterators_mut!();
+}
+
 
 //   _____         _
 //  |_   _|__  ___| |_ ___
@@ -133,6 +163,28 @@ mod tests {
         assert_eq!(buf.get(0).unwrap().get(1).unwrap(), 1);
         assert_eq!(buf.get(0).unwrap().get(2).unwrap(), 2);
         assert_eq!(buf.get(0).unwrap().get(3).unwrap(), 3);
+    }
+
+    #[test]
+    fn read_direct() {
+        let buf = wrap::interleaved(&[1, 2, 3, 4, 5, 6, 7, 8], 2);
+        assert_eq!(Direct::get(&buf, 0,0), Some(&1));
+        assert_eq!(Direct::get(&buf, 1,0), Some(&2));
+        assert_eq!(Direct::get(&buf, 0,1), Some(&3));
+        assert_eq!(Direct::get(&buf, 1,1), Some(&4));
+    }
+
+    #[test]
+    fn write_direct() {
+        let mut buf = audio::buf::Interleaved::<i32>::with_topology(2, 4);
+        *DirectMut::get_mut(&mut buf, 0, 0).unwrap() = 1;
+        *DirectMut::get_mut(&mut buf, 1, 0).unwrap() = 2;
+        *DirectMut::get_mut(&mut buf, 0, 1).unwrap() = 3;
+        *DirectMut::get_mut(&mut buf, 1, 1).unwrap() = 4;
+        assert_eq!(buf.get(0).unwrap().get(0).unwrap(), 1);
+        assert_eq!(buf.get(1).unwrap().get(0).unwrap(), 2);
+        assert_eq!(buf.get(0).unwrap().get(1).unwrap(), 3);
+        assert_eq!(buf.get(1).unwrap().get(1).unwrap(), 4);
     }
 }
 

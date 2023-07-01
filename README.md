@@ -108,7 +108,7 @@ an application or library becomes independant of the data layout.
 
 ## Compatibility with the [audio] crate
 In addition to the provided wrappers, the [Indirect], [IndirectMut],
-[Direct] (TODO) and [DirectMut] (TODO) traits are implemented for
+[Direct] and [DirectMut] traits are implemented for
 buffers implementing the [audio_core::Buf], [audio_core::BufMut] and [audio_core::ExactSizeBuf]
 traits from the [audio] crate.
 This is enabled via the `audio` Cargo feature, which is enabled by default.
@@ -138,7 +138,6 @@ for a vector of strings.
 
 ## TODO
 - Add method for clearing a buffer
-- Implement `Direct` for `audio` crate buffers
 
 ### Possible future improvements
 - separate length and capacity
