@@ -57,7 +57,7 @@ fn iter_with_safe_loop(buf: &direct::SequentialSliceOfVecs<&[Vec<i32>]>) -> i32 
     let mut sum = 0;
     for channel in 0..buf.channels() {
         for frame in 0..buf.frames() {
-            sum += *buf.get(channel, frame).unwrap();
+            sum += *buf.get_sample(channel, frame).unwrap();
         }
     }
     return sum;
