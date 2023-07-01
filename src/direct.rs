@@ -150,7 +150,7 @@ impl<'a, T> Indirect<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         self.buf.get_unchecked(channel).get_unchecked(frame).clone()
     }
 
@@ -176,7 +176,7 @@ impl<'a, T> Direct<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
         self.buf.get_unchecked(channel).get_unchecked(frame)
     }
 
@@ -188,7 +188,7 @@ impl<'a, T> Indirect<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         self.buf.get_unchecked(channel).get_unchecked(frame).clone()
     }
 
@@ -214,7 +214,7 @@ impl<'a, T> Direct<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
         self.buf.get_unchecked(channel).get_unchecked(frame)
     }
 
@@ -226,7 +226,7 @@ impl<'a, T> IndirectMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn write_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
         false
     }
@@ -255,7 +255,7 @@ impl<'a, T> DirectMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
         self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame)
     }
 
@@ -320,7 +320,7 @@ impl<'a, T> Indirect<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         self.buf.get_unchecked(frame).get_unchecked(channel).clone()
     }
 
@@ -346,7 +346,7 @@ impl<'a, T> Direct<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
         self.buf.get_unchecked(frame).get_unchecked(channel)
     }
 
@@ -358,7 +358,7 @@ impl<'a, T> Indirect<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         self.buf.get_unchecked(frame).get_unchecked(channel).clone()
     }
 
@@ -384,7 +384,7 @@ impl<'a, T> Direct<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
         self.buf.get_unchecked(frame).get_unchecked(channel)
     }
 
@@ -396,7 +396,7 @@ impl<'a, T> IndirectMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn write_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         *self.buf.get_unchecked_mut(frame).get_unchecked_mut(channel) = value.clone();
         false
     }
@@ -426,7 +426,7 @@ impl<'a, T> DirectMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
         self.buf.get_unchecked_mut(frame).get_unchecked_mut(channel)
     }
 
@@ -491,7 +491,7 @@ impl<'a, T> Indirect<'a, T> for InterleavedSlice<&'a [T]>
 where
     T: Clone,
 {
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked(index).clone()
     }
@@ -518,7 +518,7 @@ impl<'a, T> Direct<'a, T> for InterleavedSlice<&'a [T]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked(index)
     }
@@ -530,7 +530,7 @@ impl<'a, T> Indirect<'a, T> for InterleavedSlice<&'a mut [T]>
 where
     T: Clone,
 {
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked(index).clone()
     }
@@ -557,7 +557,7 @@ impl<'a, T> Direct<'a, T> for InterleavedSlice<&'a mut [T]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked(index)
     }
@@ -569,7 +569,7 @@ impl<'a, T> IndirectMut<'a, T> for InterleavedSlice<&'a mut [T]>
 where
     T: Clone,
 {
-    unsafe fn write_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);
         *self.buf.get_unchecked_mut(index) = value.clone();
         false
@@ -600,7 +600,7 @@ impl<'a, T> DirectMut<'a, T> for InterleavedSlice<&'a mut [T]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked_mut(index)
     }
@@ -666,7 +666,7 @@ impl<'a, T> Indirect<'a, T> for SequentialSlice<&'a [T]>
 where
     T: Clone,
 {
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked(index).clone()
     }
@@ -693,7 +693,7 @@ impl<'a, T> Direct<'a, T> for SequentialSlice<&'a mut [T]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked(index)
     }
@@ -706,7 +706,7 @@ impl<'a, T> Indirect<'a, T> for SequentialSlice<&'a mut [T]>
 where
     T: Clone,
 {
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked(index).clone()
     }
@@ -733,7 +733,7 @@ impl<'a, T> Direct<'a, T> for SequentialSlice<&'a [T]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked(index)
     }
@@ -745,7 +745,7 @@ impl<'a, T> IndirectMut<'a, T> for SequentialSlice<&'a mut [T]>
 where
     T: Clone,
 {
-    unsafe fn write_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);
         *self.buf.get_unchecked_mut(index) = value.clone();
         false
@@ -776,7 +776,7 @@ impl<'a, T> DirectMut<'a, T> for SequentialSlice<&'a mut [T]>
 where
     T: Clone,
 {
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
         let index = self.calc_index(channel, frame);
         self.buf.get_unchecked_mut(index)
     }
@@ -796,22 +796,22 @@ mod tests {
     use crate::stats::Numeric;
 
     fn insert_data(buffer: &mut dyn DirectMut<i32>) {
-        *buffer.get_mut(0, 0).unwrap() = 1;
-        *buffer.get_mut(0, 1).unwrap() = 2;
-        *buffer.get_mut(0, 2).unwrap() = 3;
-        *buffer.get_mut(1, 0).unwrap() = 4;
-        *buffer.get_mut(1, 1).unwrap() = 5;
-        *buffer.get_mut(1, 2).unwrap() = 6;
+        *buffer.get_sample_mut(0, 0).unwrap() = 1;
+        *buffer.get_sample_mut(0, 1).unwrap() = 2;
+        *buffer.get_sample_mut(0, 2).unwrap() = 3;
+        *buffer.get_sample_mut(1, 0).unwrap() = 4;
+        *buffer.get_sample_mut(1, 1).unwrap() = 5;
+        *buffer.get_sample_mut(1, 2).unwrap() = 6;
     }
 
     fn test_get(buffer: &mut dyn DirectMut<i32>) {
         insert_data(buffer);
-        assert_eq!(*buffer.get(0, 0).unwrap(), 1);
-        assert_eq!(*buffer.get(0, 1).unwrap(), 2);
-        assert_eq!(*buffer.get(0, 2).unwrap(), 3);
-        assert_eq!(*buffer.get(1, 0).unwrap(), 4);
-        assert_eq!(*buffer.get(1, 1).unwrap(), 5);
-        assert_eq!(*buffer.get(1, 2).unwrap(), 6);
+        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 1);
+        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 2);
+        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 3);
+        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 4);
+        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 5);
+        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 6);
     }
 
     fn test_iter(buffer: &mut dyn DirectMut<i32>) {
@@ -880,12 +880,12 @@ mod tests {
         let other2 = [10, 11, 12, 13];
         buffer.write_from_slice_to_channel(0, 1, &other1);
         buffer.write_from_slice_to_channel(1, 0, &other2);
-        assert_eq!(*buffer.get(0, 0).unwrap(), 1);
-        assert_eq!(*buffer.get(0, 1).unwrap(), 8);
-        assert_eq!(*buffer.get(0, 2).unwrap(), 9);
-        assert_eq!(*buffer.get(1, 0).unwrap(), 10);
-        assert_eq!(*buffer.get(1, 1).unwrap(), 11);
-        assert_eq!(*buffer.get(1, 2).unwrap(), 12);
+        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 1);
+        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 8);
+        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 9);
+        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 10);
+        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 11);
+        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 12);
     }
 
     fn test_mut_slice_frame(buffer: &mut dyn DirectMut<i32>) {
@@ -894,12 +894,12 @@ mod tests {
         let other2 = [10, 11, 12];
         buffer.write_from_slice_to_frame(0, 0, &other1);
         buffer.write_from_slice_to_frame(1, 0, &other2);
-        assert_eq!(*buffer.get(0, 0).unwrap(), 8);
-        assert_eq!(*buffer.get(1, 0).unwrap(), 4);
-        assert_eq!(*buffer.get(0, 1).unwrap(), 10);
-        assert_eq!(*buffer.get(1, 1).unwrap(), 11);
-        assert_eq!(*buffer.get(0, 2).unwrap(), 3);
-        assert_eq!(*buffer.get(1, 2).unwrap(), 6);
+        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 8);
+        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 4);
+        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 10);
+        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 11);
+        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 3);
+        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 6);
     }
 
     #[cfg(feature = "std")]
@@ -962,7 +962,7 @@ mod tests {
     fn boxed_buffer() {
         let mut data = [1_i32, 2, 3, 4, 5, 6];
         let boxed: Box<dyn Direct<i32>> = Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
-        assert_eq!(*boxed.get(0, 0).unwrap(), 1);
+        assert_eq!(*boxed.get_sample(0, 0).unwrap(), 1);
     }
 
     // Check that a buffer is Send + Sync,
@@ -1008,11 +1008,11 @@ mod tests {
         let res2 = buffer.write_from_other_to_channel(&other, 0, 1, 0, 1, 2);
         assert_eq!(res1, Some(0));
         assert_eq!(res2, Some(0));
-        assert_eq!(*buffer.get(0, 0).unwrap(), 5.0);
-        assert_eq!(*buffer.get(0, 1).unwrap(), 6.0);
-        assert_eq!(*buffer.get(0, 2).unwrap(), 0.0);
-        assert_eq!(*buffer.get(1, 0).unwrap(), 0.0);
-        assert_eq!(*buffer.get(1, 1).unwrap(), 1.0);
-        assert_eq!(*buffer.get(1, 2).unwrap(), 2.0);
+        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 5.0);
+        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 6.0);
+        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 0.0);
+        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 0.0);
+        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 1.0);
+        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 2.0);
     }
 }

@@ -30,7 +30,7 @@
 //! // Loop over all samples and print their values
 //! for channel in 0..2 {
 //!     for frame in 0..3 {
-//!         let value = buffer.read(channel, frame).unwrap();
+//!         let value = buffer.read_sample(channel, frame).unwrap();
 //!         println!(
 //!             "Channel: {}, frame: {}, value: {}",
 //!             channel, frame, value
@@ -145,7 +145,7 @@ macro_rules! impl_traits {
             where
                 T: Sample<T> + 'a,
             {
-                unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+                unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let index = self.calc_index(channel, frame);
                     T::$read_func(
                         self.buf[index..index + self.bytes_per_sample]
@@ -161,7 +161,7 @@ macro_rules! impl_traits {
             where
                 T: Sample<T> + Clone + 'a,
             {
-                unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+                unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let index = self.calc_index(channel, frame);
                     T::$read_func(
                         self.buf[index..index + self.bytes_per_sample]
@@ -177,7 +177,7 @@ macro_rules! impl_traits {
             where
                 T: Sample<T> + Clone + 'a,
             {
-                unsafe fn write_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+                unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let index = self.calc_index(channel, frame);
                     let (value, clipped) = T::$write_func(value);
                     self.buf[index..index + self.bytes_per_sample].clone_from_slice(&value);
@@ -243,24 +243,24 @@ mod tests {
             0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 64, 0, 0, 0, 192, 0, 0, 0, 32, 0, 0, 0, 224,
         ];
         let buffer: InterleavedS32LE<&[u8], f32> = InterleavedS32LE::new(&data, 2, 3).unwrap();
-        assert_eq!(buffer.read(0, 0).unwrap(), 0.0);
-        assert_eq!(buffer.read(1, 0).unwrap(), -1.0);
-        assert_eq!(buffer.read(0, 1).unwrap(), 0.5);
-        assert_eq!(buffer.read(1, 1).unwrap(), -0.5);
-        assert_eq!(buffer.read(0, 2).unwrap(), 0.25);
-        assert_eq!(buffer.read(1, 2).unwrap(), -0.25);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), -0.25);
     }
 
     #[test]
     fn read_i16() {
         let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
         let buffer: InterleavedS16LE<&[u8], f32> = InterleavedS16LE::new(&data, 2, 3).unwrap();
-        assert_eq!(buffer.read(0, 0).unwrap(), 0.0);
-        assert_eq!(buffer.read(1, 0).unwrap(), -1.0);
-        assert_eq!(buffer.read(0, 1).unwrap(), 0.5);
-        assert_eq!(buffer.read(1, 1).unwrap(), -0.5);
-        assert_eq!(buffer.read(0, 2).unwrap(), 0.25);
-        assert_eq!(buffer.read(1, 2).unwrap(), -0.25);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), -0.25);
     }
 
     #[test]
@@ -272,12 +272,12 @@ mod tests {
         let mut buffer: InterleavedS32LE<&mut [u8], f32> =
             InterleavedS32LE::new_mut(&mut data, 2, 3).unwrap();
 
-        buffer.write(0, 0, &0.0).unwrap();
-        buffer.write(1, 0, &-1.0).unwrap();
-        buffer.write(0, 1, &0.5).unwrap();
-        buffer.write(1, 1, &-0.5).unwrap();
-        buffer.write(0, 2, &0.25).unwrap();
-        buffer.write(1, 2, &-0.25).unwrap();
+        buffer.write_sample(0, 0, &0.0).unwrap();
+        buffer.write_sample(1, 0, &-1.0).unwrap();
+        buffer.write_sample(0, 1, &0.5).unwrap();
+        buffer.write_sample(1, 1, &-0.5).unwrap();
+        buffer.write_sample(0, 2, &0.25).unwrap();
+        buffer.write_sample(1, 2, &-0.25).unwrap();
         assert_eq!(data, expected);
     }
 
@@ -288,12 +288,12 @@ mod tests {
         let mut buffer: InterleavedS16LE<&mut [u8], f32> =
             InterleavedS16LE::new_mut(&mut data, 2, 3).unwrap();
 
-        buffer.write(0, 0, &0.0).unwrap();
-        buffer.write(1, 0, &-1.0).unwrap();
-        buffer.write(0, 1, &0.5).unwrap();
-        buffer.write(1, 1, &-0.5).unwrap();
-        buffer.write(0, 2, &0.25).unwrap();
-        buffer.write(1, 2, &-0.25).unwrap();
+        buffer.write_sample(0, 0, &0.0).unwrap();
+        buffer.write_sample(1, 0, &-1.0).unwrap();
+        buffer.write_sample(0, 1, &0.5).unwrap();
+        buffer.write_sample(1, 1, &-0.5).unwrap();
+        buffer.write_sample(0, 2, &0.25).unwrap();
+        buffer.write_sample(1, 2, &-0.25).unwrap();
         assert_eq!(data, expected);
     }
 

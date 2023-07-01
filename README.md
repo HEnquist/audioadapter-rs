@@ -119,7 +119,7 @@ use audioadapter::Indirect;
 use audio;
 
 let buf: audio::buf::Interleaved<i32> = audio::buf::Interleaved::with_topology(2, 4);
-buf.read(0,0);
+buf.read_sample(0,0);
 ```
 
 

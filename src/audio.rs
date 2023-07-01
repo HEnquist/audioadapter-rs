@@ -26,7 +26,7 @@ where
         self.frames()
     }
 
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T {
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         self.get(channel).unwrap().get(frame).unwrap()
     }
 
@@ -51,7 +51,7 @@ where
     U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,
 {
 
-    unsafe fn write_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         *self.get_mut(channel).unwrap().get_mut(frame).unwrap() = *value;
         false
     }
@@ -82,7 +82,7 @@ where
     T: Clone + Sample + 'a,
     U: Buf<Sample = T> + ExactSizeBuf<Sample = T>,
 {
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T {
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
         //unsafe { &mut *(self.ptr.as_ptr() as *mut T).add(add) })
         let val = &self.get(channel).unwrap().get(frame).unwrap();
         let val_ptr = val as *const T;
@@ -97,7 +97,7 @@ where
     T: Clone + Sample + 'a,
     U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,
 {
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
+    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
         let mut chan = self.get_mut(channel).unwrap();
         let val = chan.get_mut(frame).unwrap();
         let val_ptr = val as *mut T;
@@ -122,20 +122,20 @@ mod tests {
     #[test]
     fn read_indirect() {
         let buf = wrap::interleaved(&[1, 2, 3, 4, 5, 6, 7, 8], 2);
-        assert_eq!(unsafe {buf.read_unchecked(0,0)}, 1);
-        assert_eq!(unsafe {buf.read_unchecked(1,0)}, 2);
-        assert_eq!(unsafe {buf.read_unchecked(0,1)}, 3);
-        assert_eq!(unsafe {buf.read_unchecked(1,1)}, 4);
+        assert_eq!(unsafe {buf.read_sample_unchecked(0,0)}, 1);
+        assert_eq!(unsafe {buf.read_sample_unchecked(1,0)}, 2);
+        assert_eq!(unsafe {buf.read_sample_unchecked(0,1)}, 3);
+        assert_eq!(unsafe {buf.read_sample_unchecked(1,1)}, 4);
     }
 
     #[test]
     fn write_indirect() {
         let mut buf = audio::buf::Interleaved::<i32>::with_topology(2, 4);
         unsafe {
-            buf.write_unchecked(0, 0, &1);
-            buf.write_unchecked(1, 0, &2);
-            buf.write_unchecked(0, 1, &3);
-            buf.write_unchecked(1, 1, &4);
+            buf.write_sample_unchecked(0, 0, &1);
+            buf.write_sample_unchecked(1, 0, &2);
+            buf.write_sample_unchecked(0, 1, &3);
+            buf.write_sample_unchecked(1, 1, &4);
 
         }
         assert_eq!(buf.get(0).unwrap().get(0).unwrap(), 1);
@@ -168,19 +168,19 @@ mod tests {
     #[test]
     fn read_direct() {
         let buf = wrap::interleaved(&[1, 2, 3, 4, 5, 6, 7, 8], 2);
-        assert_eq!(Direct::get(&buf, 0,0), Some(&1));
-        assert_eq!(Direct::get(&buf, 1,0), Some(&2));
-        assert_eq!(Direct::get(&buf, 0,1), Some(&3));
-        assert_eq!(Direct::get(&buf, 1,1), Some(&4));
+        assert_eq!(buf.get_sample(0,0), Some(&1));
+        assert_eq!(buf.get_sample(1,0), Some(&2));
+        assert_eq!(buf.get_sample(0,1), Some(&3));
+        assert_eq!(buf.get_sample(1,1), Some(&4));
     }
 
     #[test]
     fn write_direct() {
         let mut buf = audio::buf::Interleaved::<i32>::with_topology(2, 4);
-        *DirectMut::get_mut(&mut buf, 0, 0).unwrap() = 1;
-        *DirectMut::get_mut(&mut buf, 1, 0).unwrap() = 2;
-        *DirectMut::get_mut(&mut buf, 0, 1).unwrap() = 3;
-        *DirectMut::get_mut(&mut buf, 1, 1).unwrap() = 4;
+        *buf.get_sample_mut(0, 0).unwrap() = 1;
+        *buf.get_sample_mut(1, 0).unwrap() = 2;
+        *buf.get_sample_mut(0, 1).unwrap() = 3;
+        *buf.get_sample_mut(1, 1).unwrap() = 4;
         assert_eq!(buf.get(0).unwrap().get(0).unwrap(), 1);
         assert_eq!(buf.get(1).unwrap().get(0).unwrap(), 2);
         assert_eq!(buf.get(0).unwrap().get(1).unwrap(), 3);
