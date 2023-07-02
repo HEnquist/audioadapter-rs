@@ -38,7 +38,7 @@ where
         if self.frame >= self.nbr_frames {
             return None;
         }
-        let val = unsafe { self.buf.get_unchecked(self.channel, self.frame) };
+        let val = unsafe { self.buf.get_sample_unchecked(self.channel, self.frame) };
         self.frame += 1;
         Some(val)
     }
@@ -80,7 +80,7 @@ where
         if self.channel >= self.nbr_channels {
             return None;
         }
-        let val = unsafe { self.buf.get_unchecked(self.channel, self.frame) };
+        let val = unsafe { self.buf.get_sample_unchecked(self.channel, self.frame) };
         self.channel += 1;
         Some(val)
     }
@@ -203,7 +203,7 @@ where
         if self.frame >= self.nbr_frames {
             return None;
         }
-        let val = unsafe { self.buf.get_unchecked_mut(self.channel, self.frame) };
+        let val = unsafe { self.buf.get_sample_unchecked_mut(self.channel, self.frame) };
         // The compiler doesn't know that the iterator never returns the same value twice.
         // Therefore it will not let us return a mutable reference with lifetime 'a.
         // Go via a raw pointer to bypass this.
@@ -253,7 +253,7 @@ where
         if self.channel >= self.nbr_channels {
             return None;
         }
-        let val = unsafe { self.buf.get_unchecked_mut(self.channel, self.frame) };
+        let val = unsafe { self.buf.get_sample_unchecked_mut(self.channel, self.frame) };
         // The compiler doesn't know that the iterator never returns the same value twice.
         // Therefore it will not let us return a mutable reference with lifetime 'a.
         // Go via a raw pointer to bypass this.

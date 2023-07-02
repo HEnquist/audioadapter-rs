@@ -52,7 +52,7 @@ macro_rules! implement_iterators_mut {
 // -------------------- The main buffer trait --------------------
 
 /// A trait for reading samples from a buffer.
-/// Samples accessed indirectly by a ´read´ method.
+/// Samples accessed indirectly by a `read` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before returning it.
 pub trait Indirect<'a, T: 'a> {
@@ -65,17 +65,17 @@ pub trait Indirect<'a, T: 'a> {
     /// Calling it with an out-of-bound value for frame or channel
     /// results in undefined behavior,
     /// for example returning an invalid value or panicking.
-    unsafe fn read_unchecked(&self, channel: usize, frame: usize) -> T;
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T;
 
     /// Read the sample at
     /// a given combination of frame and channel.
     /// Returns `None` if the frame or channel is
     /// out of bounds of the buffer.
-    fn read(&self, channel: usize, frame: usize) -> Option<T> {
+    fn read_sample(&self, channel: usize, frame: usize) -> Option<T> {
         if channel >= self.channels() || frame >= self.frames() {
             return None;
         }
-        Some(unsafe { self.read_unchecked(channel, frame) })
+        Some(unsafe { self.read_sample_unchecked(channel, frame) })
     }
 
     /// Get the number of channels stored in this buffer.
@@ -104,7 +104,7 @@ pub trait Indirect<'a, T: 'a> {
             slice.len()
         };
         for (n, item) in slice.iter_mut().enumerate().take(frames_to_write) {
-            unsafe { *item = self.read_unchecked(channel, skip + n) };
+            unsafe { *item = self.read_sample_unchecked(channel, skip + n) };
         }
         frames_to_write
     }
@@ -129,14 +129,14 @@ pub trait Indirect<'a, T: 'a> {
             slice.len()
         };
         for (n, item) in slice.iter_mut().enumerate().take(channels_to_write) {
-            unsafe { *item = self.read_unchecked(skip + n, frame) };
+            unsafe { *item = self.read_sample_unchecked(skip + n, frame) };
         }
         channels_to_write
     }
 }
 
 /// A trait for writing samples to a buffer.
-/// Samples are accessed indirectly by a ´write´ method.
+/// Samples are accessed indirectly by a `write` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before writing to the underlying buffer.
 pub trait IndirectMut<'a, T>: Indirect<'a, T>
@@ -156,7 +156,7 @@ where
     /// Calling it with an out-of-bound value for frame or channel
     /// results in undefined behavior,
     /// for example returning an invalid value or panicking.
-    unsafe fn write_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool;
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool;
 
     /// Write a sample to the
     /// given combination of frame and channel.
@@ -166,11 +166,11 @@ where
     /// always return `false`.
     /// Returns `None` if the frame or channel is
     /// out of bounds of the buffer.
-    fn write(&mut self, channel: usize, frame: usize, value: &T) -> Option<bool> {
+    fn write_sample(&mut self, channel: usize, frame: usize, value: &T) -> Option<bool> {
         if channel >= self.channels() || frame >= self.frames() {
             return None;
         }
-        Some(unsafe { self.write_unchecked(channel, frame, value) })
+        Some(unsafe { self.write_sample_unchecked(channel, frame, value) })
     }
 
     /// Write values from a slice into a channel of the buffer.
@@ -203,7 +203,7 @@ where
         };
         let mut nbr_clipped = 0;
         for (n, item) in slice.iter().enumerate().take(frames_to_read) {
-            unsafe { nbr_clipped += self.write_unchecked(channel, skip + n, item) as usize };
+            unsafe { nbr_clipped += self.write_sample_unchecked(channel, skip + n, item) as usize };
         }
         (frames_to_read, nbr_clipped)
     }
@@ -238,7 +238,7 @@ where
         };
         let mut nbr_clipped = 0;
         for (n, item) in slice.iter().enumerate().take(channels_to_read) {
-            unsafe { nbr_clipped += self.write_unchecked(skip + n, frame, item) as usize };
+            unsafe { nbr_clipped += self.write_sample_unchecked(skip + n, frame, item) as usize };
         }
         (channels_to_read, nbr_clipped)
     }
@@ -274,11 +274,49 @@ where
         let mut nbr_clipped = 0;
         for n in 0..take {
             unsafe {
-                let value = other.read_unchecked(other_channel, n + other_skip);
-                nbr_clipped += self.write_unchecked(self_channel, n + self_skip, &value) as usize
+                let value = other.read_sample_unchecked(other_channel, n + other_skip);
+                nbr_clipped +=
+                    self.write_sample_unchecked(self_channel, n + self_skip, &value) as usize
             };
         }
         Some(nbr_clipped)
+    }
+
+    /// Write the provided value to every sample in a channel.
+    /// Can be used to clear a channel by writing zeroes,
+    /// or to initialize each sample to a certain value.
+    /// Returns `None` if called with an invalid channel number.
+    fn fill_channel_with(&mut self, channel: usize, value: &T) -> Option<()> {
+        if channel >= self.channels() {
+            return None;
+        }
+        for frame in 0..self.frames() {
+            unsafe { self.write_sample_unchecked(channel, frame, value) };
+        }
+        Some(())
+    }
+
+    /// Write the provided value to every sample in a frame.
+    /// Can be used to clear a frame by writing zeroes,
+    /// or to initialize each sample to a certain value.
+    /// Returns `None` if called with an invalid frame number.
+    fn fill_frame_with(&mut self, frame: usize, value: &T) -> Option<()> {
+        if frame >= self.frames() {
+            return None;
+        }
+        for channel in 0..self.channels() {
+            unsafe { self.write_sample_unchecked(channel, frame, value) };
+        }
+        Some(())
+    }
+
+    /// Write the provided value to every sample in the entire buffer.
+    /// Can be used to clear a buffer by writing zeroes,
+    /// or to initialize each sample to a certain value.
+    fn fill_with(&mut self, value: &T) {
+        for channel in 0..self.channels() {
+            self.fill_channel_with(channel, value).unwrap_or_default();
+        }
     }
 }
 
@@ -298,17 +336,17 @@ where
     /// Calling it with an out-of-bound value for frame or channel
     /// results in undefined behavior,
     /// for example returning an invalid value or panicking.
-    unsafe fn get_unchecked(&self, channel: usize, frame: usize) -> &T;
+    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T;
 
     /// Get an immutable reference to the sample at
     /// a given combination of frame and channel.
     /// Returns `None` if the frame or channel is
     /// out of bounds of the buffer.
-    fn get(&self, channel: usize, frame: usize) -> Option<&T> {
+    fn get_sample(&self, channel: usize, frame: usize) -> Option<&T> {
         if channel >= self.channels() || frame >= self.frames() {
             return None;
         }
-        Some(unsafe { self.get_unchecked(channel, frame) })
+        Some(unsafe { self.get_sample_unchecked(channel, frame) })
     }
 
     /// Returns an iterator that yields immutable references to the samples of a channel.
@@ -337,17 +375,17 @@ pub trait DirectMut<'a, T: Clone + 'a>: Direct<'a, T> + IndirectMut<'a, T> {
     /// Calling it with an out-of-bound value for frame or channel
     /// results in undefined behavior,
     /// for example returning an invalid value or panicking.
-    unsafe fn get_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T;
+    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T;
 
     /// Get a mutable reference to the sample at
     /// a given combination of frame and channel.
     /// Returns `None` if the frame or channel is
     /// out of bounds of the buffer.
-    fn get_mut(&mut self, channel: usize, frame: usize) -> Option<&mut T> {
+    fn get_sample_mut(&mut self, channel: usize, frame: usize) -> Option<&mut T> {
         if channel >= self.channels() || frame >= self.frames() {
             return None;
         }
-        Some(unsafe { self.get_unchecked_mut(channel, frame) })
+        Some(unsafe { self.get_sample_unchecked_mut(channel, frame) })
     }
 
     /// Returns an iterator that yields mutable references to the samples of a channel.
