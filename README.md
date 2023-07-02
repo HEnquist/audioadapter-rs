@@ -136,9 +136,6 @@ See also the `custom_adapter` example.
 This shows an implementation of [Indirect]
 for a vector of strings.
 
-## TODO
-- Add method for clearing a buffer
-
 ### Possible future improvements
 - separate length and capacity
 - methods for resizing (within data capacity)

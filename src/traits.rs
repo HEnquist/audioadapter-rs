@@ -52,7 +52,7 @@ macro_rules! implement_iterators_mut {
 // -------------------- The main buffer trait --------------------
 
 /// A trait for reading samples from a buffer.
-/// Samples accessed indirectly by a ´read´ method.
+/// Samples accessed indirectly by a `read` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before returning it.
 pub trait Indirect<'a, T: 'a> {
@@ -136,7 +136,7 @@ pub trait Indirect<'a, T: 'a> {
 }
 
 /// A trait for writing samples to a buffer.
-/// Samples are accessed indirectly by a ´write´ method.
+/// Samples are accessed indirectly by a `write` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before writing to the underlying buffer.
 pub trait IndirectMut<'a, T>: Indirect<'a, T>
@@ -280,6 +280,43 @@ where
             };
         }
         Some(nbr_clipped)
+    }
+
+    /// Write the provided value to every sample in a channel.
+    /// Can be used to clear a channel by writing zeroes,
+    /// or to initialize each sample to a certain value.
+    /// Returns `None` if called with an invalid channel number.
+    fn fill_channel_with(&mut self, channel: usize, value: &T) -> Option<()> {
+        if channel >= self.channels() {
+            return None;
+        }
+        for frame in 0..self.frames() {
+            unsafe { self.write_sample_unchecked(channel, frame, value) };
+        }
+        Some(())
+    }
+
+    /// Write the provided value to every sample in a frame.
+    /// Can be used to clear a frame by writing zeroes,
+    /// or to initialize each sample to a certain value.
+    /// Returns `None` if called with an invalid frame number.
+    fn fill_frame_with(&mut self, frame: usize, value: &T) -> Option<()> {
+        if frame >= self.frames() {
+            return None;
+        }
+        for channel in 0..self.channels() {
+            unsafe { self.write_sample_unchecked(channel, frame, value) };
+        }
+        Some(())
+    }
+
+    /// Write the provided value to every sample in the entire buffer.
+    /// Can be used to clear a buffer by writing zeroes,
+    /// or to initialize each sample to a certain value.
+    fn fill_with(&mut self, value: &T) {
+        for channel in 0..self.channels() {
+            self.fill_channel_with(channel, value).unwrap_or_default();
+        }
     }
 }
 

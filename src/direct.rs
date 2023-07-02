@@ -1012,4 +1012,31 @@ mod tests {
         assert_eq!(*buffer.get_sample(1, 1).unwrap(), 1.0);
         assert_eq!(*buffer.get_sample(1, 2).unwrap(), 2.0);
     }
+
+    #[test]
+    fn fill_channel() {
+        let mut data: [i32; 6] = [1; 6];
+        let mut buffer = InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
+        buffer.fill_channel_with(0, &2);
+        let expected: [i32; 6] = [2, 1, 2, 1, 2, 1];
+        assert_eq!(data, expected);
+    }
+
+    #[test]
+    fn fill_frame() {
+        let mut data: [i32; 6] = [1; 6];
+        let mut buffer = InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
+        buffer.fill_frame_with(1, &2);
+        let expected: [i32; 6] = [1, 1, 2, 2, 1, 1];
+        assert_eq!(data, expected);
+    }
+
+    #[test]
+    fn fill_buffer() {
+        let mut data: [i32; 6] = [1; 6];
+        let mut buffer = InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
+        buffer.fill_with(&2);
+        let expected: [i32; 6] = [2; 6];
+        assert_eq!(data, expected);
+    }
 }
