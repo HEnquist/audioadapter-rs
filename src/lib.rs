@@ -7,6 +7,9 @@ pub mod bytes;
 pub mod direct;
 /// Wrappers providing conversion between integers and floating point samples.
 pub mod integers;
+/// Wrappers that store their data in an owned vector.
+#[cfg(feature = "std")]
+pub mod owned;
 /// The traits for accessing samples in buffers.
 mod traits;
 
