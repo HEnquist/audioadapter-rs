@@ -101,8 +101,7 @@ where
 
     /// Take ownership of the data from the `InterleavedOwned`.
     pub fn take_data(self) -> Vec<T> {
-        let buf = self.buf;
-        buf
+        self.buf
     }
 }
 
@@ -239,8 +238,7 @@ where
 
     /// Take ownership of the data from the `SequentialOwned`.
     pub fn take_data(self) -> Vec<T> {
-        let buf = self.buf;
-        buf
+        self.buf
     }
 }
 

@@ -237,7 +237,14 @@ mod tests {
 
     #[test]
     fn read_u8() {
-        let data: [u8; 6] = [128, 128 -(2 << 6), 128 + (2 << 5), 128 - (2 << 5), 128 + (2 << 4), 128 - (2 << 4)];
+        let data: [u8; 6] = [
+            128,
+            128 - (2 << 6),
+            128 + (2 << 5),
+            128 - (2 << 5),
+            128 + (2 << 4),
+            128 - (2 << 4),
+        ];
         let buffer: InterleavedU8<&[u8], f32> = InterleavedU8::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
