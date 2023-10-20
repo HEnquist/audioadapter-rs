@@ -175,11 +175,17 @@ macro_rules! impl_traits {
     };
 }
 
+create_structs!(i8, from_i8, to_i8, I8);
+create_structs!(u8, from_u8, to_u8, U8);
 create_structs!(i16, from_i16, to_i16, I16);
 create_structs!(i32, from_i32, to_i32, I32);
 
+impl_traits!(i8, from_i8, to_i8, I8, Interleaved);
+impl_traits!(u8, from_u8, to_u8, U8, Interleaved);
 impl_traits!(i16, from_i16, to_i16, I16, Interleaved);
 impl_traits!(i32, from_i32, to_i32, I32, Interleaved);
+impl_traits!(i8, from_i8, to_i8, I8, Sequential);
+impl_traits!(u8, from_u8, to_u8, U8, Sequential);
 impl_traits!(i16, from_i16, to_i16, I16, Sequential);
 impl_traits!(i32, from_i32, to_i32, I32, Sequential);
 
@@ -209,6 +215,30 @@ mod tests {
     fn read_i16() {
         let data: [i16; 6] = [0, -2 << 14, 2 << 13, -2 << 13, 2 << 12, -2 << 12];
         let buffer: InterleavedI16<&[i16], f32> = InterleavedI16::new(&data, 2, 3).unwrap();
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), -0.25);
+    }
+
+    #[test]
+    fn read_i8() {
+        let data: [i8; 6] = [0, -2 << 6, 2 << 5, -2 << 5, 2 << 4, -2 << 4];
+        let buffer: InterleavedI8<&[i8], f32> = InterleavedI8::new(&data, 2, 3).unwrap();
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), -0.25);
+    }
+
+    #[test]
+    fn read_u8() {
+        let data: [u8; 6] = [128, 128 -(2 << 6), 128 + (2 << 5), 128 - (2 << 5), 128 + (2 << 4), 128 - (2 << 4)];
+        let buffer: InterleavedU8<&[u8], f32> = InterleavedU8::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
