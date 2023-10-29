@@ -47,7 +47,7 @@ use crate::{Indirect, IndirectMut};
 use rawsample::Sample;
 
 macro_rules! create_structs {
-    ($type:expr, $read_func:ident, $write_func:ident, $bytes:expr, $typename:ident) => {
+    ($read_func:ident, $write_func:ident, $bytes:expr, $typename:ident) => {
         paste::item! {
             #[doc = "A wrapper for a slice of bytes containing interleaved samples in the `" $typename "` format."]
             pub struct [< Interleaved $typename >]<U, V> {
@@ -83,9 +83,8 @@ macro_rules! create_structs {
 }
 
 macro_rules! impl_traits {
-    ($type:expr, $read_func:ident, $write_func:ident, $bytes:expr, $typename:ident, $order:ident) => {
+    ($read_func:ident, $write_func:ident, $bytes:expr, $typename:ident, $order:ident) => {
         paste::item! {
-
 
             impl<'a, T> [< $order $typename >]<&'a [u8], T>
             where
@@ -188,44 +187,44 @@ macro_rules! impl_traits {
     };
 }
 
-create_structs!(i16, from_s16_le, to_s16_le, 2, S16LE);
-create_structs!(i16, from_s16_be, to_s16_be, 2, S16BE);
-create_structs!(i16, from_s24_3_le, to_s24_3_le, 3, S24LE3);
-create_structs!(i16, from_s24_3_be, to_s24_3_be, 3, S24BE3);
-create_structs!(i16, from_s24_4_le, to_s24_4_le, 4, S24LE4);
-create_structs!(i16, from_s24_4_be, to_s24_4_be, 4, S24BE4);
-create_structs!(i32, from_s32_le, to_s32_le, 4, S32LE);
-create_structs!(i32, from_s32_be, to_s32_be, 4, S32BE);
-create_structs!(f32, from_f32_le, to_f32_le, 4, F32LE);
-create_structs!(f32, from_f32_be, to_f32_be, 4, F32BE);
-create_structs!(f64, from_f64_le, to_f64_le, 8, F64LE);
-create_structs!(f64, from_f64_be, to_f64_be, 8, F64BE);
+create_structs!(from_s16_le, to_s16_le, 2, S16LE);
+create_structs!(from_s16_be, to_s16_be, 2, S16BE);
+create_structs!(from_s24_3_le, to_s24_3_le, 3, S24LE3);
+create_structs!(from_s24_3_be, to_s24_3_be, 3, S24BE3);
+create_structs!(from_s24_4_le, to_s24_4_le, 4, S24LE4);
+create_structs!(from_s24_4_be, to_s24_4_be, 4, S24BE4);
+create_structs!(from_s32_le, to_s32_le, 4, S32LE);
+create_structs!(from_s32_be, to_s32_be, 4, S32BE);
+create_structs!(from_f32_le, to_f32_le, 4, F32LE);
+create_structs!(from_f32_be, to_f32_be, 4, F32BE);
+create_structs!(from_f64_le, to_f64_le, 8, F64LE);
+create_structs!(from_f64_be, to_f64_be, 8, F64BE);
 
-impl_traits!(i16, from_s16_le, to_s16_le, 2, S16LE, Interleaved);
-impl_traits!(i16, from_s16_be, to_s16_be, 2, S16BE, Interleaved);
-impl_traits!(i16, from_s24_3_le, to_s24_3_le, 3, S24LE3, Interleaved);
-impl_traits!(i16, from_s24_3_be, to_s24_3_be, 3, S24BE3, Interleaved);
-impl_traits!(i16, from_s24_4_le, to_s24_4_le, 4, S24LE4, Interleaved);
-impl_traits!(i16, from_s24_4_be, to_s24_4_be, 4, S24BE4, Interleaved);
-impl_traits!(i32, from_s32_le, to_s32_le, 4, S32LE, Interleaved);
-impl_traits!(i32, from_s32_be, to_s32_be, 4, S32BE, Interleaved);
-impl_traits!(f32, from_f32_le, to_f32_le, 4, F32LE, Interleaved);
-impl_traits!(f32, from_f32_be, to_f32_be, 4, F32BE, Interleaved);
-impl_traits!(f64, from_f64_le, to_f64_le, 8, F64LE, Interleaved);
-impl_traits!(f64, from_f64_be, to_f64_be, 8, F64BE, Interleaved);
+impl_traits!(from_s16_le, to_s16_le, 2, S16LE, Interleaved);
+impl_traits!(from_s16_be, to_s16_be, 2, S16BE, Interleaved);
+impl_traits!(from_s24_3_le, to_s24_3_le, 3, S24LE3, Interleaved);
+impl_traits!(from_s24_3_be, to_s24_3_be, 3, S24BE3, Interleaved);
+impl_traits!(from_s24_4_le, to_s24_4_le, 4, S24LE4, Interleaved);
+impl_traits!(from_s24_4_be, to_s24_4_be, 4, S24BE4, Interleaved);
+impl_traits!(from_s32_le, to_s32_le, 4, S32LE, Interleaved);
+impl_traits!(from_s32_be, to_s32_be, 4, S32BE, Interleaved);
+impl_traits!(from_f32_le, to_f32_le, 4, F32LE, Interleaved);
+impl_traits!(from_f32_be, to_f32_be, 4, F32BE, Interleaved);
+impl_traits!(from_f64_le, to_f64_le, 8, F64LE, Interleaved);
+impl_traits!(from_f64_be, to_f64_be, 8, F64BE, Interleaved);
 
-impl_traits!(i16, from_s16_le, to_s16_le, 2, S16LE, Sequential);
-impl_traits!(i16, from_s16_be, to_s16_be, 2, S16BE, Sequential);
-impl_traits!(i16, from_s24_3_le, to_s24_3_le, 3, S24LE3, Sequential);
-impl_traits!(i16, from_s24_3_be, to_s24_3_be, 3, S24BE3, Sequential);
-impl_traits!(i16, from_s24_4_le, to_s24_4_le, 4, S24LE4, Sequential);
-impl_traits!(i16, from_s24_4_be, to_s24_4_be, 4, S24BE4, Sequential);
-impl_traits!(i32, from_s32_le, to_s32_le, 4, S32LE, Sequential);
-impl_traits!(i32, from_s32_be, to_s32_be, 4, S32BE, Sequential);
-impl_traits!(f32, from_f32_le, to_f32_le, 4, F32LE, Sequential);
-impl_traits!(f32, from_f32_be, to_f32_be, 4, F32BE, Sequential);
-impl_traits!(f64, from_f64_le, to_f64_le, 8, F64LE, Sequential);
-impl_traits!(f64, from_f64_be, to_f64_be, 8, F64BE, Sequential);
+impl_traits!(from_s16_le, to_s16_le, 2, S16LE, Sequential);
+impl_traits!(from_s16_be, to_s16_be, 2, S16BE, Sequential);
+impl_traits!(from_s24_3_le, to_s24_3_le, 3, S24LE3, Sequential);
+impl_traits!(from_s24_3_be, to_s24_3_be, 3, S24BE3, Sequential);
+impl_traits!(from_s24_4_le, to_s24_4_le, 4, S24LE4, Sequential);
+impl_traits!(from_s24_4_be, to_s24_4_be, 4, S24BE4, Sequential);
+impl_traits!(from_s32_le, to_s32_le, 4, S32LE, Sequential);
+impl_traits!(from_s32_be, to_s32_be, 4, S32BE, Sequential);
+impl_traits!(from_f32_le, to_f32_le, 4, F32LE, Sequential);
+impl_traits!(from_f32_be, to_f32_be, 4, F32BE, Sequential);
+impl_traits!(from_f64_le, to_f64_le, 8, F64LE, Sequential);
+impl_traits!(from_f64_be, to_f64_be, 8, F64BE, Sequential);
 
 //   _____         _
 //  |_   _|__  ___| |_ ___
