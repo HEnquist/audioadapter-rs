@@ -39,7 +39,7 @@
 use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Indirect, IndirectMut};
-use rawsample::IntegerSample;
+use rawsample::NumericSample;
 
 macro_rules! create_structs {
     ($type:expr, $read_func:ident, $write_func:ident, $typename:ident) => {
@@ -134,7 +134,7 @@ macro_rules! impl_traits {
 
             impl<'a, T> Indirect<'a, T> for [< $order $typename >]<&'a [$type], T>
             where
-                T: IntegerSample<T> + 'a,
+                T: NumericSample<T> + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let index = self.calc_index(channel, frame);
@@ -148,7 +148,7 @@ macro_rules! impl_traits {
 
             impl<'a, T> Indirect<'a, T> for [< $order $typename >]<&'a mut [$type], T>
             where
-                T: IntegerSample<T> + Clone + 'a,
+                T: NumericSample<T> + Clone + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let index = self.calc_index(channel, frame);
@@ -162,7 +162,7 @@ macro_rules! impl_traits {
 
             impl<'a, T> IndirectMut<'a, T> for [< $order $typename >]<&'a mut [$type], T>
             where
-                T: IntegerSample<T> + Clone + 'a,
+                T: NumericSample<T> + Clone + 'a,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let index = self.calc_index(channel, frame);

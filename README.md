@@ -140,6 +140,5 @@ for a vector of strings.
 - separate length and capacity
 - methods for resizing (within data capacity)
 - methods for selective clearing (frame 0..n, n..end etc)
-- wrappers for `&[AsRef<T>]`?
 
 ## License: MIT
