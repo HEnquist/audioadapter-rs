@@ -5,8 +5,6 @@
 //!
 //! These wrap data structures where
 //! the samples are already stored in the desired format.
-//! The wrappers implement the [crate::Adapter] and
-//! [crate::AdapterMut] traits.
 //!
 //! ## Available wrappers
 //! Wrappers are available for plain slices, `&[T]`,
@@ -760,7 +758,7 @@ mod tests {
         test_mut_slice_frame(&mut buffer);
     }
 
-    // This tests that a Direct is object safe.
+    // This tests that an Adapter is object safe.
     #[cfg(feature = "std")]
     #[test]
     fn boxed_buffer() {

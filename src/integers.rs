@@ -3,9 +3,6 @@
 //! The wrapper enables reading and writing samples from/to the slice with
 //! on-the-fly format conversion between integer and float.
 //!
-//! The wrappers implement the traits [crate::Adapter] and [crate::AdapterMut],
-//! that provide simple methods for accessing the audio samples of a buffer.
-//!
 //! ### Data order
 //! There are two wrappers availabe for each sample format,
 //! one for interleaved and one for sequential data.

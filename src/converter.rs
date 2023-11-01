@@ -4,9 +4,6 @@
 //! The wrapper enables reading and writing samples from/to another buffer
 //! with on-the-fly format conversion.
 //!
-//! The wrappers implement the traits [crate::Adapter] and [crate::AdapterMut],
-//! that provide simple methods for accessing the audio samples of a buffer.
-//!
 //! ### Example
 //! Wrap a Vec of i16 as an interleaved buffer,
 //! then wrap this again with a converter,

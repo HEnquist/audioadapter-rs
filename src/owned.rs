@@ -2,11 +2,6 @@
 //!
 //! This module is a collection of wrappers that own the sample data.
 //!
-//! The wrappers implement the [crate::Direct] and
-//! [crate::DirectMut] traits.
-//! They also implement the [crate::Adapter] and
-//! [crate::AdapterMut] traits.
-//!
 //! ## Available wrappers
 //! Wrappers are available for vectors, `Vec<T>`,
 //! with samples stored in  _interleaved_ and _sequential_ order.
@@ -381,7 +376,7 @@ mod tests {
         let _data = buffer.take_data();
     }
 
-    // This tests that a Direct is object safe.
+    // This tests that an Adapter is object safe.
     #[cfg(feature = "std")]
     #[test]
     fn boxed_buffer() {
