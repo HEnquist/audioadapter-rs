@@ -121,6 +121,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::converter::ConvertI16;
     use audio::wrap;
 
     #[test]
@@ -188,5 +189,19 @@ mod tests {
         assert_eq!(buf.get(1).unwrap().get(0).unwrap(), 2);
         assert_eq!(buf.get(0).unwrap().get(1).unwrap(), 3);
         assert_eq!(buf.get(1).unwrap().get(1).unwrap(), 4);
+    }
+
+    #[test]
+    fn test_convert_i16() {
+        let data: [i16; 6] = [0, i16::MIN, 1 << 14, -(1 << 14), 1 << 13, -(1 << 13)];
+        let buffer = wrap::interleaved(&data, 2);
+        let converter: ConvertI16<&dyn Indirect<i16>, f32> =
+            ConvertI16::new(&buffer as &dyn Indirect<i16>);
+        assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(converter.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(converter.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(converter.read_sample(1, 2).unwrap(), -0.25);
     }
 }

@@ -8,11 +8,11 @@
 //! [crate::IndirectMut] traits.
 //!
 //! ## Available wrappers
-//! Wrappers are available for vectors, Vec<T>,
+//! Wrappers are available for vectors, `Vec<T>`,
 //! with samples stored in  _interleaved_ and _sequential_ order.
 //!
 //! ### Example
-//! Wrap a Vec<i32> as an interleaved buffer
+//! Wrap a `Vec<i32>` as an interleaved buffer
 //! and print all the values.
 //! ```
 //! use audioadapter::owned::InterleavedOwned;

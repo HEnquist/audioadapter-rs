@@ -31,6 +31,8 @@ pub use traits::{Direct, DirectMut, Indirect, IndirectMut};
 #[cfg(feature = "audio")]
 pub mod audio;
 
+pub mod converter;
+
 /// Error returned when the wrapped data structure has the wrong dimensions,
 /// typically that it is too short.
 #[derive(Debug)]
