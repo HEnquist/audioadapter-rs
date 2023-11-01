@@ -5,10 +5,8 @@
 //!
 //! These wrap data structures where
 //! the samples are already stored in the desired format.
-//! The wrappers implement the [crate::Direct] and
-//! [crate::DirectMut] traits.
-//! They also implement the [crate::Indirect] and
-//! [crate::IndirectMut] traits.
+//! The wrappers implement the [crate::Adapter] and
+//! [crate::AdapterMut] traits.
 //!
 //! ## Available wrappers
 //! Wrappers are available for plain slices, `&[T]`,
@@ -21,7 +19,6 @@
 //! and print all the values.
 //! ```
 //! use audioadapter::direct::InterleavedSlice;
-//! use audioadapter::Direct;
 //!
 //! // make a vector with some fake data.
 //! // 2 channels * 3 frames => 6 samples
@@ -45,12 +42,7 @@
 use crate::SizeError;
 
 use super::{check_slice_length, implement_size_getters};
-use crate::iterators::{
-    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
-    Frames, FramesMut,
-};
-use crate::{implement_iterators, implement_iterators_mut};
-use crate::{Direct, DirectMut, Indirect, IndirectMut};
+use crate::{Adapter, AdapterMut};
 
 #[cfg(feature = "std")]
 macro_rules! check_slice_and_vec_length {
@@ -145,7 +137,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Indirect<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
+impl<'a, T> Adapter<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
@@ -170,19 +162,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Direct<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        self.buf.get_unchecked(channel).get_unchecked(frame)
-    }
-
-    implement_iterators!();
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> Indirect<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
+impl<'a, T> Adapter<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -207,19 +187,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Direct<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        self.buf.get_unchecked(channel).get_unchecked(frame)
-    }
-
-    implement_iterators!();
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> IndirectMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
+impl<'a, T> AdapterMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -245,18 +213,6 @@ where
         self.buf[channel][skip..skip + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
         (frames_to_read, 0)
     }
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> DirectMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame)
-    }
-
-    implement_iterators_mut!();
 }
 
 //
@@ -313,7 +269,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Indirect<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
+impl<'a, T> Adapter<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
@@ -339,19 +295,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Direct<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        self.buf.get_unchecked(frame).get_unchecked(channel)
-    }
-
-    implement_iterators!();
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> Indirect<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
+impl<'a, T> Adapter<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -377,19 +321,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Direct<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        self.buf.get_unchecked(frame).get_unchecked(channel)
-    }
-
-    implement_iterators!();
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> IndirectMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
+impl<'a, T> AdapterMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -415,18 +347,6 @@ where
         self.buf[frame][skip..skip + channels_to_read].clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> DirectMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        self.buf.get_unchecked_mut(frame).get_unchecked_mut(channel)
-    }
-
-    implement_iterators_mut!();
 }
 
 //
@@ -483,7 +403,7 @@ impl<'a, T> InterleavedSlice<&'a mut [T]> {
     }
 }
 
-impl<'a, T> Indirect<'a, T> for InterleavedSlice<&'a [T]>
+impl<'a, T> Adapter<'a, T> for InterleavedSlice<&'a [T]>
 where
     T: Clone,
 {
@@ -510,19 +430,7 @@ where
     }
 }
 
-impl<'a, T> Direct<'a, T> for InterleavedSlice<&'a [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
-}
-
-impl<'a, T> Indirect<'a, T> for InterleavedSlice<&'a mut [T]>
+impl<'a, T> Adapter<'a, T> for InterleavedSlice<&'a mut [T]>
 where
     T: Clone,
 {
@@ -549,19 +457,7 @@ where
     }
 }
 
-impl<'a, T> Direct<'a, T> for InterleavedSlice<&'a mut [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
-}
-
-impl<'a, T> IndirectMut<'a, T> for InterleavedSlice<&'a mut [T]>
+impl<'a, T> AdapterMut<'a, T> for InterleavedSlice<&'a mut [T]>
 where
     T: Clone,
 {
@@ -590,18 +486,6 @@ where
             .clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
-}
-
-impl<'a, T> DirectMut<'a, T> for InterleavedSlice<&'a mut [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked_mut(index)
-    }
-
-    implement_iterators_mut!();
 }
 
 //
@@ -658,7 +542,7 @@ impl<'a, T> SequentialSlice<&'a mut [T]> {
     }
 }
 
-impl<'a, T> Indirect<'a, T> for SequentialSlice<&'a [T]>
+impl<'a, T> Adapter<'a, T> for SequentialSlice<&'a [T]>
 where
     T: Clone,
 {
@@ -683,22 +567,10 @@ where
             .clone_from_slice(&self.buf[buffer_skip..buffer_skip + frames_to_write]);
         frames_to_write
     }
-}
-
-impl<'a, T> Direct<'a, T> for SequentialSlice<&'a mut [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
 }
 
 // Implement also for mutable version, identical to the immutable impl.
-impl<'a, T> Indirect<'a, T> for SequentialSlice<&'a mut [T]>
+impl<'a, T> Adapter<'a, T> for SequentialSlice<&'a mut [T]>
 where
     T: Clone,
 {
@@ -725,19 +597,7 @@ where
     }
 }
 
-impl<'a, T> Direct<'a, T> for SequentialSlice<&'a [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
-}
-
-impl<'a, T> IndirectMut<'a, T> for SequentialSlice<&'a mut [T]>
+impl<'a, T> AdapterMut<'a, T> for SequentialSlice<&'a mut [T]>
 where
     T: Clone,
 {
@@ -768,17 +628,6 @@ where
     }
 }
 
-impl<'a, T> DirectMut<'a, T> for SequentialSlice<&'a mut [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked_mut(index)
-    }
-
-    implement_iterators_mut!();
-}
 
 //   _____         _
 //  |_   _|__  ___| |_ ___
@@ -789,7 +638,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stats::Numeric;
 
     fn insert_data(buffer: &mut dyn DirectMut<i32>) {
         *buffer.get_sample_mut(0, 0).unwrap() = 1;

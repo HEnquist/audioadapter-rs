@@ -3,7 +3,7 @@
 //! The wrapper enables reading and writing samples from/to the slice with
 //! on-the-fly format conversion between integer and float.
 //!
-//! The wrappers implement the traits [crate::Indirect] and [crate::IndirectMut],
+//! The wrappers implement the traits [crate::Adapter] and [crate::AdapterMut],
 //! that provide simple methods for accessing the audio samples of a buffer.
 //!
 //! ### Data order
@@ -15,7 +15,7 @@
 //! and print all the values.
 //! ```
 //! use audioadapter::integers::InterleavedI16;
-//! use audioadapter::Indirect;
+//! use audioadapter::Adapter;
 //!
 //! // make a vector with some data.
 //! // 2 channels * 3 frames => 6 samples
@@ -38,7 +38,7 @@
 
 use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
-use crate::{Indirect, IndirectMut};
+use crate::{Adapter, AdapterMut};
 use rawsample::NumericSample;
 
 macro_rules! create_structs {
@@ -90,7 +90,7 @@ macro_rules! impl_traits {
                 #[doc = "The slice length must be at least `frames*channels`."]
                 #[doc = "It is allowed to be longer than needed,"]
                 #[doc = "but these extra values cannot"]
-                #[doc = "be accessed via the `Indirect` trait methods."]
+                #[doc = "be accessed via the `Adapter` trait methods."]
                 pub fn new(
                     buf: &'a [$type],
                     channels: usize,
@@ -116,7 +116,7 @@ macro_rules! impl_traits {
                 #[doc = "The slice length must be at least `frames*channels`."]
                 #[doc = "It is allowed to be longer than needed,"]
                 #[doc = "but these extra values cannot"]
-                #[doc = "be accessed via the `Indirect` or `IndirectMut` trait methods."]
+                #[doc = "be accessed via the `Adapter` or `AdapterMut` trait methods."]
                 pub fn new_mut(
                     buf: &'a mut [$type],
                     channels: usize,
@@ -132,7 +132,7 @@ macro_rules! impl_traits {
                 }
             }
 
-            impl<'a, T> Indirect<'a, T> for [< $order $typename >]<&'a [$type], T>
+            impl<'a, T> Adapter<'a, T> for [< $order $typename >]<&'a [$type], T>
             where
                 T: NumericSample<T> + 'a,
             {
@@ -146,7 +146,7 @@ macro_rules! impl_traits {
                 implement_size_getters!();
             }
 
-            impl<'a, T> Indirect<'a, T> for [< $order $typename >]<&'a mut [$type], T>
+            impl<'a, T> Adapter<'a, T> for [< $order $typename >]<&'a mut [$type], T>
             where
                 T: NumericSample<T> + Clone + 'a,
             {
@@ -160,7 +160,7 @@ macro_rules! impl_traits {
                 implement_size_getters!();
             }
 
-            impl<'a, T> IndirectMut<'a, T> for [< $order $typename >]<&'a mut [$type], T>
+            impl<'a, T> AdapterMut<'a, T> for [< $order $typename >]<&'a mut [$type], T>
             where
                 T: NumericSample<T> + Clone + 'a,
             {

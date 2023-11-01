@@ -4,8 +4,8 @@
 //!
 //! The wrappers implement the [crate::Direct] and
 //! [crate::DirectMut] traits.
-//! They also implement the [crate::Indirect] and
-//! [crate::IndirectMut] traits.
+//! They also implement the [crate::Adapter] and
+//! [crate::AdapterMut] traits.
 //!
 //! ## Available wrappers
 //! Wrappers are available for vectors, `Vec<T>`,
@@ -43,12 +43,7 @@
 use crate::SizeError;
 
 use super::{check_slice_length, implement_size_getters};
-use crate::iterators::{
-    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
-    Frames, FramesMut,
-};
-use crate::{implement_iterators, implement_iterators_mut};
-use crate::{Direct, DirectMut, Indirect, IndirectMut};
+use crate::{Adapter, AdapterMut};
 
 //
 // =========================== InterleavedOwned ===========================
@@ -105,7 +100,7 @@ where
     }
 }
 
-impl<'a, T> Indirect<'a, T> for InterleavedOwned<T>
+impl<'a, T> Adapter<'a, T> for InterleavedOwned<T>
 where
     T: Clone + 'a,
 {
@@ -132,19 +127,7 @@ where
     }
 }
 
-impl<'a, T> Direct<'a, T> for InterleavedOwned<T>
-where
-    T: Clone + 'a,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
-}
-
-impl<'a, T> IndirectMut<'a, T> for InterleavedOwned<T>
+impl<'a, T> AdapterMut<'a, T> for InterleavedOwned<T>
 where
     T: Clone + 'a,
 {
@@ -173,18 +156,6 @@ where
             .clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
-}
-
-impl<'a, T> DirectMut<'a, T> for InterleavedOwned<T>
-where
-    T: Clone + 'a,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked_mut(index)
-    }
-
-    implement_iterators_mut!();
 }
 
 //
@@ -242,7 +213,7 @@ where
     }
 }
 
-impl<'a, T> Indirect<'a, T> for SequentialOwned<T>
+impl<'a, T> Adapter<'a, T> for SequentialOwned<T>
 where
     T: Clone + 'a,
 {
@@ -269,19 +240,7 @@ where
     }
 }
 
-impl<'a, T> Direct<'a, T> for SequentialOwned<T>
-where
-    T: Clone + 'a,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
-}
-
-impl<'a, T> IndirectMut<'a, T> for SequentialOwned<T>
+impl<'a, T> AdapterMut<'a, T> for SequentialOwned<T>
 where
     T: Clone + 'a,
 {
@@ -310,18 +269,6 @@ where
             .clone_from_slice(&slice[..frames_to_read]);
         (frames_to_read, 0)
     }
-}
-
-impl<'a, T> DirectMut<'a, T> for SequentialOwned<T>
-where
-    T: Clone + 'a,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked_mut(index)
-    }
-
-    implement_iterators_mut!();
 }
 
 //   _____         _

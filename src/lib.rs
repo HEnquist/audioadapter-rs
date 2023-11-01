@@ -18,15 +18,7 @@ use std::error::Error;
 #[cfg(feature = "std")]
 use std::fmt;
 
-mod iterators;
-mod stats;
-
-pub use iterators::{
-    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
-    Frames, FramesMut,
-};
-pub use stats::Numeric;
-pub use traits::{Direct, DirectMut, Indirect, IndirectMut};
+pub use traits::{Adapter, AdapterMut};
 
 #[cfg(feature = "audio")]
 pub mod audio;

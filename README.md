@@ -85,7 +85,7 @@ for channel in 0..data.channels() {
 
 ## Abstracting the data layout
 This module provides several "layers" of traits that add more functionality.
-The most basic traits are [Indirect] and [IndirectMut].
+The most basic traits are [Adapter] and [AdapterMut].
 These enable basic reading and writing, with methods that access the sample values
 indirectly.
 
@@ -107,15 +107,15 @@ of indexing the data structure directly,
 an application or library becomes independant of the data layout.
 
 ## Compatibility with the [audio] crate
-In addition to the provided wrappers, the [Indirect], [IndirectMut],
+In addition to the provided wrappers, the [Adapter], [AdapterMut],
 [Direct] and [DirectMut] traits are implemented for
 buffers implementing the [audio_core::Buf], [audio_core::BufMut] and [audio_core::ExactSizeBuf]
 traits from the [audio] crate.
 This is enabled via the `audio` Cargo feature, which is enabled by default.
 
-Example: Create a buffer and access it using [Indirect] methods.
+Example: Create a buffer and access it using [Adapter] methods.
 ```
-use audioadapter::Indirect;
+use audioadapter::Adapter;
 use audio;
 
 let buf: audio::buf::Interleaved<i32> = audio::buf::Interleaved::with_topology(2, 4);
@@ -133,7 +133,7 @@ These may be overriden if the wrapped data structure provides a more efficient w
 of cloning the data, such as [slice::clone_from_slice()].
 
 See also the `custom_adapter` example.
-This shows an implementation of [Indirect]
+This shows an implementation of [Adapter]
 for a vector of strings.
 
 ### Possible future improvements

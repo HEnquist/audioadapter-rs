@@ -3,16 +3,11 @@
 //! This module implements the `audioadapter` traits
 //! for `ExactSizeBuf` buffers from the `audio` crate.
 
-use crate::iterators::{
-    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
-    Frames, FramesMut,
-};
-use crate::{implement_iterators, implement_iterators_mut};
-use crate::{Direct, DirectMut, Indirect, IndirectMut};
+use crate::{Adapter, AdapterMut};
 
 use audio_core::{Buf, BufMut, Channel, ChannelMut, ExactSizeBuf, Sample};
 
-impl<'a, T, U> Indirect<'a, T> for U
+impl<'a, T, U> Adapter<'a, T> for U
 where
     T: Clone + Sample + 'a,
     U: Buf<Sample = T> + ExactSizeBuf<Sample = T>,
@@ -48,7 +43,7 @@ where
     }
 }
 
-impl<'a, T, U> IndirectMut<'a, T> for U
+impl<'a, T, U> AdapterMut<'a, T> for U
 where
     T: Clone + Sample + 'a,
     U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,
@@ -64,11 +59,11 @@ where
         skip: usize,
         slice: &[T],
     ) -> (usize, usize) {
-        if channel >= Indirect::channels(self) || skip >= Indirect::frames(self) {
+        if channel >= Adapter::channels(self) || skip >= Adapter::frames(self) {
             return (0, 0);
         }
-        let frames_to_read = if (Indirect::frames(self) - skip) < slice.len() {
-            Indirect::frames(self) - skip
+        let frames_to_read = if (Adapter::frames(self) - skip) < slice.len() {
+            Adapter::frames(self) - skip
         } else {
             slice.len()
         };
@@ -80,36 +75,6 @@ where
             .for_each(|(s, o)| *s = *o);
         (frames_to_read, 0)
     }
-}
-
-impl<'a, T, U> Direct<'a, T> for U
-where
-    T: Clone + Sample + 'a,
-    U: Buf<Sample = T> + ExactSizeBuf<Sample = T>,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        //unsafe { &mut *(self.ptr.as_ptr() as *mut T).add(add) })
-        let val = &self.get(channel).unwrap().get(frame).unwrap();
-        let val_ptr = val as *const T;
-        unsafe { &*val_ptr }
-    }
-
-    implement_iterators!();
-}
-
-impl<'a, T, U> DirectMut<'a, T> for U
-where
-    T: Clone + Sample + 'a,
-    U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        let mut chan = self.get_mut(channel).unwrap();
-        let val = chan.get_mut(frame).unwrap();
-        let val_ptr = val as *mut T;
-        unsafe { &mut *val_ptr }
-    }
-
-    implement_iterators_mut!();
 }
 
 //   _____         _
@@ -195,8 +160,8 @@ mod tests {
     fn test_convert_i16() {
         let data: [i16; 6] = [0, i16::MIN, 1 << 14, -(1 << 14), 1 << 13, -(1 << 13)];
         let buffer = wrap::interleaved(&data, 2);
-        let converter: ConvertI16<&dyn Indirect<i16>, f32> =
-            ConvertI16::new(&buffer as &dyn Indirect<i16>);
+        let converter: ConvertI16<&dyn Adapter<i16>, f32> =
+            ConvertI16::new(&buffer as &dyn Adapter<i16>);
         assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
