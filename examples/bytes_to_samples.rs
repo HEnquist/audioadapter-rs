@@ -6,7 +6,7 @@
 // and converted to i16 with i16::from_le_bytes().
 
 use audioadapter::direct::InterleavedSlice;
-use audioadapter::Direct;
+use audioadapter::Adapter;
 
 fn main() {
     let channels = 2;
@@ -32,12 +32,13 @@ fn main() {
     let buffer = InterleavedSlice::new(data_view, channels, frames).unwrap();
 
     // Loop over all samples and print their values
-    for (ch_idx, channel) in buffer.iter_channels().enumerate() {
-        for (frame_idx, sample_bytes) in channel.enumerate() {
-            let value = i16::from_le_bytes(*sample_bytes);
+    for channel in 0..buffer.channels() {
+        for frame in 0..buffer.frames() {
+            let bytes = buffer.read_sample(channel, frame).unwrap();
+            let value = i16::from_le_bytes(bytes);
             println!(
                 "Channel: {}, frame: {}, value: {}",
-                ch_idx, frame_idx, value
+                channel, frame, value
             );
         }
     }

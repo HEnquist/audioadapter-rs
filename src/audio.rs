@@ -137,19 +137,19 @@ mod tests {
     #[test]
     fn read_direct() {
         let buf = wrap::interleaved(&[1, 2, 3, 4, 5, 6, 7, 8], 2);
-        assert_eq!(buf.get_sample(0, 0), Some(&1));
-        assert_eq!(buf.get_sample(1, 0), Some(&2));
-        assert_eq!(buf.get_sample(0, 1), Some(&3));
-        assert_eq!(buf.get_sample(1, 1), Some(&4));
+        assert_eq!(buf.read_sample(0, 0), Some(1));
+        assert_eq!(buf.read_sample(1, 0), Some(2));
+        assert_eq!(buf.read_sample(0, 1), Some(3));
+        assert_eq!(buf.read_sample(1, 1), Some(4));
     }
 
     #[test]
     fn write_direct() {
         let mut buf = audio::buf::Interleaved::<i32>::with_topology(2, 4);
-        *buf.get_sample_mut(0, 0).unwrap() = 1;
-        *buf.get_sample_mut(1, 0).unwrap() = 2;
-        *buf.get_sample_mut(0, 1).unwrap() = 3;
-        *buf.get_sample_mut(1, 1).unwrap() = 4;
+        buf.write_sample(0, 0, &1).unwrap();
+        buf.write_sample(1, 0, &2).unwrap();
+        buf.write_sample(0, 1, &3).unwrap();
+        buf.write_sample(1, 1, &4).unwrap();
         assert_eq!(buf.get(0).unwrap().get(0).unwrap(), 1);
         assert_eq!(buf.get(1).unwrap().get(0).unwrap(), 2);
         assert_eq!(buf.get(0).unwrap().get(1).unwrap(), 3);

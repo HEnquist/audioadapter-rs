@@ -16,7 +16,7 @@
 //! and print all the values.
 //! ```
 //! use audioadapter::owned::InterleavedOwned;
-//! use audioadapter::Direct;
+//! use audioadapter::Adapter;
 //!
 //! // make a vector with some fake data.
 //! // 2 channels * 3 frames => 6 samples
@@ -26,11 +26,12 @@
 //! let buffer = InterleavedOwned::new_from(data, 2, 3).unwrap();
 //!
 //! // Loop over all samples and print their values
-//! for (ch_idx, channel) in buffer.iter_channels().enumerate() {
-//!     for (frame_idx, value) in channel.enumerate() {
+//! for channel in 0..buffer.channels() {
+//!     for frame in 0..buffer.frames() {
+//!         let value = buffer.read_sample(channel, frame).unwrap();
 //!         println!(
 //!             "Channel: {}, frame: {}, value: {}",
-//!             ch_idx, frame_idx, value
+//!             channel, frame, value
 //!         );
 //!     }
 //! }
@@ -281,60 +282,26 @@ where
 mod tests {
     use super::*;
 
-    fn insert_data(buffer: &mut dyn DirectMut<i32>) {
-        *buffer.get_sample_mut(0, 0).unwrap() = 1;
-        *buffer.get_sample_mut(0, 1).unwrap() = 2;
-        *buffer.get_sample_mut(0, 2).unwrap() = 3;
-        *buffer.get_sample_mut(1, 0).unwrap() = 4;
-        *buffer.get_sample_mut(1, 1).unwrap() = 5;
-        *buffer.get_sample_mut(1, 2).unwrap() = 6;
+    fn insert_data(buffer: &mut dyn AdapterMut<i32>) {
+        buffer.write_sample(0, 0, &1);
+        buffer.write_sample(0, 1, &2);
+        buffer.write_sample(0, 2, &3);
+        buffer.write_sample(1, 0, &4);
+        buffer.write_sample(1, 1, &5);
+        buffer.write_sample(1, 2, &6);
     }
 
-    fn test_get(buffer: &mut dyn DirectMut<i32>) {
+    fn test_get(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
-        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 1);
-        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 2);
-        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 3);
-        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 4);
-        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 5);
-        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 6);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 1);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 2);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 3);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), 4);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), 5);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), 6);
     }
 
-    fn test_iter(buffer: &mut dyn DirectMut<i32>) {
-        insert_data(buffer);
-        let mut iter1 = buffer.iter_channel(0).unwrap();
-        assert_eq!(iter1.next(), Some(&1));
-        assert_eq!(iter1.next(), Some(&2));
-        assert_eq!(iter1.next(), Some(&3));
-        assert_eq!(iter1.next(), None);
-
-        let mut iter2 = buffer.iter_frame(1).unwrap();
-        assert_eq!(iter2.next(), Some(&2));
-        assert_eq!(iter2.next(), Some(&5));
-        assert_eq!(iter2.next(), None);
-    }
-
-    fn test_iter_mut(buffer: &mut dyn DirectMut<i32>) {
-        insert_data(buffer);
-        let mut sum = 0;
-        for channel in buffer.iter_channels() {
-            sum += channel.sum::<i32>();
-        }
-        assert_eq!(sum, 21);
-
-        for channel in buffer.iter_channels_mut() {
-            for sample in channel {
-                *sample = 2 * *sample;
-            }
-        }
-        let mut sum = 0;
-        for channel in buffer.iter_channels() {
-            sum += channel.sum::<i32>();
-        }
-        assert_eq!(sum, 42);
-    }
-
-    fn test_slice_channel(buffer: &mut dyn DirectMut<i32>) {
+    fn test_slice_channel(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
         let mut other1 = [0; 2];
         let mut other2 = [0; 4];
@@ -348,7 +315,7 @@ mod tests {
         assert_eq!(other2[3], 0);
     }
 
-    fn test_slice_frame(buffer: &mut dyn DirectMut<i32>) {
+    fn test_slice_frame(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
         let mut other1 = [0; 1];
         let mut other2 = [0; 3];
@@ -360,32 +327,32 @@ mod tests {
         assert_eq!(other2[2], 0);
     }
 
-    fn test_mut_slice_channel(buffer: &mut dyn DirectMut<i32>) {
+    fn test_mut_slice_channel(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
         let other1 = [8, 9];
         let other2 = [10, 11, 12, 13];
         buffer.write_from_slice_to_channel(0, 1, &other1);
         buffer.write_from_slice_to_channel(1, 0, &other2);
-        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 1);
-        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 8);
-        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 9);
-        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 10);
-        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 11);
-        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 12);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 1);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 8);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 9);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), 10);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), 11);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), 12);
     }
 
-    fn test_mut_slice_frame(buffer: &mut dyn DirectMut<i32>) {
+    fn test_mut_slice_frame(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
         let other1 = [8];
         let other2 = [10, 11, 12];
         buffer.write_from_slice_to_frame(0, 0, &other1);
         buffer.write_from_slice_to_frame(1, 0, &other2);
-        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 8);
-        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 4);
-        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 10);
-        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 11);
-        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 3);
-        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 6);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 8);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), 4);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 10);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), 11);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 3);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), 6);
     }
 
     #[test]
@@ -393,8 +360,6 @@ mod tests {
         let data = vec![1_i32, 4, 2, 5, 3, 6];
         let mut buffer = InterleavedOwned::new_from(data, 2, 3).unwrap();
         test_get(&mut buffer);
-        test_iter(&mut buffer);
-        test_iter_mut(&mut buffer);
         test_slice_channel(&mut buffer);
         test_slice_frame(&mut buffer);
         test_mut_slice_channel(&mut buffer);
@@ -408,8 +373,6 @@ mod tests {
         let data = vec![1_i32, 2, 3, 4, 5, 6];
         let mut buffer = SequentialOwned::new_from(data, 2, 3).unwrap();
         test_get(&mut buffer);
-        test_iter(&mut buffer);
-        test_iter_mut(&mut buffer);
         test_slice_channel(&mut buffer);
         test_slice_frame(&mut buffer);
         test_mut_slice_channel(&mut buffer);
@@ -422,8 +385,8 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn boxed_buffer() {
-        let boxed: Box<dyn Direct<i32>> = Box::new(SequentialOwned::new(1, 2, 3));
-        assert_eq!(*boxed.get_sample(0, 0).unwrap(), 1);
+        let boxed: Box<dyn Adapter<i32>> = Box::new(SequentialOwned::new(1, 2, 3));
+        assert_eq!(boxed.read_sample(0, 0).unwrap(), 1);
     }
 
     // Check that a buffer is Send + Sync,
@@ -448,12 +411,12 @@ mod tests {
         let res2 = buffer.write_from_other_to_channel(&other, 0, 1, 0, 1, 2);
         assert_eq!(res1, Some(0));
         assert_eq!(res2, Some(0));
-        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 5.0);
-        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 6.0);
-        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 0.0);
-        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 0.0);
-        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 1.0);
-        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 2.0);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 5.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 6.0);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), 1.0);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), 2.0);
     }
 
     #[test]

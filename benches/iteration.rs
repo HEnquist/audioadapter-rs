@@ -1,55 +1,23 @@
 use audioadapter::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-fn iter_with_iterator(buf: &direct::SequentialSliceOfVecs<&[Vec<i32>]>) -> i32 {
-    let mut sum = 0;
-    for channel in buf.iter_channels() {
-        sum += channel.sum::<i32>();
-    }
-    return sum;
-}
-
-pub fn bench_with_iterator(c: &mut Criterion) {
-    let data = vec![vec![1_i32; 10000], vec![2_i32; 10000]];
-    let buffer = direct::SequentialSliceOfVecs::new(&data, 2, 10000).unwrap();
-    c.bench_function("new_iter", |b| {
-        b.iter(|| black_box(iter_with_iterator(black_box(&buffer))))
-    });
-}
-
-fn iter_with_iterator2(buf: &direct::InterleavedSliceOfVecs<&[Vec<i32>]>) -> i32 {
-    let mut sum = 0;
-    for channel in buf.iter_channels() {
-        sum += channel.sum::<i32>();
-    }
-    return sum;
-}
-
-pub fn bench_with_iterator2(c: &mut Criterion) {
-    let data = vec![vec![1_i32; 2]; 10000];
-    let buffer = direct::InterleavedSliceOfVecs::new(&data, 2, 10000).unwrap();
-    c.bench_function("new_iter2", |b| {
-        b.iter(|| black_box(iter_with_iterator2(black_box(&buffer))))
-    });
-}
-
-fn iter_with_loop(buf: &direct::SequentialSliceOfVecs<&[Vec<i32>]>) -> i32 {
+fn iter_with_unchecked_loop(buf: &direct::SequentialSliceOfVecs<&[Vec<i32>]>) -> i32 {
     let mut sum = 0;
     unsafe {
         for channel in 0..buf.channels() {
             for frame in 0..buf.frames() {
-                sum += *buf.get_sample_unchecked(channel, frame);
+                sum += buf.read_sample_unchecked(channel, frame);
             }
         }
     }
     return sum;
 }
 
-pub fn bench_with_loop(c: &mut Criterion) {
+pub fn bench_with_unchecked_loop(c: &mut Criterion) {
     let data = vec![vec![1_i32; 10000], vec![2_i32; 10000]];
     let buffer = direct::SequentialSliceOfVecs::new(&data, 2, 10000).unwrap();
     c.bench_function("loop", |b| {
-        b.iter(|| black_box(iter_with_loop(black_box(&buffer))))
+        b.iter(|| black_box(iter_with_unchecked_loop(black_box(&buffer))))
     });
 }
 
@@ -57,7 +25,7 @@ fn iter_with_safe_loop(buf: &direct::SequentialSliceOfVecs<&[Vec<i32>]>) -> i32 
     let mut sum = 0;
     for channel in 0..buf.channels() {
         for frame in 0..buf.frames() {
-            sum += *buf.get_sample(channel, frame).unwrap();
+            sum += buf.read_sample(channel, frame).unwrap();
         }
     }
     return sum;
@@ -85,9 +53,7 @@ pub fn bench_slice_iter(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    bench_with_iterator,
-    bench_with_iterator2,
-    bench_with_loop,
+    bench_with_unchecked_loop,
     bench_with_safe_loop,
     bench_slice_iter
 );
