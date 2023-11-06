@@ -1,21 +1,18 @@
 //! # Converting wrappers for raw bytes
 //! This module provides wrappers for slices of bytes.
 //! The wrapper enables reading and writing samples from/to the byte slice with
-//! on-the-fly format conversion.
+//! on-the-fly format conversion to float.
 //!
 //! The wrappers implement the traits [crate::Adapter] and [crate::AdapterMut],
 //! that provide simple methods for accessing the audio samples of a buffer.
 //!
-//! ### Data order
+//! ## Data order
 //! There are two wrappers availabe for each sample format,
 //! one for interleaved and one for sequential data.
-//! By using the appropriate wrapper, the sample values can be
-//! easily accessed via the trait methods, which means an application
-//! can handle both layouts without any extra code.
 //!
-//! ### Example
-//! Wrap a Vec of bytes as an interleaved buffer of 16-bit integer samples
-//! and print all the values.
+//! ## Example
+//! Wrap a Vec of bytes as an interleaved buffer of 16-bit little endian
+//! integer samples and print all the values.
 //! ```
 //! use audioadapter::bytes_to_float::InterleavedS16LE;
 //! use audioadapter::Adapter;

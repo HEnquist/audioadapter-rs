@@ -3,11 +3,11 @@
 //! The wrapper enables reading and writing samples from/to the slice with
 //! on-the-fly format conversion between the original type and float.
 //!
-//! ### Data order
+//! ## Data order
 //! There are two wrappers availabe for each sample format,
 //! one for interleaved and one for sequential data.
 //!
-//! ### Example
+//! ## Example
 //! Wrap a Vec of 16-bit integer samples as an interleaved buffer
 //! and print all the values.
 //! ```
@@ -37,7 +37,6 @@ use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
 use rawsample::NumericSample;
-
 
 /// A wrapper for a slice containing interleaved numerical samples.
 pub struct InterleavedNumbers<U, V> {
@@ -78,11 +77,7 @@ where
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Adapter` trait methods.
-    pub fn new(
-        buf: &'a [U],
-        channels: usize,
-        frames: usize,
-    ) -> Result<Self, SizeError> {
+    pub fn new(buf: &'a [U], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             _phantom: core::marker::PhantomData,
@@ -99,16 +94,12 @@ where
 {
     /// Create a new wrapper for a mutable slice
     /// of numerical samples
-    /// stored in interleaved order.
+    /// stored in _interleaved_ order.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Adapter` or `AdapterMut` trait methods.
-    pub fn new_mut(
-        buf: &'a mut [U],
-        channels: usize,
-        frames: usize,
-    ) -> Result<Self, SizeError> {
+    pub fn new_mut(buf: &'a mut [U], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             _phantom: core::marker::PhantomData,
@@ -130,11 +121,7 @@ where
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Adapter` trait methods.
-    pub fn new(
-        buf: &'a [U],
-        channels: usize,
-        frames: usize,
-    ) -> Result<Self, SizeError> {
+    pub fn new(buf: &'a [U], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             _phantom: core::marker::PhantomData,
@@ -156,11 +143,7 @@ where
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Adapter` or `AdapterMut` trait methods.
-    pub fn new_mut(
-        buf: &'a mut [U],
-        channels: usize,
-        frames: usize,
-    ) -> Result<Self, SizeError> {
+    pub fn new_mut(buf: &'a mut [U], channels: usize, frames: usize) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len());
         Ok(Self {
             _phantom: core::marker::PhantomData,
@@ -170,7 +153,6 @@ where
         })
     }
 }
-
 
 macro_rules! impl_traits {
     ($type:expr, $read_func:ident, $write_func:ident, $order:ident) => {
@@ -217,8 +199,6 @@ macro_rules! impl_traits {
         }
     };
 }
-
-
 
 impl_traits!(i8, from_i8, to_i8, Interleaved);
 impl_traits!(u8, from_u8, to_u8, Interleaved);

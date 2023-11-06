@@ -36,10 +36,7 @@ fn main() {
         for frame in 0..buffer.frames() {
             let bytes = buffer.read_sample(channel, frame).unwrap();
             let value = i16::from_le_bytes(bytes);
-            println!(
-                "Channel: {}, frame: {}, value: {}",
-                channel, frame, value
-            );
+            println!("Channel: {}, frame: {}, value: {}", channel, frame, value);
         }
     }
 }

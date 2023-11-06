@@ -2,7 +2,6 @@
 //!
 //! A set of traits for making it easier to work with buffers of audio data.
 
-
 // -------------------- The main buffer trait --------------------
 
 /// A trait for reading samples from a buffer.
@@ -273,4 +272,3 @@ where
         }
     }
 }
-

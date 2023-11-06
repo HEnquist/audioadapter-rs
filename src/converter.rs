@@ -4,7 +4,7 @@
 //! The wrapper enables reading and writing samples from/to another buffer
 //! with on-the-fly format conversion.
 //!
-//! ### Example
+//! ## Example
 //! Wrap a Vec of i16 as an interleaved buffer,
 //! then wrap this again with a converter,
 //! and finally read and print all the values as floats.
