@@ -1,7 +1,7 @@
-//! # Converting wrappers for integers
-//! This module provides wrappers for slices of integers.
+//! # Converting wrappers for numerical values
+//! This module provides wrappers for slices of numbers.
 //! The wrapper enables reading and writing samples from/to the slice with
-//! on-the-fly format conversion between integer and float.
+//! on-the-fly format conversion between the original type and float.
 //!
 //! ### Data order
 //! There are two wrappers availabe for each sample format,
@@ -11,7 +11,7 @@
 //! Wrap a Vec of 16-bit integer samples as an interleaved buffer
 //! and print all the values.
 //! ```
-//! use audioadapter::integers::InterleavedI16;
+//! use audioadapter::number_to_float::InterleavedNumbers;
 //! use audioadapter::Adapter;
 //!
 //! // make a vector with some data.
@@ -19,7 +19,7 @@
 //! let data: Vec<i16> = vec![1, 2, 3, 4, 5, 6];
 //!
 //! // wrap the data
-//! let buffer: InterleavedI16<&[i16], f32> = InterleavedI16::new(&data, 2, 3).unwrap();
+//! let buffer: InterleavedNumbers<&[i16], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
 //!
 //! // Loop over all samples and print their values
 //! for channel in 0..2 {
@@ -38,98 +38,144 @@ use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
 use rawsample::NumericSample;
 
-macro_rules! create_structs {
-    ($type:expr, $read_func:ident, $write_func:ident, $typename:ident) => {
-        paste::item! {
-            #[doc = "A wrapper for a slice containing interleaved `" $type "` samples."]
-            pub struct [< Interleaved $typename >]<U, V> {
-                _phantom: core::marker::PhantomData<V>,
-                buf: U,
-                frames: usize,
-                channels: usize,
-            }
 
-            #[doc = "A wrapper for a slice containing interleaved `" $type "` samples."]
-            pub struct [< Sequential $typename >]<U, V> {
-                _phantom: core::marker::PhantomData<V>,
-                buf: U,
-                frames: usize,
-                channels: usize,
-            }
-
-            impl<U, V> [< Interleaved $typename >]<U, V> {
-                fn calc_index(&self, channel: usize, frame: usize) -> usize {
-                    frame * self.channels + channel
-                }
-            }
-
-            impl<U, V> [< Sequential $typename >]<U, V> {
-                fn calc_index(&self, channel: usize, frame: usize) -> usize {
-                    frame + channel * self.frames
-                }
-            }
-        }
-    };
+/// A wrapper for a slice containing interleaved numerical samples.
+pub struct InterleavedNumbers<U, V> {
+    _phantom: core::marker::PhantomData<V>,
+    buf: U,
+    frames: usize,
+    channels: usize,
 }
 
+/// A wrapper for a slice containing interleaved numerical samples.
+pub struct SequentialNumbers<U, V> {
+    _phantom: core::marker::PhantomData<V>,
+    buf: U,
+    frames: usize,
+    channels: usize,
+}
+
+impl<U, V> InterleavedNumbers<U, V> {
+    fn calc_index(&self, channel: usize, frame: usize) -> usize {
+        frame * self.channels + channel
+    }
+}
+
+impl<U, V> SequentialNumbers<U, V> {
+    fn calc_index(&self, channel: usize, frame: usize) -> usize {
+        frame + channel * self.frames
+    }
+}
+
+impl<'a, U, T> InterleavedNumbers<&'a [U], T>
+where
+    T: 'a,
+{
+    /// Create a new wrapper for an immutable slice
+    /// of numerical samples
+    /// stored in _interleaved_ order.
+    /// The slice length must be at least `frames*channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` trait methods.
+    pub fn new(
+        buf: &'a [U],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len());
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, U, T> InterleavedNumbers<&'a mut [U], T>
+where
+    T: 'a,
+{
+    /// Create a new wrapper for a mutable slice
+    /// of numerical samples
+    /// stored in interleaved order.
+    /// The slice length must be at least `frames*channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` or `AdapterMut` trait methods.
+    pub fn new_mut(
+        buf: &'a mut [U],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len());
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, U, T> SequentialNumbers<&'a [U], T>
+where
+    T: 'a,
+{
+    /// Create a new wrapper for an immutable slice
+    /// of numerical samples
+    /// stored in _sequential_ order.
+    /// The slice length must be at least `frames*channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` trait methods.
+    pub fn new(
+        buf: &'a [U],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len());
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, U, T> SequentialNumbers<&'a mut [U], T>
+where
+    T: 'a,
+{
+    /// Create a new wrapper for a mutable slice
+    /// of numerical samples
+    /// stored in _sequential_ order.
+    /// The slice length must be at least `frames*channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` or `AdapterMut` trait methods.
+    pub fn new_mut(
+        buf: &'a mut [U],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len());
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+
 macro_rules! impl_traits {
-    ($type:expr, $read_func:ident, $write_func:ident, $typename:ident, $order:ident) => {
+    ($type:expr, $read_func:ident, $write_func:ident, $order:ident) => {
         paste::item! {
-
-
-            impl<'a, T> [< $order $typename >]<&'a [$type], T>
-            where
-                T: 'a,
-            {
-                #[doc = "Create a new wrapper for an immutable slice"]
-                #[doc = "of `" $type "` samples"]
-                #[doc = "stored in _" $order:lower "_ order."]
-                #[doc = "The slice length must be at least `frames*channels`."]
-                #[doc = "It is allowed to be longer than needed,"]
-                #[doc = "but these extra values cannot"]
-                #[doc = "be accessed via the `Adapter` trait methods."]
-                pub fn new(
-                    buf: &'a [$type],
-                    channels: usize,
-                    frames: usize,
-                ) -> Result<Self, SizeError> {
-                    check_slice_length!(channels, frames, buf.len());
-                    Ok(Self {
-                        _phantom: core::marker::PhantomData,
-                        buf,
-                        frames,
-                        channels,
-                    })
-                }
-            }
-
-            impl<'a, T> [< $order $typename >]<&'a mut [$type], T>
-            where
-                T: 'a,
-            {
-                #[doc = "Create a new wrapper for a mutable slice"]
-                #[doc = "of `" $type "` samples"]
-                #[doc = "stored in _" $order:lower "_ order."]
-                #[doc = "The slice length must be at least `frames*channels`."]
-                #[doc = "It is allowed to be longer than needed,"]
-                #[doc = "but these extra values cannot"]
-                #[doc = "be accessed via the `Adapter` or `AdapterMut` trait methods."]
-                pub fn new_mut(
-                    buf: &'a mut [$type],
-                    channels: usize,
-                    frames: usize,
-                ) -> Result<Self, SizeError> {
-                    check_slice_length!(channels, frames, buf.len());
-                    Ok(Self {
-                        _phantom: core::marker::PhantomData,
-                        buf,
-                        frames,
-                        channels,
-                    })
-                }
-            }
-
-            impl<'a, T> Adapter<'a, T> for [< $order $typename >]<&'a [$type], T>
+            impl<'a, T> Adapter<'a, T> for [< $order Numbers >]<&'a [$type], T>
             where
                 T: NumericSample<T> + 'a,
             {
@@ -143,7 +189,7 @@ macro_rules! impl_traits {
                 implement_size_getters!();
             }
 
-            impl<'a, T> Adapter<'a, T> for [< $order $typename >]<&'a mut [$type], T>
+            impl<'a, T> Adapter<'a, T> for [< $order Numbers >]<&'a mut [$type], T>
             where
                 T: NumericSample<T> + Clone + 'a,
             {
@@ -157,7 +203,7 @@ macro_rules! impl_traits {
                 implement_size_getters!();
             }
 
-            impl<'a, T> AdapterMut<'a, T> for [< $order $typename >]<&'a mut [$type], T>
+            impl<'a, T> AdapterMut<'a, T> for [< $order Numbers >]<&'a mut [$type], T>
             where
                 T: NumericSample<T> + Clone + 'a,
             {
@@ -172,19 +218,20 @@ macro_rules! impl_traits {
     };
 }
 
-create_structs!(i8, from_i8, to_i8, I8);
-create_structs!(u8, from_u8, to_u8, U8);
-create_structs!(i16, from_i16, to_i16, I16);
-create_structs!(i32, from_i32, to_i32, I32);
 
-impl_traits!(i8, from_i8, to_i8, I8, Interleaved);
-impl_traits!(u8, from_u8, to_u8, U8, Interleaved);
-impl_traits!(i16, from_i16, to_i16, I16, Interleaved);
-impl_traits!(i32, from_i32, to_i32, I32, Interleaved);
-impl_traits!(i8, from_i8, to_i8, I8, Sequential);
-impl_traits!(u8, from_u8, to_u8, U8, Sequential);
-impl_traits!(i16, from_i16, to_i16, I16, Sequential);
-impl_traits!(i32, from_i32, to_i32, I32, Sequential);
+
+impl_traits!(i8, from_i8, to_i8, Interleaved);
+impl_traits!(u8, from_u8, to_u8, Interleaved);
+impl_traits!(i16, from_i16, to_i16, Interleaved);
+impl_traits!(i32, from_i32, to_i32, Interleaved);
+impl_traits!(f32, from_f32, to_f32, Interleaved);
+impl_traits!(f64, from_f64, to_f64, Interleaved);
+impl_traits!(i8, from_i8, to_i8, Sequential);
+impl_traits!(u8, from_u8, to_u8, Sequential);
+impl_traits!(i16, from_i16, to_i16, Sequential);
+impl_traits!(i32, from_i32, to_i32, Sequential);
+impl_traits!(f32, from_f32, to_f32, Sequential);
+impl_traits!(f64, from_f64, to_f64, Sequential);
 
 //   _____         _
 //  |_   _|__  ___| |_ ___
@@ -199,7 +246,7 @@ mod tests {
     #[test]
     fn read_i32() {
         let data: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
-        let buffer: InterleavedI32<&[i32], f32> = InterleavedI32::new(&data, 2, 3).unwrap();
+        let buffer: InterleavedNumbers<&[i32], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -211,7 +258,7 @@ mod tests {
     #[test]
     fn read_i16() {
         let data: [i16; 6] = [0, -2 << 14, 2 << 13, -2 << 13, 2 << 12, -2 << 12];
-        let buffer: InterleavedI16<&[i16], f32> = InterleavedI16::new(&data, 2, 3).unwrap();
+        let buffer: InterleavedNumbers<&[i16], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -223,7 +270,7 @@ mod tests {
     #[test]
     fn read_i8() {
         let data: [i8; 6] = [0, -2 << 6, 2 << 5, -2 << 5, 2 << 4, -2 << 4];
-        let buffer: InterleavedI8<&[i8], f32> = InterleavedI8::new(&data, 2, 3).unwrap();
+        let buffer: InterleavedNumbers<&[i8], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -242,7 +289,7 @@ mod tests {
             128 + (2 << 4),
             128 - (2 << 4),
         ];
-        let buffer: InterleavedU8<&[u8], f32> = InterleavedU8::new(&data, 2, 3).unwrap();
+        let buffer: InterleavedNumbers<&[u8], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -255,8 +302,8 @@ mod tests {
     fn write_i32() {
         let expected: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
         let mut data = [0; 6];
-        let mut buffer: InterleavedI32<&mut [i32], f32> =
-            InterleavedI32::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer: InterleavedNumbers<&mut [i32], f32> =
+            InterleavedNumbers::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_sample(0, 0, &0.0).unwrap();
         buffer.write_sample(1, 0, &-1.0).unwrap();
@@ -271,8 +318,8 @@ mod tests {
     fn write_i16() {
         let expected: [i16; 6] = [0, -2 << 14, 2 << 13, -2 << 13, 2 << 12, -2 << 12];
         let mut data = [0; 6];
-        let mut buffer: InterleavedI16<&mut [i16], f32> =
-            InterleavedI16::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer: InterleavedNumbers<&mut [i16], f32> =
+            InterleavedNumbers::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_sample(0, 0, &0.0).unwrap();
         buffer.write_sample(1, 0, &-1.0).unwrap();
@@ -289,8 +336,8 @@ mod tests {
         let values_left = [0.0, 0.5, 0.25];
         let values_right = [-1.0, -0.5, -0.25];
         let mut data = [0; 6];
-        let mut buffer: InterleavedI32<&mut [i32], f32> =
-            InterleavedI32::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer: InterleavedNumbers<&mut [i32], f32> =
+            InterleavedNumbers::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_from_slice_to_channel(0, 0, &values_left);
         buffer.write_from_slice_to_channel(1, 0, &values_right);
@@ -304,7 +351,7 @@ mod tests {
         let expected_right = [-1.0, -0.5, -0.25];
         let mut values_left = [0.0; 3];
         let mut values_right = [0.0; 3];
-        let buffer: InterleavedI32<&[i32], f32> = InterleavedI32::new(&data, 2, 3).unwrap();
+        let buffer: InterleavedNumbers<&[i32], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
 
         buffer.write_from_channel_to_slice(0, 0, &mut values_left);
         buffer.write_from_channel_to_slice(1, 0, &mut values_right);
@@ -319,7 +366,7 @@ mod tests {
     fn test_adapter_send_and_sync<T: Sync + Send + Clone>() {
         fn is_send<T: Send>() {}
         fn is_sync<T: Sync>() {}
-        is_send::<InterleavedI32<&[i32], f32>>();
-        is_sync::<InterleavedI32<&[i32], f32>>();
+        is_send::<InterleavedNumbers<&[i32], f32>>();
+        is_sync::<InterleavedNumbers<&[i32], f32>>();
     }
 }

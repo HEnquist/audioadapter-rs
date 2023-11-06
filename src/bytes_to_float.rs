@@ -17,7 +17,7 @@
 //! Wrap a Vec of bytes as an interleaved buffer of 16-bit integer samples
 //! and print all the values.
 //! ```
-//! use audioadapter::bytes::InterleavedS16LE;
+//! use audioadapter::bytes_to_float::InterleavedS16LE;
 //! use audioadapter::Adapter;
 //!
 //! // make a vector with some fake data.
