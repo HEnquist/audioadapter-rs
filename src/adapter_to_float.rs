@@ -1,7 +1,7 @@
 //! # Converting wrappers for existing `audioadapter` buffers
-//! This module provides wrappers buffers
+//! This module provides wrappers for buffers
 //! that already implement the `audioadapter` traits.
-//! The wrapper enables reading and writing samples from/to another buffer
+//! The wrappers enable reading and writing samples from/to another buffer
 //! with on-the-fly format conversion.
 //!
 //! ## Example
@@ -11,7 +11,7 @@
 //! ```
 //! use audioadapter::direct::InterleavedSlice;
 //! use audioadapter::Adapter;
-//! use audioadapter::converter::ConvertI16;
+//! use audioadapter::adapter_to_float::ConvertNumber;
 //!
 //! // Make a vector with some fake data.
 //! let data: Vec<i16> = vec![1, 2, 3, 4, 5, 6];
@@ -20,7 +20,7 @@
 //! let int_buffer: InterleavedSlice<&[i16]> = InterleavedSlice::new(&data, 2, 3).unwrap();
 //!
 //! // Wrap this buffer with a converter to read the values as floats.
-//! let converter: ConvertI16<&dyn Adapter<i16>, f32> = ConvertI16::new(&int_buffer as &dyn Adapter<i16>);
+//! let converter: ConvertNumber<&dyn Adapter<i16>, f32> = ConvertNumber::new(&int_buffer as &dyn Adapter<i16>);
 //!
 //! // Loop over all samples and print their values
 //! for channel in 0..2 {
@@ -161,55 +161,48 @@ byte_convert_traits!(from_f32_be, to_f32_be, 4, F32BE);
 byte_convert_traits!(from_f64_le, to_f64_le, 8, F64LE);
 byte_convert_traits!(from_f64_be, to_f64_be, 8, F64BE);
 
-macro_rules! int_convert_structs {
-    ($type:expr, $typename:ident) => {
-        paste::item! {
-            #[doc = "A wrapper for an [Adapter] or [AdapterMut] buffer containing `" $type "` samples"]
-            pub struct [< Convert $typename >]<U, V> {
-                _phantom: core::marker::PhantomData<V>,
-                buf: U,
-            }
-        }
-    };
+pub struct ConvertNumber<U, V> {
+    _phantom: core::marker::PhantomData<V>,
+    buf: U,
 }
 
-macro_rules! int_convert_traits {
-    ($type:expr, $read_func:ident, $write_func:ident, $typename:ident) => {
+impl<'a, T, U> ConvertNumber<&'a dyn Adapter<'a, U>, T>
+where
+    T: NumericSample<T> + 'a,
+{
+    /// Create a new wrapper for a buffer implementing the [Adapter] trait,
+    /// containing numerical samples.
+    pub fn new(
+        buf: &'a dyn Adapter<'a, U>,
+    ) -> Self {
+        Self {
+            _phantom: core::marker::PhantomData,
+            buf,
+        }
+    }
+}
+
+impl<'a, T, U> ConvertNumber<&'a mut dyn AdapterMut<'a, U>, T>
+where
+    T: NumericSample<T> + 'a,
+{
+    /// Create a new wrapper for a mutable buffer implementing the [AdapterMut] trait,
+    /// containing numerical samples.
+    pub fn new_mut(
+        buf: &'a mut dyn AdapterMut<'a, U>,
+    ) -> Self {
+        Self {
+            _phantom: core::marker::PhantomData,
+            buf,
+        }
+    }
+}
+
+
+macro_rules! number_convert_traits {
+    ($type:expr, $read_func:ident, $write_func:ident) => {
         paste::item! {
-
-            impl<'a, T> [< Convert $typename >]<&'a dyn Adapter<'a, $type>, T>
-            where
-                T: NumericSample<T> + 'a,
-            {
-                #[doc = "Create a new wrapper for a buffer implementing the [Adapter] trait,"]
-                #[doc = "containing samples of type `" $type "`."]
-                pub fn new(
-                    buf: &'a dyn Adapter<'a, $type>,
-                ) -> Self {
-                    Self {
-                        _phantom: core::marker::PhantomData,
-                        buf,
-                    }
-                }
-            }
-
-            impl<'a, T> [< Convert $typename >]<&'a mut dyn AdapterMut<'a, $type>, T>
-            where
-                T: NumericSample<T> + 'a,
-            {
-                #[doc = "Create a new wrapper for a mutable buffer implementing the [AdapterMut] trait,"]
-                #[doc = "containing samples of type `" $type "`."]
-                pub fn new_mut(
-                    buf: &'a mut dyn AdapterMut<'a, $type>,
-                ) -> Self {
-                    Self {
-                        _phantom: core::marker::PhantomData,
-                        buf,
-                    }
-                }
-            }
-
-            impl<'a, T> Adapter<'a, T> for [< Convert $typename >]<&'a dyn Adapter<'a, $type>, T>
+            impl<'a, T> Adapter<'a, T> for ConvertNumber<&'a dyn Adapter<'a, $type>, T>
             where
                 T: NumericSample <T> + 'a,
             {
@@ -226,7 +219,7 @@ macro_rules! int_convert_traits {
                 }
             }
 
-            impl<'a, T> Adapter<'a, T> for [< Convert $typename >]<&'a mut dyn AdapterMut<'a, $type>, T>
+            impl<'a, T> Adapter<'a, T> for ConvertNumber<&'a mut dyn AdapterMut<'a, $type>, T>
             where
                 T: NumericSample<T> + 'a,
             {
@@ -243,7 +236,7 @@ macro_rules! int_convert_traits {
                 }
             }
 
-            impl<'a, T> AdapterMut<'a, T> for [< Convert $typename >]<&'a mut dyn AdapterMut<'a, $type>, T>
+            impl<'a, T> AdapterMut<'a, T> for ConvertNumber<&'a mut dyn AdapterMut<'a, $type>, T>
             where
                 T: NumericSample<T> + Clone + 'a,
             {
@@ -257,17 +250,12 @@ macro_rules! int_convert_traits {
     };
 }
 
-int_convert_structs!(i8, I8);
-int_convert_structs!(i16, I16);
-int_convert_structs!(i32, I32);
-int_convert_structs!(f32, F32);
-int_convert_structs!(f64, F64);
-
-int_convert_traits!(i8, from_i8, to_i8, I8);
-int_convert_traits!(i16, from_i16, to_i16, I16);
-int_convert_traits!(i32, from_i32, to_i32, I32);
-int_convert_traits!(f32, from_f32, to_f32, F32);
-int_convert_traits!(f64, from_f64, to_f64, F64);
+number_convert_traits!(u8, from_u8, to_u8);
+number_convert_traits!(i8, from_i8, to_i8);
+number_convert_traits!(i16, from_i16, to_i16);
+number_convert_traits!(i32, from_i32, to_i32);
+number_convert_traits!(f32, from_f32, to_f32);
+number_convert_traits!(f64, from_f64, to_f64);
 
 //   _____         _
 //  |_   _|__  ___| |_ ___
@@ -299,8 +287,8 @@ mod tests {
     fn read_i16() {
         let data: [i16; 6] = [0, i16::MIN, 1 << 14, -(1 << 14), 1 << 13, -(1 << 13)];
         let buffer: InterleavedSlice<&[i16]> = InterleavedSlice::new(&data, 2, 3).unwrap();
-        let converter: ConvertI16<&dyn Adapter<i16>, f32> =
-            ConvertI16::new(&buffer as &dyn Adapter<i16>);
+        let converter: ConvertNumber<&dyn Adapter<i16>, f32> =
+            ConvertNumber::new(&buffer as &dyn Adapter<i16>);
         assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
@@ -332,8 +320,8 @@ mod tests {
         let mut data = [0; 6];
         let mut buffer: InterleavedSlice<&mut [i16]> =
             InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
-        let mut converter: ConvertI16<&mut dyn AdapterMut<i16>, f32> =
-            ConvertI16::new_mut(&mut buffer as &mut dyn AdapterMut<i16>);
+        let mut converter: ConvertNumber<&mut dyn AdapterMut<i16>, f32> =
+            ConvertNumber::new_mut(&mut buffer as &mut dyn AdapterMut<i16>);
         converter.write_sample(0, 0, &0.0).unwrap();
         converter.write_sample(1, 0, &-1.0).unwrap();
         converter.write_sample(0, 1, &0.5).unwrap();

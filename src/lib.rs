@@ -23,7 +23,7 @@ pub use traits::{Adapter, AdapterMut};
 #[cfg(feature = "audio")]
 pub mod audio;
 
-pub mod converter;
+pub mod adapter_to_float;
 
 /// Error returned when the wrapped data structure has the wrong dimensions,
 /// typically that it is too short.
