@@ -42,6 +42,9 @@ use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
 use rawsample::BytesSample;
+use crate::rawbytes::BytesSample as BytesSample2;
+use crate::rawbytes::RawSample;
+use num_traits::float::Float;
 
 macro_rules! create_structs {
     ($read_func:ident, $write_func:ident, $bytes:expr, $typename:ident) => {
@@ -223,6 +226,115 @@ impl_traits!(from_f32_be, to_f32_be, 4, F32BE, Sequential);
 impl_traits!(from_f64_le, to_f64_le, 8, F64LE, Sequential);
 impl_traits!(from_f64_be, to_f64_be, 8, F64BE, Sequential);
 
+
+macro_rules! implement_read_func {
+    () => {
+        unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+            let idx = self.calc_index(channel, frame);
+            let raw = self.buf.get_unchecked(idx .. idx+U::BYTES_PER_SAMPLE);
+            let sample = U::from_slice(raw);
+            sample.to_scaled_float::<T>()
+        }
+    };
+}
+
+macro_rules! implement_write_func {
+    () => {
+        unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+            let idx = self.calc_index(channel, frame);
+            let sample = U::from_scaled_float(*value);
+            self.buf[idx .. idx + U::BYTES_PER_SAMPLE].copy_from_slice(sample.as_slice());
+            false
+        }
+    }
+}
+
+pub struct InterleavedBytes<'a, T, U, V> {
+    _phantom: core::marker::PhantomData<&'a T>,
+    _phantom_raw: core::marker::PhantomData<&'a U>,
+    buf: V,
+    frames: usize,
+    channels: usize,
+}
+
+impl<'a, T, U> InterleavedBytes<'a, T, U, &'a [u8]>
+where
+    U: BytesSample2,
+{
+    pub fn new(
+        buf: &'a [u8],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len(), U::BYTES_PER_SAMPLE);
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            _phantom_raw: core::marker::PhantomData,
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, T, U> InterleavedBytes<'a, T, U, &'a mut [u8]>
+where
+    U: BytesSample2,
+{
+    pub fn new_mut(
+        buf: &'a mut [u8],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len(), U::BYTES_PER_SAMPLE);
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            _phantom_raw: core::marker::PhantomData,
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, T, U, V> InterleavedBytes<'a, T, U, V>
+where
+    U: BytesSample2,
+{
+    fn calc_index(&self, channel: usize, frame: usize) -> usize {
+        let sample_idx = self.channels * frame + channel;
+        sample_idx * U::BYTES_PER_SAMPLE
+    }
+}
+
+impl<'a, T, U> Adapter<'a, T> for InterleavedBytes<'a, T, U, &'a [u8]>
+where
+    T: Float + 'a,
+    U: BytesSample2 + RawSample,
+{
+    implement_size_getters!();
+
+    implement_read_func!();
+}
+
+impl<'a, T, U> Adapter<'a, T> for InterleavedBytes<'a, T, U, &'a mut [u8]>
+where
+    T: Float + 'a,
+    U: BytesSample2 + RawSample,
+{
+    implement_size_getters!();
+
+    implement_read_func!();
+}
+
+impl<'a, T, U> AdapterMut<'a, T> for InterleavedBytes<'a, T, U, &'a mut [u8]>
+where
+    T: Float + 'a,
+    U: BytesSample2 + RawSample,
+{
+    implement_write_func!();
+}
+
 //   _____         _
 //  |_   _|__  ___| |_ ___
 //    | |/ _ \/ __| __/ __|
@@ -232,6 +344,33 @@ impl_traits!(from_f64_be, to_f64_be, 8, F64BE, Sequential);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rawbytes::I16LE;
+
+    #[test]
+    fn read_i16_newtype() {
+        let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let buffer: InterleavedBytes<f32, I16LE, _> = InterleavedBytes::new(&data, 2, 3).unwrap();
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), -0.25);
+    }
+
+    #[test]
+    fn write_i16_newtype() {
+        let expected: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let mut data = [0; 12];
+        let mut buffer: InterleavedBytes<f32, I16LE, _> = InterleavedBytes::new_mut(&mut data, 2, 3).unwrap();
+        buffer.write_sample(0, 0, &0.0).unwrap();
+        buffer.write_sample(1, 0, &-1.0).unwrap();
+        buffer.write_sample(0, 1, &0.5).unwrap();
+        buffer.write_sample(1, 1, &-0.5).unwrap();
+        buffer.write_sample(0, 2, &0.25).unwrap();
+        buffer.write_sample(1, 2, &-0.25).unwrap();
+        assert_eq!(data, expected);
+    }
 
     #[test]
     fn read_i32() {

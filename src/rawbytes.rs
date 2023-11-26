@@ -5,43 +5,43 @@ use num_traits::float::Float;
 
 /// 24 bit signed integer, little endian, 24 bits stored as 3 or 4 bytes.
 #[derive(Debug)]
-struct I24LE<U>(U);
+pub struct I24LE<U>(U);
 
 /// 24 bit signed integer, big endian, 24 bits stored as 3 or 4 bytes.
 #[derive(Debug)]
-struct I24BE<U>(U);
+pub struct I24BE<U>(U);
 
 /// 32 bit signed integer, little endian.
 #[derive(Debug)]
-struct I32LE([u8; 4]);
+pub struct I32LE([u8; 4]);
 
 /// 32 bit signed integer, big endian.
 #[derive(Debug)]
-struct I32BE([u8; 4]);
+pub struct I32BE([u8; 4]);
 
 /// 64 bit signed integer, little endian.
 #[derive(Debug)]
-struct I64LE([u8; 8]);
+pub struct I64LE([u8; 8]);
 
 /// 64 bit signed integer, big endian.
 #[derive(Debug)]
-struct I64BE([u8; 8]);
+pub struct I64BE([u8; 8]);
 
  /// 16 bit signed integer, little endian.
 #[derive(Debug)]
-struct I16LE([u8; 2]);
+pub struct I16LE([u8; 2]);
 
 /// 16 bit signed integer, big endian.
 #[derive(Debug)]
-struct I16BE([u8; 2]);
+pub struct I16BE([u8; 2]);
 
 /// 32 bit unsigned integer, little endian.
 #[derive(Debug)]
-struct U32LE([u8; 4]);
+pub struct U32LE([u8; 4]);
 
 /// 32 bit unsigned integer, big endian.
 #[derive(Debug)]
-struct U32BE([u8; 4]);
+pub struct U32BE([u8; 4]);
 
 /// 64 bit unsigned integer, little endian.
 #[derive(Debug)]
@@ -49,34 +49,34 @@ struct U64LE([u8; 8]);
 
 /// 64 bit unsigned integer, big endian.
 #[derive(Debug)]
-struct U64BE([u8; 8]);
+pub struct U64BE([u8; 8]);
 
 /// 16 bit unsigned integer, little endian.
 #[derive(Debug)]
-struct U16LE([u8; 2]);
+pub struct U16LE([u8; 2]);
 
 /// 16 bit unsigned integer, big endian.
 #[derive(Debug)]
-struct U16BE([u8; 2]);
+pub struct U16BE([u8; 2]);
 
 /// 32 bit floating point, little endian.
 #[derive(Debug)]
-struct F32LE([u8; 4]);
+pub struct F32LE([u8; 4]);
 
 /// 32 bit floating point, big endian.
 #[derive(Debug)]
-struct F32BE([u8; 4]);
+pub struct F32BE([u8; 4]);
 
 /// 64 bit floating point, little endian.
 #[derive(Debug)]
-struct F64LE([u8; 8]);
+pub struct F64LE([u8; 8]);
 
 /// 64 bit floating point, big endian.
 #[derive(Debug)]
-struct F64BE([u8; 8]);
+pub struct F64BE([u8; 8]);
 
 /// A trait for converting a given sample type to and from floating point values
-trait RawSample {
+pub trait RawSample {
     /// Convert the sample value to a float in the range -1.0 .. +1.0
     fn to_scaled_float<T: Float>(&self) -> T;
 
@@ -85,8 +85,14 @@ trait RawSample {
 }
 
 /// A trait for converting samples stored as raw bytes into a numerical type.
-trait BytesSample {
+pub trait BytesSample {
     type NumericType;
+
+    const BYTES_PER_SAMPLE : usize;
+
+    fn from_slice(bytes: &[u8]) -> Self;
+
+    fn as_slice(&self) -> &[u8];
     
     /// Convert the raw bytes to a numerical value.
     /// The type of the numerical value matches the original format
@@ -178,6 +184,15 @@ rawsample_for_float!(f64, to_f64);
 /// 24 bit signed integer, little endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
 impl BytesSample for I24LE<[u8; 4]> {
     type NumericType = i32;
+    const BYTES_PER_SAMPLE: usize = 4;
+
+    fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes[0..4].try_into().unwrap())
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
 
     fn to_number(&self) -> Self::NumericType {
         let padded = [0, self.0[0], self.0[1], self.0[2]];
@@ -193,6 +208,15 @@ impl BytesSample for I24LE<[u8; 4]> {
 /// 24 bit signed integer, little endian, stored as 3 bytes without padding.
 impl BytesSample for I24LE<[u8; 3]> {
     type NumericType = i32;
+    const BYTES_PER_SAMPLE: usize = 3;
+
+    fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes[0..3].try_into().unwrap())
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
 
     fn to_number(&self) -> Self::NumericType {
         let padded = [0, self.0[0], self.0[1], self.0[2]];
@@ -208,6 +232,15 @@ impl BytesSample for I24LE<[u8; 3]> {
 /// 24 bit signed integer, big endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
 impl BytesSample for I24BE<[u8; 4]> {
     type NumericType = i32;
+    const BYTES_PER_SAMPLE: usize = 4;
+
+    fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes[0..4].try_into().unwrap())
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
 
     fn to_number(&self) -> Self::NumericType {
         let padded = [self.0[1], self.0[2], self.0[3], 0];
@@ -223,6 +256,15 @@ impl BytesSample for I24BE<[u8; 4]> {
 /// 24 bit signed integer, big endian, stored as 3 bytes without padding.
 impl BytesSample for I24BE<[u8; 3]> {
     type NumericType = i32;
+    const BYTES_PER_SAMPLE: usize = 3;
+
+    fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes[0..3].try_into().unwrap())
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
 
     fn to_number(&self) -> Self::NumericType {
         let padded = [self.0[0], self.0[1], self.0[2], 0];
@@ -240,6 +282,15 @@ macro_rules! bytessample_for_newtype {
     ($type:ident, $newtype:ident, $from:ident, $to:ident) => {
         impl BytesSample for $newtype {
             type NumericType = $type;
+            const BYTES_PER_SAMPLE: usize = std::mem::size_of::<$type>();
+
+            fn from_slice(bytes: &[u8]) -> Self {
+                Self(bytes.try_into().unwrap())
+            }
+
+            fn as_slice(&self) -> &[u8] {
+                &self.0
+            }
         
             fn to_number(&self) -> Self::NumericType {
                 $type::$from(self.0)
