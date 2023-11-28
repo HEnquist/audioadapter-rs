@@ -16,7 +16,7 @@
 //! ```
 //! use audioadapter::bytes_to_float::InterleavedBytes;
 //! use audioadapter::Adapter;
-//! use audioadapter::rawbytes::I16LE;
+//! use audioadapter::sample::I16LE;
 //!
 //! // make a vector with some fake data.
 //! // 2 channels * 3 frames * 2 bytes per sample => 12 bytes
@@ -37,8 +37,8 @@
 //! }
 //! ```
 
-use crate::rawbytes::BytesSample;
-use crate::rawbytes::RawSample;
+use crate::sample::BytesSample;
+use crate::sample::RawSample;
 use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
@@ -172,7 +172,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rawbytes::*;
+    use crate::sample::*;
 
     #[test]
     fn read_i16_newtype() {

@@ -34,7 +34,7 @@
 //! ```
 use num_traits::Float;
 
-use crate::rawbytes::RawSample;
+use crate::sample::RawSample;
 use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};

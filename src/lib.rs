@@ -14,7 +14,7 @@ pub mod owned;
 mod traits;
 
 /// Type conversion of samples values.
-pub mod rawbytes;
+pub mod sample;
 
 #[cfg(feature = "std")]
 use std::error::Error;

@@ -36,9 +36,9 @@
 
 use num_traits::Float;
 
-use crate::rawbytes::BytesSample as BytesSample2;
-use crate::rawbytes::RawSample;
-use crate::rawbytes::I16LE;
+use crate::sample::BytesSample as BytesSample;
+use crate::sample::RawSample;
+use crate::sample::I16LE;
 use crate::{Adapter, AdapterMut};
 
 /// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
@@ -46,7 +46,7 @@ use crate::{Adapter, AdapterMut};
 pub struct ConvertBytes<T, U, V>
 where
     T: Float,
-    U: BytesSample2,
+    U: BytesSample,
 {
     _phantom: core::marker::PhantomData<T>,
     _phantom_raw: core::marker::PhantomData<U>,
@@ -58,7 +58,7 @@ macro_rules! byte_convert_traits_newtype {
         impl<'a, T, U> ConvertBytes<T, U, &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
                 T: Float + 'a,
-                U: BytesSample2 + RawSample + 'a,
+                U: BytesSample + RawSample + 'a,
             {
                 #[doc = "Create a new wrapper for an [Adapter] buffer of byte arrays, `[u8;  U::BYTES_PER_SAMPLE ]`,"]
                 #[doc = "containing samples of type ` $typename `."]
@@ -76,7 +76,7 @@ macro_rules! byte_convert_traits_newtype {
             impl<'a, T, U> ConvertBytes<T, U, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
                 T: Float + 'a,
-                U: BytesSample2 + RawSample + 'a,
+                U: BytesSample + RawSample + 'a,
             {
                 #[doc = "Create a new wrapper for an mutable [AdapterMut] buffer of byte arrays, `[u8;  $bytes ]`,"]
                 #[doc = "containing samples of type ` $typename `."]
@@ -94,7 +94,7 @@ macro_rules! byte_convert_traits_newtype {
             impl<'a, T, U> Adapter<'a, T> for ConvertBytes<T, U, &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
             T: Float + 'a,
-            U: BytesSample2 + RawSample + 'a,
+            U: BytesSample + RawSample + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let raw = self.buf.read_sample_unchecked(channel, frame);
@@ -114,7 +114,7 @@ macro_rules! byte_convert_traits_newtype {
             impl<'a, T, U> Adapter<'a, T> for ConvertBytes<T, U, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
             T: Float + 'a,
-            U: BytesSample2 + RawSample + 'a,
+            U: BytesSample + RawSample + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let raw = self.buf.read_sample_unchecked(channel, frame);
@@ -134,7 +134,7 @@ macro_rules! byte_convert_traits_newtype {
             impl<'a, T, U> AdapterMut<'a, T> for ConvertBytes<T, U, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
             T: Float + 'a,
-            U: BytesSample2 + RawSample + 'a,
+            U: BytesSample + RawSample + 'a,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let sample = U::from_scaled_float(*value);
