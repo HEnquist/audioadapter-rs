@@ -32,11 +32,12 @@
 //!     }
 //! }
 //! ```
+use num_traits::Float;
 
+use crate::rawbytes::RawSample;
 use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
-use rawsample::NumericSample;
 
 /// A wrapper for a slice containing interleaved numerical samples.
 pub struct InterleavedNumbers<U, V> {
@@ -154,18 +155,16 @@ where
     }
 }
 
-macro_rules! impl_traits {
-    ($type:expr, $read_func:ident, $write_func:ident, $order:ident) => {
+macro_rules! impl_traits_newtype {
+    ($type:expr, $order:ident) => {
         paste::item! {
             impl<'a, T> Adapter<'a, T> for [< $order Numbers >]<&'a [$type], T>
             where
-                T: NumericSample<T> + 'a,
+                T: Float + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let index = self.calc_index(channel, frame);
-                    T::$read_func(
-                        self.buf[index]
-                    )
+                    self.buf[index].to_scaled_float()
                 }
 
                 implement_size_getters!();
@@ -173,13 +172,11 @@ macro_rules! impl_traits {
 
             impl<'a, T> Adapter<'a, T> for [< $order Numbers >]<&'a mut [$type], T>
             where
-                T: NumericSample<T> + Clone + 'a,
+                T: Float + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let index = self.calc_index(channel, frame);
-                    T::$read_func(
-                        self.buf[index]
-                    )
+                    self.buf[index].to_scaled_float()
                 }
 
                 implement_size_getters!();
@@ -187,31 +184,40 @@ macro_rules! impl_traits {
 
             impl<'a, T> AdapterMut<'a, T> for [< $order Numbers >]<&'a mut [$type], T>
             where
-                T: NumericSample<T> + Clone + 'a,
+                T: Float + 'a,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let index = self.calc_index(channel, frame);
-                    let (value, clipped) = T::$write_func(value);
+                    let value = $type::from_scaled_float(*value);
                     self.buf[index] = value;
-                    clipped
+                    false
                 }
             }
         }
     };
 }
 
-impl_traits!(i8, from_i8, to_i8, Interleaved);
-impl_traits!(u8, from_u8, to_u8, Interleaved);
-impl_traits!(i16, from_i16, to_i16, Interleaved);
-impl_traits!(i32, from_i32, to_i32, Interleaved);
-impl_traits!(f32, from_f32, to_f32, Interleaved);
-impl_traits!(f64, from_f64, to_f64, Interleaved);
-impl_traits!(i8, from_i8, to_i8, Sequential);
-impl_traits!(u8, from_u8, to_u8, Sequential);
-impl_traits!(i16, from_i16, to_i16, Sequential);
-impl_traits!(i32, from_i32, to_i32, Sequential);
-impl_traits!(f32, from_f32, to_f32, Sequential);
-impl_traits!(f64, from_f64, to_f64, Sequential);
+impl_traits_newtype!(i8, Interleaved);
+impl_traits_newtype!(u8, Interleaved);
+impl_traits_newtype!(i16, Interleaved);
+impl_traits_newtype!(u16, Interleaved);
+impl_traits_newtype!(i32, Interleaved);
+impl_traits_newtype!(u32, Interleaved);
+impl_traits_newtype!(i64, Interleaved);
+impl_traits_newtype!(u64, Interleaved);
+impl_traits_newtype!(f32, Interleaved);
+impl_traits_newtype!(f64, Interleaved);
+
+impl_traits_newtype!(i8, Sequential);
+impl_traits_newtype!(u8, Sequential);
+impl_traits_newtype!(i16, Sequential);
+impl_traits_newtype!(u16, Sequential);
+impl_traits_newtype!(i32, Sequential);
+impl_traits_newtype!(u32, Sequential);
+impl_traits_newtype!(i64, Sequential);
+impl_traits_newtype!(u64, Sequential);
+impl_traits_newtype!(f32, Sequential);
+impl_traits_newtype!(f64, Sequential);
 
 //   _____         _
 //  |_   _|__  ___| |_ ___

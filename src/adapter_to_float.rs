@@ -34,65 +34,72 @@
 //! }
 //! ```
 
-use crate::{Adapter, AdapterMut};
-use rawsample::BytesSample;
-use rawsample::NumericSample;
+use num_traits::Float;
 
-macro_rules! byte_convert_structs {
-    ($bytes:expr, $typename:ident) => {
-        paste::item! {
-            #[doc = "A wrapper for an [Adapter] or [AdapterMut] buffer containing `" $typename "` samples"]
-            #[doc = " stored as byte arrays, `[u8; " $bytes "]`"]
-            pub struct [< Convert $typename >]<U, V> {
-                _phantom: core::marker::PhantomData<V>,
-                buf: U,
-            }
-        }
-    };
+use crate::rawbytes::BytesSample as BytesSample2;
+use crate::rawbytes::RawSample;
+use crate::rawbytes::I16LE;
+use crate::{Adapter, AdapterMut};
+
+/// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
+/// stored as byte arrays.
+pub struct ConvertBytes<T, U, V>
+where
+    T: Float,
+    U: BytesSample2,
+{
+    _phantom: core::marker::PhantomData<T>,
+    _phantom_raw: core::marker::PhantomData<U>,
+    buf: V,
 }
 
-macro_rules! byte_convert_traits {
-    ($read_func:ident, $write_func:ident, $bytes:expr, $typename:ident) => {
-        paste::item! {
-
-            impl<'a, T> [< Convert $typename >]<&'a dyn Adapter<'a, [u8; $bytes]>, T>
+macro_rules! byte_convert_traits_newtype {
+    ($typename:ident) => {
+        impl<'a, T, U> ConvertBytes<T, U, &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
-                T: BytesSample<T> + 'a,
+                T: Float + 'a,
+                U: BytesSample2 + RawSample + 'a,
             {
-                #[doc = "Create a new wrapper for an [Adapter] buffer of byte arrays, `[u8; " $bytes "]`,"]
-                #[doc = "containing samples of type `" $typename "`."]
+                #[doc = "Create a new wrapper for an [Adapter] buffer of byte arrays, `[u8;  U::BYTES_PER_SAMPLE ]`,"]
+                #[doc = "containing samples of type ` $typename `."]
                 pub fn new(
-                    buf: &'a dyn Adapter<'a, [u8; $bytes]>,
+                    buf: &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>,
                 ) -> Self {
                     Self {
                         _phantom: core::marker::PhantomData,
+                        _phantom_raw: core::marker::PhantomData,
                         buf,
                     }
                 }
             }
 
-            impl<'a, T> [< Convert $typename >]<&'a mut dyn AdapterMut<'a, [u8; $bytes]>, T>
+            impl<'a, T, U> ConvertBytes<T, U, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
-                T: BytesSample<T> + 'a,
+                T: Float + 'a,
+                U: BytesSample2 + RawSample + 'a,
             {
-                #[doc = "Create a new wrapper for an mutable [AdapterMut] buffer of byte arrays, `[u8; " $bytes "]`,"]
-                #[doc = "containing samples of type `" $typename "`."]
+                #[doc = "Create a new wrapper for an mutable [AdapterMut] buffer of byte arrays, `[u8;  $bytes ]`,"]
+                #[doc = "containing samples of type ` $typename `."]
                 pub fn new_mut(
-                    buf: &'a mut dyn AdapterMut<'a, [u8; $bytes]>,
+                    buf: &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>,
                 ) -> Self {
                     Self {
                         _phantom: core::marker::PhantomData,
+                        _phantom_raw: core::marker::PhantomData,
                         buf,
                     }
                 }
             }
 
-            impl<'a, T> Adapter<'a, T> for [< Convert $typename >]<&'a dyn Adapter<'a, [u8; $bytes]>, T>
+            impl<'a, T, U> Adapter<'a, T> for ConvertBytes<T, U, &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
-                T: BytesSample <T> + 'a,
+            T: Float + 'a,
+            U: BytesSample2 + RawSample + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-                    T::$read_func(self.buf.read_sample_unchecked(channel, frame))
+                    let raw = self.buf.read_sample_unchecked(channel, frame);
+                    let sample = U::from_slice(&raw);
+                    sample.to_scaled_float::<T>()
                 }
 
                 fn channels(&self) -> usize {
@@ -104,12 +111,15 @@ macro_rules! byte_convert_traits {
                 }
             }
 
-            impl<'a, T> Adapter<'a, T> for [< Convert $typename >]<&'a mut dyn AdapterMut<'a, [u8; $bytes]>, T>
+            impl<'a, T, U> Adapter<'a, T> for ConvertBytes<T, U, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
-                T: BytesSample<T> + 'a,
+            T: Float + 'a,
+            U: BytesSample2 + RawSample + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-                    T::$read_func(self.buf.read_sample_unchecked(channel, frame))
+                    let raw = self.buf.read_sample_unchecked(channel, frame);
+                    let sample = U::from_slice(&raw);
+                    sample.to_scaled_float::<T>()
                 }
 
                 fn channels(&self) -> usize {
@@ -121,45 +131,21 @@ macro_rules! byte_convert_traits {
                 }
             }
 
-            impl<'a, T> AdapterMut<'a, T> for [< Convert $typename >]<&'a mut dyn AdapterMut<'a, [u8; $bytes]>, T>
+            impl<'a, T, U> AdapterMut<'a, T> for ConvertBytes<T, U, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
             where
-                T: BytesSample<T> + Clone + 'a,
+            T: Float + 'a,
+            U: BytesSample2 + RawSample + 'a,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-                    let (value, clipped) = T::$write_func(value);
-                    self.buf.write_sample_unchecked(channel, frame, &value);
-                    clipped
+                    let sample = U::from_scaled_float(*value);
+                    self.buf.write_sample_unchecked(channel, frame, sample.as_slice().try_into().unwrap());
+                    false
                 }
             }
         }
-    };
 }
 
-byte_convert_structs!(2, S16LE);
-byte_convert_structs!(2, S16BE);
-byte_convert_structs!(3, S24LE3);
-byte_convert_structs!(3, S24BE3);
-byte_convert_structs!(4, S24LE4);
-byte_convert_structs!(4, S24BE4);
-byte_convert_structs!(4, S32LE);
-byte_convert_structs!(4, S32BE);
-byte_convert_structs!(4, F32LE);
-byte_convert_structs!(4, F32BE);
-byte_convert_structs!(8, F64LE);
-byte_convert_structs!(8, F64BE);
-
-byte_convert_traits!(from_s16_le, to_s16_le, 2, S16LE);
-byte_convert_traits!(from_s16_be, to_s16_be, 2, S16BE);
-byte_convert_traits!(from_s24_3_le, to_s24_3_le, 3, S24LE3);
-byte_convert_traits!(from_s24_3_be, to_s24_3_be, 3, S24BE3);
-byte_convert_traits!(from_s24_4_le, to_s24_4_le, 4, S24LE4);
-byte_convert_traits!(from_s24_4_be, to_s24_4_be, 4, S24BE4);
-byte_convert_traits!(from_s32_le, to_s32_le, 4, S32LE);
-byte_convert_traits!(from_s32_be, to_s32_be, 4, S32BE);
-byte_convert_traits!(from_f32_le, to_f32_le, 4, F32LE);
-byte_convert_traits!(from_f32_be, to_f32_be, 4, F32BE);
-byte_convert_traits!(from_f64_le, to_f64_le, 8, F64LE);
-byte_convert_traits!(from_f64_be, to_f64_be, 8, F64BE);
+byte_convert_traits_newtype!(I16LE);
 
 pub struct ConvertNumber<U, V> {
     _phantom: core::marker::PhantomData<V>,
@@ -168,13 +154,12 @@ pub struct ConvertNumber<U, V> {
 
 impl<'a, T, U> ConvertNumber<&'a dyn Adapter<'a, U>, T>
 where
-    T: NumericSample<T> + 'a,
+    T: Float + 'a,
+    U: RawSample + 'a,
 {
     /// Create a new wrapper for a buffer implementing the [Adapter] trait,
     /// containing numerical samples.
-    pub fn new(
-        buf: &'a dyn Adapter<'a, U>,
-    ) -> Self {
+    pub fn new(buf: &'a dyn Adapter<'a, U>) -> Self {
         Self {
             _phantom: core::marker::PhantomData,
             buf,
@@ -184,13 +169,12 @@ where
 
 impl<'a, T, U> ConvertNumber<&'a mut dyn AdapterMut<'a, U>, T>
 where
-    T: NumericSample<T> + 'a,
+    T: Float + 'a,
+    U: RawSample + 'a,
 {
     /// Create a new wrapper for a mutable buffer implementing the [AdapterMut] trait,
     /// containing numerical samples.
-    pub fn new_mut(
-        buf: &'a mut dyn AdapterMut<'a, U>,
-    ) -> Self {
+    pub fn new_mut(buf: &'a mut dyn AdapterMut<'a, U>) -> Self {
         Self {
             _phantom: core::marker::PhantomData,
             buf,
@@ -198,64 +182,57 @@ where
     }
 }
 
+impl<'a, T, U> Adapter<'a, T> for ConvertNumber<&'a dyn Adapter<'a, U>, T>
+where
+    T: Float + 'a,
+    U: RawSample + 'a,
+{
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+        self.buf
+            .read_sample_unchecked(channel, frame)
+            .to_scaled_float()
+    }
 
-macro_rules! number_convert_traits {
-    ($type:expr, $read_func:ident, $write_func:ident) => {
-        paste::item! {
-            impl<'a, T> Adapter<'a, T> for ConvertNumber<&'a dyn Adapter<'a, $type>, T>
-            where
-                T: NumericSample <T> + 'a,
-            {
-                unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-                    T::$read_func(self.buf.read_sample_unchecked(channel, frame))
-                }
+    fn channels(&self) -> usize {
+        self.buf.channels()
+    }
 
-                fn channels(&self) -> usize {
-                    self.buf.channels()
-                }
-
-                fn frames(&self) -> usize {
-                    self.buf.frames()
-                }
-            }
-
-            impl<'a, T> Adapter<'a, T> for ConvertNumber<&'a mut dyn AdapterMut<'a, $type>, T>
-            where
-                T: NumericSample<T> + 'a,
-            {
-                unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-                    T::$read_func(self.buf.read_sample_unchecked(channel, frame))
-                }
-
-                fn channels(&self) -> usize {
-                    self.buf.channels()
-                }
-
-                fn frames(&self) -> usize {
-                    self.buf.frames()
-                }
-            }
-
-            impl<'a, T> AdapterMut<'a, T> for ConvertNumber<&'a mut dyn AdapterMut<'a, $type>, T>
-            where
-                T: NumericSample<T> + Clone + 'a,
-            {
-                unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-                    let (value, clipped) = T::$write_func(value);
-                    self.buf.write_sample_unchecked(channel, frame, &value);
-                    clipped
-                }
-            }
-        }
-    };
+    fn frames(&self) -> usize {
+        self.buf.frames()
+    }
 }
 
-number_convert_traits!(u8, from_u8, to_u8);
-number_convert_traits!(i8, from_i8, to_i8);
-number_convert_traits!(i16, from_i16, to_i16);
-number_convert_traits!(i32, from_i32, to_i32);
-number_convert_traits!(f32, from_f32, to_f32);
-number_convert_traits!(f64, from_f64, to_f64);
+impl<'a, T, U> Adapter<'a, T> for ConvertNumber<&'a mut dyn AdapterMut<'a, U>, T>
+where
+    T: Float + 'a,
+    U: RawSample + 'a,
+{
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+        self.buf
+            .read_sample_unchecked(channel, frame)
+            .to_scaled_float()
+    }
+
+    fn channels(&self) -> usize {
+        self.buf.channels()
+    }
+
+    fn frames(&self) -> usize {
+        self.buf.frames()
+    }
+}
+
+impl<'a, T, U> AdapterMut<'a, T> for ConvertNumber<&'a mut dyn AdapterMut<'a, U>, T>
+where
+    T: Float + 'a,
+    U: RawSample + Clone + 'a,
+{
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+        let value = U::from_scaled_float(*value);
+        self.buf.write_sample_unchecked(channel, frame, &value);
+        false
+    }
+}
 
 //   _____         _
 //  |_   _|__  ___| |_ ___
@@ -273,8 +250,8 @@ mod tests {
     fn read_i16_bytes() {
         let data: [[u8; 2]; 6] = [[0, 0], [0, 128], [0, 64], [0, 192], [0, 32], [0, 224]];
         let buffer: InterleavedSlice<&[[u8; 2]]> = InterleavedSlice::new(&data, 2, 3).unwrap();
-        let converter: ConvertS16LE<&dyn Adapter<[u8; 2]>, f32> =
-            ConvertS16LE::new(&buffer as &dyn Adapter<[u8; 2]>);
+        let converter: ConvertBytes<f32, I16LE, _> =
+            ConvertBytes::new(&buffer as &dyn Adapter<[u8; 2]>);
         assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
@@ -303,8 +280,8 @@ mod tests {
         let mut data = [[0, 0]; 6];
         let mut buffer: InterleavedSlice<&mut [[u8; 2]]> =
             InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
-        let mut converter: ConvertS16LE<&mut dyn AdapterMut<[u8; 2]>, f32> =
-            ConvertS16LE::new_mut(&mut buffer as &mut dyn AdapterMut<[u8; 2]>);
+        let mut converter: ConvertBytes<f32, I16LE, _> =
+            ConvertBytes::new_mut(&mut buffer as &mut dyn AdapterMut<[u8; 2]>);
         converter.write_sample(0, 0, &0.0).unwrap();
         converter.write_sample(1, 0, &-1.0).unwrap();
         converter.write_sample(0, 1, &0.5).unwrap();

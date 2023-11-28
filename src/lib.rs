@@ -13,7 +13,8 @@ pub mod owned;
 /// The traits for accessing samples in buffers.
 mod traits;
 
-mod rawbytes;
+/// Type conversion of samples values.
+pub mod rawbytes;
 
 #[cfg(feature = "std")]
 use std::error::Error;
