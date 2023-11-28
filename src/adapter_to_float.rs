@@ -137,9 +137,9 @@ macro_rules! byte_convert_traits_newtype {
             U: BytesSample + RawSample + 'a,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-                    let sample = U::from_scaled_float(*value);
+                    let (clipped, sample) = U::from_scaled_float(*value);
                     self.buf.write_sample_unchecked(channel, frame, sample.as_slice().try_into().unwrap());
-                    false
+                    clipped
                 }
             }
         }
@@ -228,9 +228,9 @@ where
     U: RawSample + Clone + 'a,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-        let value = U::from_scaled_float(*value);
+        let (clipped, value) = U::from_scaled_float(*value);
         self.buf.write_sample_unchecked(channel, frame, &value);
-        false
+        clipped
     }
 }
 

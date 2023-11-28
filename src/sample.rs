@@ -74,11 +74,14 @@ pub struct F64BE([u8; 8]);
 
 /// A trait for converting a given sample type to and from floating point values
 pub trait RawSample {
-    /// Convert the sample value to a float in the range -1.0 .. +1.0
+    /// Convert the sample value to a float in the range -1.0 .. +1.0.
     fn to_scaled_float<T: Float>(&self) -> T;
 
-    /// Convert a float in the range -1.0 .. +1.0 to a sample value
-    fn from_scaled_float<T: Float>(value: T) -> Self;
+    /// Convert a float in the range -1.0 .. +1.0 to a sample value.
+    /// Values outside the allowed range are clipped to the nearest limit.
+    /// Returns a tuple consisting of the sample value and a boolean that
+    /// indicates if the value was clipped during conversion.
+    fn from_scaled_float<T: Float>(value: T) -> (bool, Self);
 }
 
 /// A trait for converting samples stored as raw bytes into a numerical type.
@@ -119,9 +122,10 @@ macro_rules! rawsample_for_int {
                 T::from(*self).unwrap() / (T::from($type::MAX).unwrap() + T::one())
             }
 
-            fn from_scaled_float<T: Float>(value: T) -> Self {
+            fn from_scaled_float<T: Float>(value: T) -> (bool, Self) {
                 let scaled = value * (T::from($type::MAX).unwrap() + T::one());
-                scaled.$to().unwrap_or(0)
+                // TODO clip here
+                (false, scaled.$to().unwrap_or(0))
             }
         }
     };
@@ -141,10 +145,11 @@ macro_rules! rawsample_for_uint {
             }
 
             //TODO update
-            fn from_scaled_float<T: Float>(value: T) -> Self {
+            fn from_scaled_float<T: Float>(value: T) -> (bool, Self) {
                 let max_ampl = (T::from($type::MAX).unwrap() + T::one()) / T::from(2).unwrap();
                 let scaled = value * max_ampl + max_ampl;
-                scaled.$to().unwrap_or(0)
+                // TODO clip here
+                (false, scaled.$to().unwrap_or(0))
             }
         }
     };
@@ -162,8 +167,9 @@ macro_rules! rawsample_for_float {
                 T::from(*self).unwrap_or(T::zero())
             }
 
-            fn from_scaled_float<T: Float>(value: T) -> Self {
-                value.$to().unwrap_or(0.0)
+            fn from_scaled_float<T: Float>(value: T) -> (bool, Self) {
+                // TODO clip here
+                (false, value.$to().unwrap_or(0.0))
             }
         }
     };
@@ -316,7 +322,6 @@ bytessample_for_newtype!(f32, F32BE, from_be_bytes, to_be_bytes);
 bytessample_for_newtype!(f64, F64LE, from_le_bytes, to_le_bytes);
 bytessample_for_newtype!(f64, F64BE, from_be_bytes, to_be_bytes);
 
-//impl RawSample for I24LE<[u8; 4]> {
 
 impl<V> RawSample for V
 where
@@ -328,23 +333,9 @@ where
         value.to_scaled_float()
     }
 
-    fn from_scaled_float<T: Float>(value: T) -> V {
-        let number = <V as BytesSample>::NumericType::from_scaled_float(value);
-        V::from_number(number)
+    fn from_scaled_float<T: Float>(value: T) -> (bool, V) {
+        let (clipped, number)  = <V as BytesSample>::NumericType::from_scaled_float(value);
+        (clipped, V::from_number(number))
     }
 }
 
-/*
-fn main() {
-    let val: i32 = 1000000000;
-    let fval = val.to_scaled_float::<f32>();
-    //let ival = val.to_scaled_int::<i16>();
-    let ival: i16 =  5;
-    println!("{:?}, {}, {}", val, fval, ival);
-
-    let bval = I24LE([1,2,3,4]);
-    let bfval = bval.to_number();
-    //let scaled: f64 = bval.to_scaled_float();
-    //println!("{:?}, {}", bfval, scaled);
-}
-*/

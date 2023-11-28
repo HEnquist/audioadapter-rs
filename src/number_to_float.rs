@@ -188,9 +188,9 @@ macro_rules! impl_traits_newtype {
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let index = self.calc_index(channel, frame);
-                    let value = $type::from_scaled_float(*value);
+                    let (clipped, value) = $type::from_scaled_float(*value);
                     self.buf[index] = value;
-                    false
+                    clipped
                 }
             }
         }

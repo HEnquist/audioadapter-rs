@@ -64,9 +64,9 @@ macro_rules! implement_write_func {
             value: &T,
         ) -> bool {
             let idx = self.calc_index(channel, frame);
-            let sample = U::from_scaled_float(*value);
+            let (clipped, sample) = U::from_scaled_float(*value);
             self.buf[idx..idx + U::BYTES_PER_SAMPLE].copy_from_slice(sample.as_slice());
-            false
+            clipped
         }
     };
 }
