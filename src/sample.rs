@@ -8,6 +8,12 @@ pub struct I24LE<U>(U);
 #[derive(Debug)]
 pub struct I24BE<U>(U);
 
+/// 24 bit unsigned integer, little endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
+pub struct U24LE<U>(U);
+
+/// 24 bit unsigned integer, big endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
+pub struct U24BE<U>(U);
+
 /// 32 bit signed integer, little endian. Stored as 4 bytes.
 #[derive(Debug)]
 pub struct I32LE([u8; 4]);
@@ -308,6 +314,102 @@ impl BytesSample for I24BE<[u8; 3]> {
     fn to_number(&self) -> Self::NumericType {
         let padded = [self.0[0], self.0[1], self.0[2], 0];
         i32::from_be_bytes(padded)
+    }
+
+    fn from_number(value: Self::NumericType) -> Self {
+        let bytes = value.to_be_bytes();
+        Self([bytes[0], bytes[1], bytes[2]])
+    }
+}
+
+/// 24 bit unsigned integer, little endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
+impl BytesSample for U24LE<[u8; 4]> {
+    type NumericType = u32;
+    const BYTES_PER_SAMPLE: usize = 4;
+
+    fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes[0..4].try_into().unwrap())
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+
+    fn to_number(&self) -> Self::NumericType {
+        let padded = [0, self.0[0], self.0[1], self.0[2]];
+        u32::from_le_bytes(padded)
+    }
+
+    fn from_number(value: Self::NumericType) -> Self {
+        let bytes = value.to_le_bytes();
+        Self([bytes[1], bytes[2], bytes[3], 0])
+    }
+}
+
+/// 24 bit unsigned integer, little endian, stored as 3 bytes without padding.
+impl BytesSample for U24LE<[u8; 3]> {
+    type NumericType = u32;
+    const BYTES_PER_SAMPLE: usize = 3;
+
+    fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes[0..3].try_into().unwrap())
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+
+    fn to_number(&self) -> Self::NumericType {
+        let padded = [0, self.0[0], self.0[1], self.0[2]];
+        u32::from_le_bytes(padded)
+    }
+
+    fn from_number(value: Self::NumericType) -> Self {
+        let bytes = value.to_le_bytes();
+        Self([bytes[1], bytes[2], bytes[3]])
+    }
+}
+
+/// 24 bit unsigned integer, big endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
+impl BytesSample for U24BE<[u8; 4]> {
+    type NumericType = u32;
+    const BYTES_PER_SAMPLE: usize = 4;
+
+    fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes[0..4].try_into().unwrap())
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+
+    fn to_number(&self) -> Self::NumericType {
+        let padded = [self.0[1], self.0[2], self.0[3], 0];
+        u32::from_be_bytes(padded)
+    }
+
+    fn from_number(value: Self::NumericType) -> Self {
+        let bytes = value.to_be_bytes();
+        Self([0, bytes[0], bytes[1], bytes[2]])
+    }
+}
+
+/// 24 bit unsigned integer, big endian, stored as 3 bytes without padding.
+impl BytesSample for U24BE<[u8; 3]> {
+    type NumericType = u32;
+    const BYTES_PER_SAMPLE: usize = 3;
+
+    fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes[0..3].try_into().unwrap())
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+
+    fn to_number(&self) -> Self::NumericType {
+        let padded = [self.0[0], self.0[1], self.0[2], 0];
+        u32::from_be_bytes(padded)
     }
 
     fn from_number(value: Self::NumericType) -> Self {
@@ -663,4 +765,76 @@ mod tests {
         assert_eq!(number, wrapped.to_number());
     }
 
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_U24LE_3bytes() {
+        let number = u32::MAX/5 * 4;
+
+        // make sure LSB is zero
+        let number = number >> 8;
+        let number = number << 8;
+
+        let allbytes = number.to_le_bytes();
+        // Little-endian stores the LSB at the smallest address.
+        // Drop the LSB!
+        let bytes = [allbytes[1], allbytes[2], allbytes[3]];
+
+        let wrapped = U24LE(bytes);
+        assert_eq!(number, wrapped.to_number());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_U24BE_3bytes() {
+        let number = u32::MAX/5 * 4;
+
+        // make sure LSB is zero
+        let number = number >> 8;
+        let number = number << 8;
+
+        let allbytes = number.to_be_bytes();
+        // Big-endian stores the LSB at the largest address.
+        // Drop the LSB!
+        let bytes = [allbytes[0], allbytes[1], allbytes[2]];
+
+        let wrapped = U24BE(bytes);
+        assert_eq!(number, wrapped.to_number());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_U24LE_4bytes() {
+        let number = u32::MAX/5 * 4;
+
+        // make sure LSB is zero
+        let number = number >> 8;
+        let number = number << 8;
+
+        let allbytes = number.to_le_bytes();
+        // Little-endian stores the LSB at the smallest address.
+        // Drop the LSB and insert padding at MSB!
+        let bytes = [allbytes[1], allbytes[2], allbytes[3], 0];
+
+        let wrapped = U24LE(bytes);
+        assert_eq!(number, wrapped.to_number());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_U24BE_4bytes() {
+        let number = u32::MAX/5 * 4;
+
+        // make sure LSB is zero
+        let number = number >> 8;
+        let number = number << 8;
+
+        let allbytes = number.to_be_bytes();
+        // Big-endian stores the LSB at the largest address.
+        // Drop the LSB and insert padding at MSB!
+        let bytes = [0, allbytes[0], allbytes[1], allbytes[2]];
+
+        let wrapped = U24BE(bytes);
+        assert_eq!(number, wrapped.to_number());
+    }
 }
