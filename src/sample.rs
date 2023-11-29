@@ -1,4 +1,4 @@
-use num_traits::float::Float;
+use num_traits::{Float, PrimInt};
 
 /// 24 bit signed integer, little endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
 #[derive(Debug)]
@@ -72,16 +72,53 @@ pub struct F64LE([u8; 8]);
 #[derive(Debug)]
 pub struct F64BE([u8; 8]);
 
+
+/// Clamp a float value to the range supported by an integer type
+fn clamp_int<T: Float, U: PrimInt>(value: T, converted: Option<U>) -> ConversionResult<U> {
+    if let Some(val) = converted {
+        return ConversionResult {
+            clipped: false,
+            value: val
+        };
+    }
+    if value.is_nan() {
+        return ConversionResult {
+            clipped: true,
+            value: U::zero(),
+        };
+    }
+    if value > T::zero() {
+        return ConversionResult {
+            clipped: true,
+            value: U::max_value(),
+        };
+    }
+    ConversionResult {
+        clipped: true,
+        value: U::min_value(),
+    }
+}
+
+
+pub struct ConversionResult<T> {
+    pub clipped: bool,
+    pub value: T,
+}
+
 /// A trait for converting a given sample type to and from floating point values
-pub trait RawSample {
+pub trait RawSample
+where
+    Self: Sized,
+{
     /// Convert the sample value to a float in the range -1.0 .. +1.0.
     fn to_scaled_float<T: Float>(&self) -> T;
 
     /// Convert a float in the range -1.0 .. +1.0 to a sample value.
     /// Values outside the allowed range are clipped to the nearest limit.
-    /// Returns a tuple consisting of the sample value and a boolean that
-    /// indicates if the value was clipped during conversion.
-    fn from_scaled_float<T: Float>(value: T) -> (bool, Self);
+    /// Returns a tuple consisting a boolean that
+    /// indicates if the value was clipped during conversion,
+    /// followed by the sample value.
+    fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self>;
 }
 
 /// A trait for converting samples stored as raw bytes into a numerical type.
@@ -122,10 +159,10 @@ macro_rules! rawsample_for_int {
                 T::from(*self).unwrap() / (T::from($type::MAX).unwrap() + T::one())
             }
 
-            fn from_scaled_float<T: Float>(value: T) -> (bool, Self) {
+            fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self> {
                 let scaled = value * (T::from($type::MAX).unwrap() + T::one());
-                // TODO clip here
-                (false, scaled.$to().unwrap_or(0))
+                let converted = scaled.$to();
+                clamp_int(scaled, converted)
             }
         }
     };
@@ -144,12 +181,11 @@ macro_rules! rawsample_for_uint {
                 (T::from(*self).unwrap() - max_ampl) / max_ampl
             }
 
-            //TODO update
-            fn from_scaled_float<T: Float>(value: T) -> (bool, Self) {
+            fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self> {
                 let max_ampl = (T::from($type::MAX).unwrap() + T::one()) / T::from(2).unwrap();
                 let scaled = value * max_ampl + max_ampl;
-                // TODO clip here
-                (false, scaled.$to().unwrap_or(0))
+                let converted = scaled.$to();
+                clamp_int(scaled, converted)
             }
         }
     };
@@ -167,9 +203,12 @@ macro_rules! rawsample_for_float {
                 T::from(*self).unwrap_or(T::zero())
             }
 
-            fn from_scaled_float<T: Float>(value: T) -> (bool, Self) {
+            fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self> {
                 // TODO clip here
-                (false, value.$to().unwrap_or(0.0))
+                ConversionResult {
+                    clipped: false,
+                    value: value.$to().unwrap_or(0.0),
+                }
             }
         }
     };
@@ -244,7 +283,7 @@ impl BytesSample for I24BE<[u8; 4]> {
 
     fn to_number(&self) -> Self::NumericType {
         let padded = [self.0[1], self.0[2], self.0[3], 0];
-        i32::from_le_bytes(padded)
+        i32::from_be_bytes(padded)
     }
 
     fn from_number(value: Self::NumericType) -> Self {
@@ -322,7 +361,6 @@ bytessample_for_newtype!(f32, F32BE, from_be_bytes, to_be_bytes);
 bytessample_for_newtype!(f64, F64LE, from_le_bytes, to_le_bytes);
 bytessample_for_newtype!(f64, F64BE, from_be_bytes, to_be_bytes);
 
-
 impl<V> RawSample for V
 where
     V: BytesSample,
@@ -333,9 +371,296 @@ where
         value.to_scaled_float()
     }
 
-    fn from_scaled_float<T: Float>(value: T) -> (bool, V) {
-        let (clipped, number)  = <V as BytesSample>::NumericType::from_scaled_float(value);
-        (clipped, V::from_number(number))
+    fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self> {
+        let value = <V as BytesSample>::NumericType::from_scaled_float(value);
+        ConversionResult {
+            clipped: value.clipped,
+            value: V::from_number(value.value),
+        }
     }
 }
 
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use paste::paste;
+
+    macro_rules! assert_conversion_eq {
+        ($result:expr, $value:expr, $clipped:expr, $desc:expr) => {
+            assert_eq!($result.value, $value, $desc);
+            assert_eq!($result.clipped, $clipped, $desc);
+        };
+    }
+
+    macro_rules! test_to_signed_int {
+        ($float:ty, $int:ident, $bits:expr) => {
+            paste! {
+                #[test]
+                fn [< test_ $float _to_ $int >]() {
+                    let val: $float = 0.25;
+                    assert_conversion_eq!($int::from_scaled_float(val), 1 << ($bits - 3), false, "check +0.25");
+                    let val: $float = -0.25;
+                    assert_conversion_eq!($int::from_scaled_float(val), -1 << ($bits - 3), false, "check -0.25");
+                    let val: $float = 1.1;
+                    assert_conversion_eq!($int::from_scaled_float(val), $int::MAX, true, "clipped positive");
+                    let val: $float = -1.1;
+                    assert_conversion_eq!($int::from_scaled_float(val), $int::MIN, true, "clipped negative");
+                }
+            }
+        };
+    }
+
+    macro_rules! test_to_unsigned_int {
+        ($float:ty, $int:ident, $bits:expr) => {
+            paste! {
+                #[test]
+                fn [< test_ $float _to_ $int >]() {
+                    let val: $float = -0.5;
+                    assert_conversion_eq!($int::from_scaled_float(val), 1 << ($bits - 2), false, "check -0.5");
+                    let val: $float = 0.5;
+                    assert_conversion_eq!($int::from_scaled_float(val), $int::MAX - (1 << ($bits - 2)) + 1, false, "check 0.5");
+                    let val: $float = 1.1;
+                    assert_conversion_eq!($int::from_scaled_float(val), $int::MAX, true, "clipped positive");
+                    let val: $float = -1.1;
+                    assert_conversion_eq!($int::from_scaled_float(val), $int::MIN, true, "clipped negative");
+                }
+            }
+        };
+    }
+
+    test_to_signed_int!(f32, i8, 8);
+    test_to_signed_int!(f64, i8, 8);
+    test_to_signed_int!(f32, i16, 16);
+    test_to_signed_int!(f64, i16, 16);
+    test_to_signed_int!(f32, i32, 32);
+    test_to_signed_int!(f64, i32, 32);
+    test_to_signed_int!(f32, i64, 64);
+    test_to_signed_int!(f64, i64, 64);
+
+
+    test_to_unsigned_int!(f32, u8, 8);
+    test_to_unsigned_int!(f64, u8, 8);
+    test_to_unsigned_int!(f32, u16, 16);
+    test_to_unsigned_int!(f64, u16, 16);
+    test_to_unsigned_int!(f32, u32, 32);
+    test_to_unsigned_int!(f64, u32, 32);
+    test_to_unsigned_int!(f32, u64, 64);
+    test_to_unsigned_int!(f64, u64, 64);
+
+    macro_rules! test_from_signed_int {
+        ($float:ty, $int:ident, $bits:expr) => {
+            paste! {
+                #[test]
+                fn [< test_ $float _from_ $int >]() {
+                    let val: $int = -1 << ($bits - 2);
+                    assert_eq!(val.to_scaled_float::<$float>(), -0.5, "check -0.5");
+                    let val: $int = 1 << ($bits - 2);
+                    assert_eq!(val.to_scaled_float::<$float>(), 0.5, "check 0.5");
+                    let val: $int = $int::MIN;
+                    assert_eq!(val.to_scaled_float::<$float>(), -1.0, "negative limit");
+                }
+            }
+        };
+    }
+
+    macro_rules! test_from_unsigned_int {
+        ($float:ty, $int:ident, $bits:expr) => {
+            paste! {
+                #[test]
+                fn [< test_ $float _from_ $int >]() {
+                    let val: $int = 1 << ($bits - 2);
+                    assert_eq!(val.to_scaled_float::<$float>(), -0.5, "check -0.5");
+                    let val: $int = $int::MAX - (1 << ($bits - 2)) + 1;
+                    assert_eq!(val.to_scaled_float::<$float>(), 0.5, "check 0.5");
+                    let val: $int = 0;
+                    assert_eq!(val.to_scaled_float::<$float>(), -1.0, "negative limit");
+                }
+            }
+        };
+    }
+
+    test_from_signed_int!(f32, i8, 8);
+    test_from_signed_int!(f64, i8, 8);
+    test_from_signed_int!(f32, i16, 16);
+    test_from_signed_int!(f64, i16, 16);
+    test_from_signed_int!(f32, i32, 32);
+    test_from_signed_int!(f64, i32, 32);
+    test_from_signed_int!(f32, i64, 64);
+    test_from_signed_int!(f64, i64, 64);
+
+    test_from_unsigned_int!(f32, u8, 8);
+    test_from_unsigned_int!(f64, u8, 8);
+    test_from_unsigned_int!(f32, u16, 16);
+    test_from_unsigned_int!(f64, u16, 16);
+    test_from_unsigned_int!(f32, u32, 32);
+    test_from_unsigned_int!(f64, u32, 32);
+    test_from_unsigned_int!(f32, u64, 64);
+    test_from_unsigned_int!(f64, u64, 64);
+
+
+
+    #[test]
+    fn test_clamp_int() {
+        let converted = clamp_int::<f32, i32>(12345.0, Some(12345));
+        assert_conversion_eq!(converted, 12345, false, "in range f32 i32");
+
+        let converted = clamp_int::<f32, i32>(1.0e10, None);
+        assert_conversion_eq!(converted, i32::MAX, true, "above range f32 i32");
+
+        let converted = clamp_int::<f32, i32>(-1.0e10, None);
+        assert_conversion_eq!(converted, i32::MIN, true, "below range f32 i32");
+
+        let converted = clamp_int::<f64, i32>(12345.0, Some(12345));
+        assert_conversion_eq!(converted, 12345, false, "in range f64 i32");
+
+        let converted = clamp_int::<f64, i32>(1.0e10, None);
+        assert_conversion_eq!(converted, i32::MAX, true, "above range f64 i32");
+
+        let converted = clamp_int::<f64, i32>(-1.0e10, None);
+        assert_conversion_eq!(converted, i32::MIN, true, "below range f64 i32");
+    }
+
+    #[test]
+    fn test_clamp_uint() {
+        let converted = clamp_int::<f32, u32>(12345.0, Some(12345));
+        assert_conversion_eq!(converted, 12345, false, "in range f32 u32");
+
+        let converted = clamp_int::<f32, u32>(1.0e10, None);
+        assert_conversion_eq!(converted, u32::MAX, true, "above range f32 u32");
+
+        let converted = clamp_int::<f32, u32>(-1.0, None);
+        assert_conversion_eq!(converted, u32::MIN, true, "below range f32 u32");
+
+        let converted = clamp_int::<f64, u32>(12345.0, Some(12345));
+        assert_conversion_eq!(converted, 12345, false, "in range f64 u32");
+
+        let converted = clamp_int::<f64, u32>(1.0e10, None);
+        assert_conversion_eq!(converted, u32::MAX, true, "above range f64 u32");
+
+        let converted = clamp_int::<f64, u32>(-1.0, None);
+        assert_conversion_eq!(converted, u32::MIN, true, "below range f64 u32");
+    }
+
+    macro_rules! test_simple_int_bytes {
+        ($number:ty, $wrapper:ident, $endian:ident) => {
+            paste! {
+                #[test]
+                #[allow(non_snake_case)]
+                fn [< test_ $wrapper >]() {
+                    let number: $number = $number::MAX/5 * 4;
+                    let wrapped = $wrapper(number.[< to_ $endian _bytes>]());
+                    assert_eq!(number, wrapped.to_number());
+                }
+            }
+        };
+    }
+
+    macro_rules! test_float_bytes {
+        ($number:ty, $wrapper:ident, $endian:ident) => {
+            paste! {
+                #[test]
+                #[allow(non_snake_case)]
+                fn [< test_ $wrapper >]() {
+                    let number: $number = 12345.0;
+                    let wrapped = $wrapper(number.[< to_ $endian _bytes>]());
+                    assert_eq!(number, wrapped.to_number());
+                }
+            }
+        };
+    }
+
+    test_simple_int_bytes!(i16, I16LE, le);
+    test_simple_int_bytes!(i16, I16BE, be);
+    test_simple_int_bytes!(i32, I32LE, le);
+    test_simple_int_bytes!(i32, I32BE, be);
+    test_simple_int_bytes!(i64, I64LE, le);
+    test_simple_int_bytes!(i64, I64BE, be);
+
+    test_simple_int_bytes!(u16, U16LE, le);
+    test_simple_int_bytes!(u16, U16BE, be);
+    test_simple_int_bytes!(u32, U32LE, le);
+    test_simple_int_bytes!(u32, U32BE, be);
+    test_simple_int_bytes!(u64, U64LE, le);
+    test_simple_int_bytes!(u64, U64BE, be);
+
+    test_float_bytes!(f32, F32LE, le);
+    test_float_bytes!(f32, F32BE, be);
+    test_float_bytes!(f64, F64LE, le);
+    test_float_bytes!(f64, F64BE, be);
+
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_I24LE_3bytes() {
+        let number = i32::MAX/5 * 4;
+
+        // make sure LSB is zero
+        let number = number >> 8;
+        let number = number << 8;
+
+        let allbytes = number.to_le_bytes();
+        // Little-endian stores the LSB at the smallest address.
+        // Drop the LSB!
+        let bytes = [allbytes[1], allbytes[2], allbytes[3]];
+
+        let wrapped = I24LE(bytes);
+        assert_eq!(number, wrapped.to_number());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_I24BE_3bytes() {
+        let number = i32::MAX/5 * 4;
+
+        // make sure LSB is zero
+        let number = number >> 8;
+        let number = number << 8;
+
+        let allbytes = number.to_be_bytes();
+        // Big-endian stores the LSB at the largest address.
+        // Drop the LSB!
+        let bytes = [allbytes[0], allbytes[1], allbytes[2]];
+
+        let wrapped = I24BE(bytes);
+        assert_eq!(number, wrapped.to_number());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_I24LE_4bytes() {
+        let number = i32::MAX/5 * 4;
+
+        // make sure LSB is zero
+        let number = number >> 8;
+        let number = number << 8;
+
+        let allbytes = number.to_le_bytes();
+        // Little-endian stores the LSB at the smallest address.
+        // Drop the LSB and insert padding at MSB!
+        let bytes = [allbytes[1], allbytes[2], allbytes[3], 0];
+
+        let wrapped = I24LE(bytes);
+        assert_eq!(number, wrapped.to_number());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_I24BE_4bytes() {
+        let number = i32::MAX/5 * 4;
+
+        // make sure LSB is zero
+        let number = number >> 8;
+        let number = number << 8;
+
+        let allbytes = number.to_be_bytes();
+        // Big-endian stores the LSB at the largest address.
+        // Drop the LSB and insert padding at MSB!
+        let bytes = [0, allbytes[0], allbytes[1], allbytes[2]];
+
+        let wrapped = I24BE(bytes);
+        assert_eq!(number, wrapped.to_number());
+    }
+
+}

@@ -36,7 +36,7 @@
 
 use num_traits::Float;
 
-use crate::sample::BytesSample as BytesSample;
+use crate::sample::BytesSample;
 use crate::sample::RawSample;
 use crate::sample::I16LE;
 use crate::{Adapter, AdapterMut};
@@ -137,9 +137,9 @@ macro_rules! byte_convert_traits_newtype {
             U: BytesSample + RawSample + 'a,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-                    let (clipped, sample) = U::from_scaled_float(*value);
-                    self.buf.write_sample_unchecked(channel, frame, sample.as_slice().try_into().unwrap());
-                    clipped
+                    let converted = U::from_scaled_float(*value);
+                    self.buf.write_sample_unchecked(channel, frame, converted.value.as_slice().try_into().unwrap());
+                    converted.clipped
                 }
             }
         }
@@ -228,9 +228,10 @@ where
     U: RawSample + Clone + 'a,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-        let (clipped, value) = U::from_scaled_float(*value);
-        self.buf.write_sample_unchecked(channel, frame, &value);
-        clipped
+        let converted = U::from_scaled_float(*value);
+        self.buf
+            .write_sample_unchecked(channel, frame, &converted.value);
+        converted.clipped
     }
 }
 
