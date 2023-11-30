@@ -429,7 +429,7 @@ macro_rules! bytessample_for_newtype {
     ($type:ident, $newtype:ident, $from:ident, $to:ident) => {
         impl BytesSample for $newtype {
             type NumericType = $type;
-            const BYTES_PER_SAMPLE: usize = std::mem::size_of::<$type>();
+            const BYTES_PER_SAMPLE: usize = core::mem::size_of::<$type>();
 
             fn from_slice(bytes: &[u8]) -> Self {
                 Self(bytes.try_into().unwrap())
