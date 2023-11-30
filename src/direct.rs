@@ -5,10 +5,6 @@
 //!
 //! These wrap data structures where
 //! the samples are already stored in the desired format.
-//! The wrappers implement the [crate::Direct] and
-//! [crate::DirectMut] traits.
-//! They also implement the [crate::Indirect] and
-//! [crate::IndirectMut] traits.
 //!
 //! ## Available wrappers
 //! Wrappers are available for plain slices, `&[T]`,
@@ -21,9 +17,9 @@
 //! and print all the values.
 //! ```
 //! use audioadapter::direct::InterleavedSlice;
-//! use audioadapter::Direct;
+//! use audioadapter::Adapter;
 //!
-//! // make a vector with some fake data.
+//! // make a vector with some dummy data.
 //! // 2 channels * 3 frames => 6 samples
 //! let data: Vec<i32> = vec![1, 2, 3, 4, 5, 6];
 //!
@@ -31,11 +27,12 @@
 //! let buffer = InterleavedSlice::new(&data, 2, 3).unwrap();
 //!
 //! // Loop over all samples and print their values
-//! for (ch_idx, channel) in buffer.iter_channels().enumerate() {
-//!     for (frame_idx, value) in channel.enumerate() {
+//! for channel in 0..buffer.channels() {
+//!     for frame in 0..buffer.frames() {
+//!         let value = buffer.read_sample(channel, frame).unwrap();
 //!         println!(
 //!             "Channel: {}, frame: {}, value: {}",
-//!             ch_idx, frame_idx, value
+//!             channel, frame, value
 //!         );
 //!     }
 //! }
@@ -44,13 +41,8 @@
 
 use crate::SizeError;
 
-use super::{check_slice_length, implement_size_getters};
-use crate::iterators::{
-    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
-    Frames, FramesMut,
-};
-use crate::{implement_iterators, implement_iterators_mut};
-use crate::{Direct, DirectMut, Indirect, IndirectMut};
+use crate::{check_slice_length, implement_size_getters};
+use crate::{Adapter, AdapterMut};
 
 #[cfg(feature = "std")]
 macro_rules! check_slice_and_vec_length {
@@ -145,7 +137,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Indirect<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
+impl<'a, T> Adapter<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
@@ -170,19 +162,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Direct<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        self.buf.get_unchecked(channel).get_unchecked(frame)
-    }
-
-    implement_iterators!();
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> Indirect<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
+impl<'a, T> Adapter<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -207,19 +187,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Direct<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        self.buf.get_unchecked(channel).get_unchecked(frame)
-    }
-
-    implement_iterators!();
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> IndirectMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
+impl<'a, T> AdapterMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -245,18 +213,6 @@ where
         self.buf[channel][skip..skip + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
         (frames_to_read, 0)
     }
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> DirectMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame)
-    }
-
-    implement_iterators_mut!();
 }
 
 //
@@ -313,7 +269,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Indirect<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
+impl<'a, T> Adapter<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
@@ -339,19 +295,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Direct<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        self.buf.get_unchecked(frame).get_unchecked(channel)
-    }
-
-    implement_iterators!();
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> Indirect<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
+impl<'a, T> Adapter<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -377,19 +321,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'a, T> Direct<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        self.buf.get_unchecked(frame).get_unchecked(channel)
-    }
-
-    implement_iterators!();
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> IndirectMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
+impl<'a, T> AdapterMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -415,18 +347,6 @@ where
         self.buf[frame][skip..skip + channels_to_read].clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
-}
-
-#[cfg(feature = "std")]
-impl<'a, T> DirectMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        self.buf.get_unchecked_mut(frame).get_unchecked_mut(channel)
-    }
-
-    implement_iterators_mut!();
 }
 
 //
@@ -483,7 +403,7 @@ impl<'a, T> InterleavedSlice<&'a mut [T]> {
     }
 }
 
-impl<'a, T> Indirect<'a, T> for InterleavedSlice<&'a [T]>
+impl<'a, T> Adapter<'a, T> for InterleavedSlice<&'a [T]>
 where
     T: Clone,
 {
@@ -510,19 +430,7 @@ where
     }
 }
 
-impl<'a, T> Direct<'a, T> for InterleavedSlice<&'a [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
-}
-
-impl<'a, T> Indirect<'a, T> for InterleavedSlice<&'a mut [T]>
+impl<'a, T> Adapter<'a, T> for InterleavedSlice<&'a mut [T]>
 where
     T: Clone,
 {
@@ -549,19 +457,7 @@ where
     }
 }
 
-impl<'a, T> Direct<'a, T> for InterleavedSlice<&'a mut [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
-}
-
-impl<'a, T> IndirectMut<'a, T> for InterleavedSlice<&'a mut [T]>
+impl<'a, T> AdapterMut<'a, T> for InterleavedSlice<&'a mut [T]>
 where
     T: Clone,
 {
@@ -590,18 +486,6 @@ where
             .clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
-}
-
-impl<'a, T> DirectMut<'a, T> for InterleavedSlice<&'a mut [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked_mut(index)
-    }
-
-    implement_iterators_mut!();
 }
 
 //
@@ -658,7 +542,7 @@ impl<'a, T> SequentialSlice<&'a mut [T]> {
     }
 }
 
-impl<'a, T> Indirect<'a, T> for SequentialSlice<&'a [T]>
+impl<'a, T> Adapter<'a, T> for SequentialSlice<&'a [T]>
 where
     T: Clone,
 {
@@ -683,22 +567,10 @@ where
             .clone_from_slice(&self.buf[buffer_skip..buffer_skip + frames_to_write]);
         frames_to_write
     }
-}
-
-impl<'a, T> Direct<'a, T> for SequentialSlice<&'a mut [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
 }
 
 // Implement also for mutable version, identical to the immutable impl.
-impl<'a, T> Indirect<'a, T> for SequentialSlice<&'a mut [T]>
+impl<'a, T> Adapter<'a, T> for SequentialSlice<&'a mut [T]>
 where
     T: Clone,
 {
@@ -725,19 +597,7 @@ where
     }
 }
 
-impl<'a, T> Direct<'a, T> for SequentialSlice<&'a [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked(&self, channel: usize, frame: usize) -> &T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index)
-    }
-
-    implement_iterators!();
-}
-
-impl<'a, T> IndirectMut<'a, T> for SequentialSlice<&'a mut [T]>
+impl<'a, T> AdapterMut<'a, T> for SequentialSlice<&'a mut [T]>
 where
     T: Clone,
 {
@@ -768,18 +628,6 @@ where
     }
 }
 
-impl<'a, T> DirectMut<'a, T> for SequentialSlice<&'a mut [T]>
-where
-    T: Clone,
-{
-    unsafe fn get_sample_unchecked_mut(&mut self, channel: usize, frame: usize) -> &mut T {
-        let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked_mut(index)
-    }
-
-    implement_iterators_mut!();
-}
-
 //   _____         _
 //  |_   _|__  ___| |_ ___
 //    | |/ _ \/ __| __/ __|
@@ -789,62 +637,27 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stats::Numeric;
 
-    fn insert_data(buffer: &mut dyn DirectMut<i32>) {
-        *buffer.get_sample_mut(0, 0).unwrap() = 1;
-        *buffer.get_sample_mut(0, 1).unwrap() = 2;
-        *buffer.get_sample_mut(0, 2).unwrap() = 3;
-        *buffer.get_sample_mut(1, 0).unwrap() = 4;
-        *buffer.get_sample_mut(1, 1).unwrap() = 5;
-        *buffer.get_sample_mut(1, 2).unwrap() = 6;
+    fn insert_data(buffer: &mut dyn AdapterMut<i32>) {
+        buffer.write_sample(0, 0, &1).unwrap();
+        buffer.write_sample(0, 1, &2).unwrap();
+        buffer.write_sample(0, 2, &3).unwrap();
+        buffer.write_sample(1, 0, &4).unwrap();
+        buffer.write_sample(1, 1, &5).unwrap();
+        buffer.write_sample(1, 2, &6).unwrap();
     }
 
-    fn test_get(buffer: &mut dyn DirectMut<i32>) {
+    fn test_get(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
-        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 1);
-        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 2);
-        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 3);
-        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 4);
-        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 5);
-        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 6);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 1);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 2);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 3);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), 4);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), 5);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), 6);
     }
 
-    fn test_iter(buffer: &mut dyn DirectMut<i32>) {
-        insert_data(buffer);
-        let mut iter1 = buffer.iter_channel(0).unwrap();
-        assert_eq!(iter1.next(), Some(&1));
-        assert_eq!(iter1.next(), Some(&2));
-        assert_eq!(iter1.next(), Some(&3));
-        assert_eq!(iter1.next(), None);
-
-        let mut iter2 = buffer.iter_frame(1).unwrap();
-        assert_eq!(iter2.next(), Some(&2));
-        assert_eq!(iter2.next(), Some(&5));
-        assert_eq!(iter2.next(), None);
-    }
-
-    fn test_iter_mut(buffer: &mut dyn DirectMut<i32>) {
-        insert_data(buffer);
-        let mut sum = 0;
-        for channel in buffer.iter_channels() {
-            sum += channel.sum::<i32>();
-        }
-        assert_eq!(sum, 21);
-
-        for channel in buffer.iter_channels_mut() {
-            for sample in channel {
-                *sample = 2 * *sample;
-            }
-        }
-        let mut sum = 0;
-        for channel in buffer.iter_channels() {
-            sum += channel.sum::<i32>();
-        }
-        assert_eq!(sum, 42);
-    }
-
-    fn test_slice_channel(buffer: &mut dyn DirectMut<i32>) {
+    fn test_slice_channel(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
         let mut other1 = [0; 2];
         let mut other2 = [0; 4];
@@ -858,7 +671,7 @@ mod tests {
         assert_eq!(other2[3], 0);
     }
 
-    fn test_slice_frame(buffer: &mut dyn DirectMut<i32>) {
+    fn test_slice_frame(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
         let mut other1 = [0; 1];
         let mut other2 = [0; 3];
@@ -870,32 +683,32 @@ mod tests {
         assert_eq!(other2[2], 0);
     }
 
-    fn test_mut_slice_channel(buffer: &mut dyn DirectMut<i32>) {
+    fn test_mut_slice_channel(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
         let other1 = [8, 9];
         let other2 = [10, 11, 12, 13];
         buffer.write_from_slice_to_channel(0, 1, &other1);
         buffer.write_from_slice_to_channel(1, 0, &other2);
-        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 1);
-        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 8);
-        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 9);
-        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 10);
-        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 11);
-        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 12);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 1);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 8);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 9);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), 10);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), 11);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), 12);
     }
 
-    fn test_mut_slice_frame(buffer: &mut dyn DirectMut<i32>) {
+    fn test_mut_slice_frame(buffer: &mut dyn AdapterMut<i32>) {
         insert_data(buffer);
         let other1 = [8];
         let other2 = [10, 11, 12];
         buffer.write_from_slice_to_frame(0, 0, &other1);
         buffer.write_from_slice_to_frame(1, 0, &other2);
-        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 8);
-        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 4);
-        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 10);
-        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 11);
-        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 3);
-        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 6);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 8);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), 4);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 10);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), 11);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 3);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), 6);
     }
 
     #[cfg(feature = "std")]
@@ -904,8 +717,6 @@ mod tests {
         let mut data = vec![vec![0_i32; 3], vec![0_i32; 3]];
         let mut buffer = SequentialSliceOfVecs::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
-        test_iter(&mut buffer);
-        test_iter_mut(&mut buffer);
         test_slice_channel(&mut buffer);
         test_slice_frame(&mut buffer);
         test_mut_slice_channel(&mut buffer);
@@ -918,8 +729,6 @@ mod tests {
         let mut data = vec![vec![1_i32, 4], vec![2_i32, 5], vec![3, 6]];
         let mut buffer = InterleavedSliceOfVecs::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
-        test_iter(&mut buffer);
-        test_iter_mut(&mut buffer);
         test_slice_channel(&mut buffer);
         test_slice_frame(&mut buffer);
         test_mut_slice_channel(&mut buffer);
@@ -931,8 +740,6 @@ mod tests {
         let mut data = [1_i32, 4, 2, 5, 3, 6];
         let mut buffer = InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
-        test_iter(&mut buffer);
-        test_iter_mut(&mut buffer);
         test_slice_channel(&mut buffer);
         test_slice_frame(&mut buffer);
         test_mut_slice_channel(&mut buffer);
@@ -944,21 +751,19 @@ mod tests {
         let mut data = [1_i32, 2, 3, 4, 5, 6];
         let mut buffer = SequentialSlice::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
-        test_iter(&mut buffer);
-        test_iter_mut(&mut buffer);
         test_slice_channel(&mut buffer);
         test_slice_frame(&mut buffer);
         test_mut_slice_channel(&mut buffer);
         test_mut_slice_frame(&mut buffer);
     }
 
-    // This tests that a Direct is object safe.
+    // This tests that an Adapter is object safe.
     #[cfg(feature = "std")]
     #[test]
     fn boxed_buffer() {
         let mut data = [1_i32, 2, 3, 4, 5, 6];
-        let boxed: Box<dyn Direct<i32>> = Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
-        assert_eq!(*boxed.get_sample(0, 0).unwrap(), 1);
+        let boxed: Box<dyn Adapter<i32>> = Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
+        assert_eq!(boxed.read_sample(0, 0).unwrap(), 1);
     }
 
     // Check that a buffer is Send + Sync,
@@ -977,22 +782,6 @@ mod tests {
     }
 
     #[test]
-    fn stats_integer() {
-        let data = [1_i32, -1, 1, -1, 1, -1, 1, -1];
-        let buffer = SequentialSlice::new(&data, 2, 4).unwrap();
-        assert_eq!(buffer.channel_rms(0).unwrap(), 1.0);
-        assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2);
-    }
-
-    #[test]
-    fn stats_float() {
-        let data = [1.0_f32, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0];
-        let buffer = SequentialSlice::new(&data, 2, 4).unwrap();
-        assert_eq!(buffer.channel_rms(0).unwrap(), 1.0);
-        assert_eq!(buffer.channel_peak_to_peak(0).unwrap(), 2.0);
-    }
-
-    #[test]
     fn copy_channel_from_other() {
         let data_other = [1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0];
         let other = SequentialSlice::new(&data_other, 2, 3).unwrap();
@@ -1004,12 +793,12 @@ mod tests {
         let res2 = buffer.write_from_other_to_channel(&other, 0, 1, 0, 1, 2);
         assert_eq!(res1, Some(0));
         assert_eq!(res2, Some(0));
-        assert_eq!(*buffer.get_sample(0, 0).unwrap(), 5.0);
-        assert_eq!(*buffer.get_sample(0, 1).unwrap(), 6.0);
-        assert_eq!(*buffer.get_sample(0, 2).unwrap(), 0.0);
-        assert_eq!(*buffer.get_sample(1, 0).unwrap(), 0.0);
-        assert_eq!(*buffer.get_sample(1, 1).unwrap(), 1.0);
-        assert_eq!(*buffer.get_sample(1, 2).unwrap(), 2.0);
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 5.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 6.0);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), 1.0);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), 2.0);
     }
 
     #[test]

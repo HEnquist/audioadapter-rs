@@ -2,36 +2,31 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 /// Wrappers providing conversion between raw bytes and floating point samples.
-pub mod bytes;
+pub mod bytes_to_float;
 /// Wrappers providing direct access to samples in buffers.
 pub mod direct;
 /// Wrappers providing conversion between integers and floating point samples.
-pub mod integers;
+pub mod number_to_float;
 /// Wrappers that store their data in an owned vector.
 #[cfg(feature = "std")]
 pub mod owned;
 /// The traits for accessing samples in buffers.
 mod traits;
 
+/// Type conversion of samples values.
+pub mod sample;
+
 #[cfg(feature = "std")]
 use std::error::Error;
 #[cfg(feature = "std")]
 use std::fmt;
 
-mod iterators;
-mod stats;
-
-pub use iterators::{
-    ChannelSamples, ChannelSamplesMut, Channels, ChannelsMut, FrameSamples, FrameSamplesMut,
-    Frames, FramesMut,
-};
-pub use stats::Numeric;
-pub use traits::{Direct, DirectMut, Indirect, IndirectMut};
+pub use traits::{Adapter, AdapterMut};
 
 #[cfg(feature = "audio")]
 pub mod audio;
 
-pub mod converter;
+pub mod adapter_to_float;
 
 /// Error returned when the wrapped data structure has the wrong dimensions,
 /// typically that it is too short.
@@ -85,7 +80,6 @@ impl fmt::Display for SizeError {
     }
 }
 
-#[macro_export]
 macro_rules! implement_size_getters {
     () => {
         fn channels(&self) -> usize {
@@ -97,7 +91,8 @@ macro_rules! implement_size_getters {
         }
     };
 }
-#[macro_export]
+pub(crate) use implement_size_getters;
+
 macro_rules! check_slice_length {
     ($channels:expr , $frames:expr, $length:expr ) => {
         if $length < $frames * $channels {
@@ -116,3 +111,4 @@ macro_rules! check_slice_length {
         }
     };
 }
+pub(crate) use check_slice_length;

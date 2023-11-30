@@ -84,38 +84,32 @@ for channel in 0..data.channels() {
 ```
 
 ## Abstracting the data layout
-This module provides several "layers" of traits that add more functionality.
-The most basic traits are [Indirect] and [IndirectMut].
+This module provides the traits [Adapter] and [AdapterMut].
 These enable basic reading and writing, with methods that access the sample values
 indirectly.
+This makes it possible to do implementations where the samples are converted
+from one format to another when reading and writing from/to the underlying data.
 
-The next level is the [Direct] and [DirectMut] traits,
-adding methods that access the samples directly.
-This includes immutable and immutable borrowing, as well as iterators.
-
-The last level is [Numeric] that is used to calculate some properties of the audio data.
-This is implemented for every structure implementing [Direct],
-and is only available when the samples are of a numerical kind, such as integers or floats.
-It cannot be used when the samples are for example arrays of bytes such as `[u8; 4]`.
-
-The crate also provides wrappers that implement these some or all of these traits
+The crate also provides wrappers that implement the traits some or all of these traits
 for a number of common data structures used for storing audio data.
+
 Any type implementing [std::clone::Clone] can be used as the type for the samples.
+This includes for example all the usual numeric types (`u8`, `f32` etc),
+as well as arrays and vectors of numbers (`Vec<i32>`, `[u8; 4]` etc). 
 
 By accessing the audio data via the trait methods instead
 of indexing the data structure directly,
-an application or library becomes independant of the data layout.
+an application or library becomes independant of how the data is stored.
 
 ## Compatibility with the [audio] crate
-In addition to the provided wrappers, the [Indirect], [IndirectMut],
-[Direct] and [DirectMut] traits are implemented for
+In addition to the provided wrappers, the [Adapter], [AdapterMut] traits are implemented for
 buffers implementing the [audio_core::Buf], [audio_core::BufMut] and [audio_core::ExactSizeBuf]
 traits from the [audio] crate.
 This is enabled via the `audio` Cargo feature, which is enabled by default.
 
-Example: Create a buffer and access it using [Indirect] methods.
+Example: Create a buffer and access it using [Adapter] methods.
 ```
-use audioadapter::Indirect;
+use audioadapter::Adapter;
 use audio;
 
 let buf: audio::buf::Interleaved<i32> = audio::buf::Interleaved::with_topology(2, 4);
@@ -133,12 +127,11 @@ These may be overriden if the wrapped data structure provides a more efficient w
 of cloning the data, such as [slice::clone_from_slice()].
 
 See also the `custom_adapter` example.
-This shows an implementation of [Indirect]
+This shows an implementation of [Adapter]
 for a vector of strings.
 
-### Possible future improvements
-- separate length and capacity
-- methods for resizing (within data capacity)
+### Ideas for future improvements
 - methods for selective clearing (frame 0..n, n..end etc)
+- adapters with on-the-fly conversion to/from integers
 
 ## License: MIT

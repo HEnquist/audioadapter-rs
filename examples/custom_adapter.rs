@@ -1,9 +1,9 @@
 // This example shows how to implement the
-// `Indirect` trait for a custom struct.
+// `Adapter` trait for a custom struct.
 // The data here is a vector of strings,
 // that get converted to numbers on reading.
 
-use audioadapter::Indirect;
+use audioadapter::Adapter;
 use num_traits::Zero;
 use std::str::FromStr;
 
@@ -13,7 +13,7 @@ struct MyStruct<'a, T> {
     channels: usize,
 }
 
-impl<'a, T> Indirect<'a, T> for MyStruct<'a, T>
+impl<'a, T> Adapter<'a, T> for MyStruct<'a, T>
 where
     T: Clone + FromStr + Zero + 'a,
 {
