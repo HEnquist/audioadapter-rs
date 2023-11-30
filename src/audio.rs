@@ -113,6 +113,7 @@ mod tests {
         assert_eq!(buf.get(1).unwrap().get(1).unwrap(), 4);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn read_to_slice() {
         let mut other = vec![0; 3];
@@ -123,6 +124,7 @@ mod tests {
         assert_eq!(other[2], 7);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn write_to_slice() {
         let other = vec![1, 2, 3];

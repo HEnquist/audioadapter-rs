@@ -113,7 +113,7 @@ use audioadapter::Adapter;
 use audio;
 
 let buf: audio::buf::Interleaved<i32> = audio::buf::Interleaved::with_topology(2, 4);
-# #[cfg(feature = "std")]
+# #[cfg(feature = "audio")]
 buf.read_sample(0,0);
 ```
 
