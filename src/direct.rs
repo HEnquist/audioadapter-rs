@@ -19,7 +19,7 @@
 //! use audioadapter::direct::InterleavedSlice;
 //! use audioadapter::Adapter;
 //!
-//! // make a vector with some fake data.
+//! // make a vector with some dummy data.
 //! // 2 channels * 3 frames => 6 samples
 //! let data: Vec<i32> = vec![1, 2, 3, 4, 5, 6];
 //!
@@ -41,7 +41,7 @@
 
 use crate::SizeError;
 
-use super::{check_slice_length, implement_size_getters};
+use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
 
 #[cfg(feature = "std")]

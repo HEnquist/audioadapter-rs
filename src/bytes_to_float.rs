@@ -18,7 +18,7 @@
 //! use audioadapter::Adapter;
 //! use audioadapter::sample::I16LE;
 //!
-//! // make a vector with some fake data.
+//! // make a vector with some dummy data.
 //! // 2 channels * 3 frames * 2 bytes per sample => 12 bytes
 //! let data: Vec<u8> = vec![0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
 //!
@@ -84,9 +84,9 @@ impl<'a, T, U> InterleavedBytes<'a, T, U, &'a [u8]>
 where
     U: BytesSample,
 {
-    /// Create a new wrapper for a slice containing samples
+    /// Create a new wrapper for a slice containing samples of type `U: BytesSample`
     /// stored as raw bytes in _interleaved_ order.
-    /// The slice length must be at least `mem::size_of(U) * frames * channels`.
+    /// The slice length must be at least `U::BYTES_PER_SAMPLE * frames * channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Adapter` trait methods.
@@ -107,9 +107,9 @@ impl<'a, T, U> InterleavedBytes<'a, T, U, &'a mut [u8]>
 where
     U: BytesSample,
 {
-    /// Create a new wrapper for a mutable slice containing samples
+    /// Create a new wrapper for a mutable slice containing samples of type `U: BytesSample`
     /// stored as raw bytes in _interleaved_ order.
-    /// The slice length must be at least `mem::size_of(U) * frames * channels`.
+    /// The slice length must be at least `U::BYTES_PER_SAMPLE * frames * channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Adapter` trait methods.
@@ -163,6 +163,98 @@ where
     implement_write_func!();
 }
 
+/// A wrapper for a slice containing sequential samples stored as raw bytes.
+pub struct SequentialBytes<'a, T, U, V> {
+    _phantom: core::marker::PhantomData<&'a T>,
+    _phantom_raw: core::marker::PhantomData<&'a U>,
+    buf: V,
+    frames: usize,
+    channels: usize,
+}
+
+impl<'a, T, U> SequentialBytes<'a, T, U, &'a [u8]>
+where
+    U: BytesSample,
+{
+    /// Create a new wrapper for a slice containing samples of type `U: BytesSample`
+    /// stored as raw bytes in _sequential_ order.
+    /// The slice length must be at least `U::BYTES_PER_SAMPLE * frames * channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` trait methods.
+    pub fn new(buf: &'a [u8], channels: usize, frames: usize) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len(), U::BYTES_PER_SAMPLE);
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            _phantom_raw: core::marker::PhantomData,
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+/// A wrapper for a mutable slice containing sequential samples stored as raw bytes.
+impl<'a, T, U> SequentialBytes<'a, T, U, &'a mut [u8]>
+where
+    U: BytesSample,
+{
+    /// Create a new wrapper for a mutable slice containing samples of type `U: BytesSample`
+    /// stored as raw bytes in _sequential_ order.
+    /// The slice length must be at least `U::BYTES_PER_SAMPLE * frames * channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` trait methods.
+    pub fn new_mut(buf: &'a mut [u8], channels: usize, frames: usize) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len(), U::BYTES_PER_SAMPLE);
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            _phantom_raw: core::marker::PhantomData,
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, T, U, V> SequentialBytes<'a, T, U, V>
+where
+    U: BytesSample,
+{
+    fn calc_index(&self, channel: usize, frame: usize) -> usize {
+        let sample_idx = self.frames * channel + frame;
+        sample_idx * U::BYTES_PER_SAMPLE
+    }
+}
+
+impl<'a, T, U> Adapter<'a, T> for SequentialBytes<'a, T, U, &'a [u8]>
+where
+    T: Float + 'a,
+    U: BytesSample + RawSample,
+{
+    implement_size_getters!();
+
+    implement_read_func!();
+}
+
+impl<'a, T, U> Adapter<'a, T> for SequentialBytes<'a, T, U, &'a mut [u8]>
+where
+    T: Float + 'a,
+    U: BytesSample + RawSample,
+{
+    implement_size_getters!();
+
+    implement_read_func!();
+}
+
+impl<'a, T, U> AdapterMut<'a, T> for SequentialBytes<'a, T, U, &'a mut [u8]>
+where
+    T: Float + 'a,
+    U: BytesSample + RawSample,
+{
+    implement_write_func!();
+}
+
 //   _____         _
 //  |_   _|__  ___| |_ ___
 //    | |/ _ \/ __| __/ __|
@@ -175,7 +267,7 @@ mod tests {
     use crate::sample::*;
 
     #[test]
-    fn read_i16_newtype() {
+    fn read_i16_interleaved() {
         let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
         let buffer: InterleavedBytes<f32, I16LE, _> = InterleavedBytes::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
@@ -187,7 +279,7 @@ mod tests {
     }
 
     #[test]
-    fn write_i16_newtype() {
+    fn write_i16_interleaved() {
         let expected: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
         let mut data = [0; 12];
         let mut buffer: InterleavedBytes<f32, I16LE, _> =
@@ -202,7 +294,34 @@ mod tests {
     }
 
     #[test]
-    fn read_i32() {
+    fn read_i16_sequential() {
+        let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let buffer: SequentialBytes<f32, I16LE, _> = SequentialBytes::new(&data, 2, 3).unwrap();
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), -1.0);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.5);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), -0.5);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), 0.25);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), -0.25);
+    }
+
+    #[test]
+    fn write_i16_sequential() {
+        let expected: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let mut data = [0; 12];
+        let mut buffer: SequentialBytes<f32, I16LE, _> =
+            SequentialBytes::new_mut(&mut data, 2, 3).unwrap();
+        buffer.write_sample(0, 0, &0.0).unwrap();
+        buffer.write_sample(0, 1, &-1.0).unwrap();
+        buffer.write_sample(0, 2, &0.5).unwrap();
+        buffer.write_sample(1, 0, &-0.5).unwrap();
+        buffer.write_sample(1, 1, &0.25).unwrap();
+        buffer.write_sample(1, 2, &-0.25).unwrap();
+        assert_eq!(data, expected);
+    }
+
+    #[test]
+    fn read_i32_interleaved() {
         let data: [u8; 24] = [
             0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 64, 0, 0, 0, 192, 0, 0, 0, 32, 0, 0, 0, 224,
         ];
@@ -216,7 +335,7 @@ mod tests {
     }
 
     #[test]
-    fn write_i32() {
+    fn write_i32_interleaved() {
         let expected: [u8; 24] = [
             0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 64, 0, 0, 0, 192, 0, 0, 0, 32, 0, 0, 0, 224,
         ];

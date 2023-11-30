@@ -80,7 +80,6 @@ impl fmt::Display for SizeError {
     }
 }
 
-#[macro_export]
 macro_rules! implement_size_getters {
     () => {
         fn channels(&self) -> usize {
@@ -92,7 +91,8 @@ macro_rules! implement_size_getters {
         }
     };
 }
-#[macro_export]
+pub(crate) use implement_size_getters;
+
 macro_rules! check_slice_length {
     ($channels:expr , $frames:expr, $length:expr ) => {
         if $length < $frames * $channels {
@@ -111,3 +111,4 @@ macro_rules! check_slice_length {
         }
     };
 }
+pub(crate) use check_slice_length;

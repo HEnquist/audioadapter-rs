@@ -130,9 +130,8 @@ See also the `custom_adapter` example.
 This shows an implementation of [Adapter]
 for a vector of strings.
 
-### Possible future improvements
-- separate length and capacity
-- methods for resizing (within data capacity)
+### Ideas for future improvements
 - methods for selective clearing (frame 0..n, n..end etc)
+- adapters with on-the-fly conversion to/from integers
 
 ## License: MIT

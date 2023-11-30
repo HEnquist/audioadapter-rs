@@ -5,22 +5,22 @@
 //! with on-the-fly format conversion.
 //!
 //! ## Example
-//! Wrap a Vec of i16 as an interleaved buffer,
+//! Wrap a `Vec<i16>` as an interleaved buffer,
 //! then wrap this again with a converter,
 //! and finally read and print all the values as floats.
 //! ```
 //! use audioadapter::direct::InterleavedSlice;
 //! use audioadapter::Adapter;
-//! use audioadapter::adapter_to_float::ConvertNumber;
+//! use audioadapter::adapter_to_float::ConvertNumbers;
 //!
-//! // Make a vector with some fake data.
+//! // Make a vector with some dummy data.
 //! let data: Vec<i16> = vec![1, 2, 3, 4, 5, 6];
 //!
 //! // Wrap the data as an interleaved i16 buffer.
 //! let int_buffer: InterleavedSlice<&[i16]> = InterleavedSlice::new(&data, 2, 3).unwrap();
 //!
 //! // Wrap this buffer with a converter to read the values as floats.
-//! let converter: ConvertNumber<&dyn Adapter<i16>, f32> = ConvertNumber::new(&int_buffer as &dyn Adapter<i16>);
+//! let converter: ConvertNumbers<&dyn Adapter<i16>, f32> = ConvertNumbers::new(&int_buffer as &dyn Adapter<i16>);
 //!
 //! // Loop over all samples and print their values
 //! for channel in 0..2 {
@@ -43,6 +43,7 @@ use crate::{Adapter, AdapterMut};
 
 /// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
 /// stored as byte arrays.
+/// The wrapper enables reading and writing the samples as floats.
 pub struct ConvertBytes<T, U, V>
 where
     T: Float,
@@ -147,12 +148,15 @@ macro_rules! byte_convert_traits_newtype {
 
 byte_convert_traits_newtype!(I16LE);
 
-pub struct ConvertNumber<U, V> {
+/// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
+/// stored as numeric types.
+/// The wrapper enables reading and writing the samples as floats.
+pub struct ConvertNumbers<U, V> {
     _phantom: core::marker::PhantomData<V>,
     buf: U,
 }
 
-impl<'a, T, U> ConvertNumber<&'a dyn Adapter<'a, U>, T>
+impl<'a, T, U> ConvertNumbers<&'a dyn Adapter<'a, U>, T>
 where
     T: Float + 'a,
     U: RawSample + 'a,
@@ -167,7 +171,7 @@ where
     }
 }
 
-impl<'a, T, U> ConvertNumber<&'a mut dyn AdapterMut<'a, U>, T>
+impl<'a, T, U> ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
 where
     T: Float + 'a,
     U: RawSample + 'a,
@@ -182,7 +186,7 @@ where
     }
 }
 
-impl<'a, T, U> Adapter<'a, T> for ConvertNumber<&'a dyn Adapter<'a, U>, T>
+impl<'a, T, U> Adapter<'a, T> for ConvertNumbers<&'a dyn Adapter<'a, U>, T>
 where
     T: Float + 'a,
     U: RawSample + 'a,
@@ -202,7 +206,7 @@ where
     }
 }
 
-impl<'a, T, U> Adapter<'a, T> for ConvertNumber<&'a mut dyn AdapterMut<'a, U>, T>
+impl<'a, T, U> Adapter<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
 where
     T: Float + 'a,
     U: RawSample + 'a,
@@ -222,7 +226,7 @@ where
     }
 }
 
-impl<'a, T, U> AdapterMut<'a, T> for ConvertNumber<&'a mut dyn AdapterMut<'a, U>, T>
+impl<'a, T, U> AdapterMut<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
 where
     T: Float + 'a,
     U: RawSample + Clone + 'a,
@@ -265,8 +269,8 @@ mod tests {
     fn read_i16() {
         let data: [i16; 6] = [0, i16::MIN, 1 << 14, -(1 << 14), 1 << 13, -(1 << 13)];
         let buffer: InterleavedSlice<&[i16]> = InterleavedSlice::new(&data, 2, 3).unwrap();
-        let converter: ConvertNumber<&dyn Adapter<i16>, f32> =
-            ConvertNumber::new(&buffer as &dyn Adapter<i16>);
+        let converter: ConvertNumbers<&dyn Adapter<i16>, f32> =
+            ConvertNumbers::new(&buffer as &dyn Adapter<i16>);
         assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
@@ -298,8 +302,8 @@ mod tests {
         let mut data = [0; 6];
         let mut buffer: InterleavedSlice<&mut [i16]> =
             InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
-        let mut converter: ConvertNumber<&mut dyn AdapterMut<i16>, f32> =
-            ConvertNumber::new_mut(&mut buffer as &mut dyn AdapterMut<i16>);
+        let mut converter: ConvertNumbers<&mut dyn AdapterMut<i16>, f32> =
+            ConvertNumbers::new_mut(&mut buffer as &mut dyn AdapterMut<i16>);
         converter.write_sample(0, 0, &0.0).unwrap();
         converter.write_sample(1, 0, &-1.0).unwrap();
         converter.write_sample(0, 1, &0.5).unwrap();

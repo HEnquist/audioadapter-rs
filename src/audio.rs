@@ -86,7 +86,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter_to_float::ConvertNumber;
+    use crate::adapter_to_float::ConvertNumbers;
     use audio::wrap;
 
     #[test]
@@ -160,8 +160,8 @@ mod tests {
     fn test_convert_i16() {
         let data: [i16; 6] = [0, i16::MIN, 1 << 14, -(1 << 14), 1 << 13, -(1 << 13)];
         let buffer = wrap::interleaved(&data, 2);
-        let converter: ConvertNumber<&dyn Adapter<i16>, f32> =
-            ConvertNumber::new(&buffer as &dyn Adapter<i16>);
+        let converter: ConvertNumbers<&dyn Adapter<i16>, f32> =
+            ConvertNumbers::new(&buffer as &dyn Adapter<i16>);
         assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);

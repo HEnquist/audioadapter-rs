@@ -48,7 +48,7 @@ pub struct U32BE([u8; 4]);
 
 /// 64 bit unsigned integer, little endian. Stored as 8 bytes.
 #[derive(Debug)]
-struct U64LE([u8; 8]);
+pub struct U64LE([u8; 8]);
 
 /// 64 bit unsigned integer, big endian. Stored as 8 bytes.
 #[derive(Debug)]
@@ -78,13 +78,12 @@ pub struct F64LE([u8; 8]);
 #[derive(Debug)]
 pub struct F64BE([u8; 8]);
 
-
-/// Clamp a float value to the range supported by an integer type
-fn clamp_int<T: Float, U: PrimInt>(value: T, converted: Option<U>) -> ConversionResult<U> {
+/// Convert a float to an integer, clamp at the min and max limits of the integer.
+fn to_clamped_int<T: Float, U: PrimInt>(value: T, converted: Option<U>) -> ConversionResult<U> {
     if let Some(val) = converted {
         return ConversionResult {
             clipped: false,
-            value: val
+            value: val,
         };
     }
     if value.is_nan() {
@@ -105,13 +104,22 @@ fn clamp_int<T: Float, U: PrimInt>(value: T, converted: Option<U>) -> Conversion
     }
 }
 
-
+/// A conversion result, containing the resulting value as `value`
+/// and a boolean `clipped` indicating if the value was clipped during conversion.
 pub struct ConversionResult<T> {
     pub clipped: bool,
     pub value: T,
 }
 
-/// A trait for converting a given sample type to and from floating point values
+/// A trait for converting a given sample type to and from floating point values.
+/// The floating point values use the range -1.0 to +1.0.
+/// When converting to/from signed integers, the range does not include +1.0.
+/// For example, an 8-bit signed integer supports the range -128 to +127.
+/// When these values are converted to float, 0 becomes 0.0,
+/// -128 becomes -1.0, and 127 becomes 127/128 ≈ 0.992.
+/// Unsigned integers are also converted to the same -1.0 to +1.0 range.
+/// For an 8-but unsigned integer, 128 is the center point and becomes 0.0.
+/// The value 0 becomes -1.0, and 255 becomes 127/128 ≈ 0.992.
 pub trait RawSample
 where
     Self: Sized,
@@ -121,40 +129,39 @@ where
 
     /// Convert a float in the range -1.0 .. +1.0 to a sample value.
     /// Values outside the allowed range are clipped to the nearest limit.
-    /// Returns a tuple consisting a boolean that
-    /// indicates if the value was clipped during conversion,
-    /// followed by the sample value.
     fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self>;
 }
 
 /// A trait for converting samples stored as raw bytes into a numerical type.
+/// Each implementation defines the associated type `NumericType`,
+/// which is the nearest matching numeric type for the original format.
+/// If a direct match exists, this is used.
+/// For example signed 16 bit integer samples use [i16].
+/// For formats that don't have a direct match,
+/// the next larger numeric type is used.
+/// For example for 24 bit signed integers,
+/// this means [i32].
+/// The values are scaled to use the full range of the `NumericType`
+/// associated type.
 pub trait BytesSample {
+    /// The closest matching numeric type.
     type NumericType;
 
+    /// The number of bytes making up each sample value.
     const BYTES_PER_SAMPLE: usize;
 
+    /// Create a new ByteSample from a slice of raw bytes.
+    /// The slice length must be at least the number of bytes
+    /// for a sample value.
     fn from_slice(bytes: &[u8]) -> Self;
 
+    /// Return the raw bytes as a slice.
     fn as_slice(&self) -> &[u8];
 
     /// Convert the raw bytes to a numerical value.
-    /// The type of the numerical value matches the original format
-    /// whenever possible, for example signed 16 bit integer samples
-    /// are converted to [i16].
-    /// For formats that don't have a direct match,
-    /// the next larger numeric type is used.
-    /// For example for 24 bit signed integers,
-    /// this means [i32].
     fn to_number(&self) -> Self::NumericType;
 
     /// Convert a numerical value to raw bytes.
-    /// The type of the numerical value matches the original format
-    /// whenever possible, for example signed 16 bit integer samples
-    /// are converted from [i16].
-    /// For formats that don't have a direct match,
-    /// the next larger numeric type is used.
-    /// For example for 24 bit signed integers,
-    /// this means [i32].
     fn from_number(value: Self::NumericType) -> Self;
 }
 
@@ -168,7 +175,7 @@ macro_rules! rawsample_for_int {
             fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self> {
                 let scaled = value * (T::from($type::MAX).unwrap() + T::one());
                 let converted = scaled.$to();
-                clamp_int(scaled, converted)
+                to_clamped_int(scaled, converted)
             }
         }
     };
@@ -191,7 +198,7 @@ macro_rules! rawsample_for_uint {
                 let max_ampl = (T::from($type::MAX).unwrap() + T::one()) / T::from(2).unwrap();
                 let scaled = value * max_ampl + max_ampl;
                 let converted = scaled.$to();
-                clamp_int(scaled, converted)
+                to_clamped_int(scaled, converted)
             }
         }
     };
@@ -482,8 +489,6 @@ where
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -540,7 +545,6 @@ mod tests {
     test_to_signed_int!(f64, i32, 32);
     test_to_signed_int!(f32, i64, 64);
     test_to_signed_int!(f64, i64, 64);
-
 
     test_to_unsigned_int!(f32, u8, 8);
     test_to_unsigned_int!(f64, u8, 8);
@@ -601,47 +605,45 @@ mod tests {
     test_from_unsigned_int!(f32, u64, 64);
     test_from_unsigned_int!(f64, u64, 64);
 
-
-
     #[test]
-    fn test_clamp_int() {
-        let converted = clamp_int::<f32, i32>(12345.0, Some(12345));
+    fn test_to_clamped_int() {
+        let converted = to_clamped_int::<f32, i32>(12345.0, Some(12345));
         assert_conversion_eq!(converted, 12345, false, "in range f32 i32");
 
-        let converted = clamp_int::<f32, i32>(1.0e10, None);
+        let converted = to_clamped_int::<f32, i32>(1.0e10, None);
         assert_conversion_eq!(converted, i32::MAX, true, "above range f32 i32");
 
-        let converted = clamp_int::<f32, i32>(-1.0e10, None);
+        let converted = to_clamped_int::<f32, i32>(-1.0e10, None);
         assert_conversion_eq!(converted, i32::MIN, true, "below range f32 i32");
 
-        let converted = clamp_int::<f64, i32>(12345.0, Some(12345));
+        let converted = to_clamped_int::<f64, i32>(12345.0, Some(12345));
         assert_conversion_eq!(converted, 12345, false, "in range f64 i32");
 
-        let converted = clamp_int::<f64, i32>(1.0e10, None);
+        let converted = to_clamped_int::<f64, i32>(1.0e10, None);
         assert_conversion_eq!(converted, i32::MAX, true, "above range f64 i32");
 
-        let converted = clamp_int::<f64, i32>(-1.0e10, None);
+        let converted = to_clamped_int::<f64, i32>(-1.0e10, None);
         assert_conversion_eq!(converted, i32::MIN, true, "below range f64 i32");
     }
 
     #[test]
-    fn test_clamp_uint() {
-        let converted = clamp_int::<f32, u32>(12345.0, Some(12345));
+    fn test_to_clamped_uint() {
+        let converted = to_clamped_int::<f32, u32>(12345.0, Some(12345));
         assert_conversion_eq!(converted, 12345, false, "in range f32 u32");
 
-        let converted = clamp_int::<f32, u32>(1.0e10, None);
+        let converted = to_clamped_int::<f32, u32>(1.0e10, None);
         assert_conversion_eq!(converted, u32::MAX, true, "above range f32 u32");
 
-        let converted = clamp_int::<f32, u32>(-1.0, None);
+        let converted = to_clamped_int::<f32, u32>(-1.0, None);
         assert_conversion_eq!(converted, u32::MIN, true, "below range f32 u32");
 
-        let converted = clamp_int::<f64, u32>(12345.0, Some(12345));
+        let converted = to_clamped_int::<f64, u32>(12345.0, Some(12345));
         assert_conversion_eq!(converted, 12345, false, "in range f64 u32");
 
-        let converted = clamp_int::<f64, u32>(1.0e10, None);
+        let converted = to_clamped_int::<f64, u32>(1.0e10, None);
         assert_conversion_eq!(converted, u32::MAX, true, "above range f64 u32");
 
-        let converted = clamp_int::<f64, u32>(-1.0, None);
+        let converted = to_clamped_int::<f64, u32>(-1.0, None);
         assert_conversion_eq!(converted, u32::MIN, true, "below range f64 u32");
     }
 
@@ -692,11 +694,10 @@ mod tests {
     test_float_bytes!(f64, F64LE, le);
     test_float_bytes!(f64, F64BE, be);
 
-
     #[test]
     #[allow(non_snake_case)]
     fn test_I24LE_3bytes() {
-        let number = i32::MAX/5 * 4;
+        let number = i32::MAX / 5 * 4;
 
         // make sure LSB is zero
         let number = number >> 8;
@@ -714,7 +715,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn test_I24BE_3bytes() {
-        let number = i32::MAX/5 * 4;
+        let number = i32::MAX / 5 * 4;
 
         // make sure LSB is zero
         let number = number >> 8;
@@ -732,7 +733,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn test_I24LE_4bytes() {
-        let number = i32::MAX/5 * 4;
+        let number = i32::MAX / 5 * 4;
 
         // make sure LSB is zero
         let number = number >> 8;
@@ -750,7 +751,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn test_I24BE_4bytes() {
-        let number = i32::MAX/5 * 4;
+        let number = i32::MAX / 5 * 4;
 
         // make sure LSB is zero
         let number = number >> 8;
@@ -765,11 +766,10 @@ mod tests {
         assert_eq!(number, wrapped.to_number());
     }
 
-
     #[test]
     #[allow(non_snake_case)]
     fn test_U24LE_3bytes() {
-        let number = u32::MAX/5 * 4;
+        let number = u32::MAX / 5 * 4;
 
         // make sure LSB is zero
         let number = number >> 8;
@@ -787,7 +787,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn test_U24BE_3bytes() {
-        let number = u32::MAX/5 * 4;
+        let number = u32::MAX / 5 * 4;
 
         // make sure LSB is zero
         let number = number >> 8;
@@ -805,7 +805,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn test_U24LE_4bytes() {
-        let number = u32::MAX/5 * 4;
+        let number = u32::MAX / 5 * 4;
 
         // make sure LSB is zero
         let number = number >> 8;
@@ -823,7 +823,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn test_U24BE_4bytes() {
-        let number = u32::MAX/5 * 4;
+        let number = u32::MAX / 5 * 4;
 
         // make sure LSB is zero
         let number = number >> 8;
