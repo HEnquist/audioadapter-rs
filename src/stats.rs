@@ -3,7 +3,7 @@ use num_traits::{Num, ToPrimitive};
 use crate::Adapter;
 
 /// A trait providing methods to calculate the RMS and peak-to-peak values of a channel or frame.
-/// This requires that the samples are of a numerical type, that also implement the
+/// This requires that the samples are of a numerical type, that implement the
 /// [num_traits::ToPrimitive], [num_traits::Num] and [core::cmp::PartialOrd] traits.
 /// This includes all the built in numerical types such as `i16`, `i32`, `f32` etc.
 pub trait AdapterStats<'a, T>: Adapter<'a, T>
