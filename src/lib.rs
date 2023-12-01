@@ -16,6 +16,9 @@ mod traits;
 /// Type conversion of samples values.
 pub mod sample;
 
+/// Calculate statistics for adapters with numerical sample types
+pub mod stats;
+
 #[cfg(feature = "std")]
 use std::error::Error;
 #[cfg(feature = "std")]

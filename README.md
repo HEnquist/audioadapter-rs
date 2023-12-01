@@ -30,7 +30,7 @@ to another buffer using the other layout.
 When audio data has more than one channel is made up of a series of _frames_.
 A frame consists of the samples for all channels, belonging to one time point.
 For normal stereo, a frame consists of one sample for the left channel
-and one for the right, usually in that order.
+and one for the right, usually stored in that order.
 
 ## Interleaved and sequential
 When audio data is stored in a file or in memory,
