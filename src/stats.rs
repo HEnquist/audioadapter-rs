@@ -67,10 +67,10 @@ where
     }
 
     /// Calculate the peak-to-peak value of the given channel.
-    /// The result is returned as the same type as the samples.
-    fn channel_peak_to_peak(&self, channel: usize) -> T {
+    /// The result is returned as `f64`.
+    fn channel_peak_to_peak(&self, channel: usize) -> f64 {
         let (min, max) = self.channel_min_and_max(channel);
-        max - min
+        max.to_f64().unwrap_or_default() - min.to_f64().unwrap_or_default()
     }
 
     /// Calculate the peak-to-peak value of the given frame.
@@ -94,10 +94,10 @@ where
     }
 
     /// Calculate the peak-to-peak value of the given frame.
-    /// The result is returned as the same type as the samples.
-    fn frame_peak_to_peak(&self, frame: usize) -> T {
+    /// The result is returned as `f64`.
+    fn frame_peak_to_peak(&self, frame: usize) -> f64 {
         let (min, max) = self.frame_min_and_max(frame);
-        max - min
+        max.to_f64().unwrap_or_default() - min.to_f64().unwrap_or_default()
     }
 }
 
@@ -125,7 +125,7 @@ mod tests {
         let buffer = SequentialSlice::new(&data, 2, 4).unwrap();
         assert_eq!(buffer.channel_rms(0), 1.0);
         assert_eq!(buffer.channel_min_and_max(0), (-1, 1));
-        assert_eq!(buffer.channel_peak_to_peak(0), 2);
+        assert_eq!(buffer.channel_peak_to_peak(0), 2.0);
     }
 
     #[test]
