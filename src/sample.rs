@@ -538,7 +538,7 @@ impl_sample_for_newtype!(F64LE, 8);
 impl_sample_for_newtype!(F64BE, 8);
 
 #[cfg(feature = "audio")]
-macro_rules! impl_sample_for_newtype2 {
+macro_rules! impl_sample_for_generic_newtype {
     ($newtype:ident, $bytes:expr) => {
         unsafe impl Sample for $newtype<[u8; $bytes]> {
             const ZERO: $newtype<[u8; $bytes]> = $newtype([0; $bytes]);
@@ -546,21 +546,21 @@ macro_rules! impl_sample_for_newtype2 {
     };
 }
 #[cfg(feature = "audio")]
-impl_sample_for_newtype2!(I24BE, 3);
+impl_sample_for_generic_newtype!(I24BE, 3);
 #[cfg(feature = "audio")]
-impl_sample_for_newtype2!(I24LE, 3);
+impl_sample_for_generic_newtype!(I24LE, 3);
 #[cfg(feature = "audio")]
-impl_sample_for_newtype2!(U24BE, 3);
+impl_sample_for_generic_newtype!(U24BE, 3);
 #[cfg(feature = "audio")]
-impl_sample_for_newtype2!(U24LE, 3);
+impl_sample_for_generic_newtype!(U24LE, 3);
 #[cfg(feature = "audio")]
-impl_sample_for_newtype2!(I24BE, 4);
+impl_sample_for_generic_newtype!(I24BE, 4);
 #[cfg(feature = "audio")]
-impl_sample_for_newtype2!(I24LE, 4);
+impl_sample_for_generic_newtype!(I24LE, 4);
 #[cfg(feature = "audio")]
-impl_sample_for_newtype2!(U24BE, 4);
+impl_sample_for_generic_newtype!(U24BE, 4);
 #[cfg(feature = "audio")]
-impl_sample_for_newtype2!(U24LE, 4);
+impl_sample_for_generic_newtype!(U24LE, 4);
 
 #[cfg(test)]
 mod tests {
