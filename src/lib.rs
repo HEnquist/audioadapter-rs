@@ -1,11 +1,10 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// Wrappers providing conversion between raw bytes and floating point samples.
-pub mod bytes_to_float;
 /// Wrappers providing direct access to samples in buffers.
 pub mod direct;
-/// Wrappers providing conversion between integers and floating point samples.
+/// Wrappers providing float conversion of numeric values
+/// stored both directly and as raw bytes.
 pub mod number_to_float;
 /// Wrappers that store their data in an owned vector.
 #[cfg(feature = "std")]
