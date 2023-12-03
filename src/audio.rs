@@ -1,7 +1,7 @@
-//! # `audio` crate compatibility
+//! # [audio](https://crates.io/crates/audio)  crate compatibility
 //!
 //! This module implements the `audioadapter` traits
-//! for `ExactSizeBuf` buffers from the `audio` crate.
+//! for `ExactSizeBuf` buffers from the [audio](https://crates.io/crates/audio) crate.
 
 use crate::{Adapter, AdapterMut};
 
