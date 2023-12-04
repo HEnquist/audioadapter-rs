@@ -19,7 +19,7 @@
 //! let data: Vec<i16> = vec![1, 2, 3, 4, 5, 6];
 //!
 //! // wrap the data
-//! let buffer: InterleavedNumbers<&[i16], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+//! let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
 //!
 //! // Loop over all samples and print their values
 //! for channel in 0..2 {
@@ -46,7 +46,7 @@
 //! let data: Vec<u8> = vec![0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
 //!
 //! // wrap the data
-//! let buffer: InterleavedNumbers<&[I16LE], f32> = InterleavedNumbers::new_from_bytes(&data, 2, 3).unwrap();
+//! let buffer = InterleavedNumbers::<&[I16LE], f32>::new_from_bytes(&data, 2, 3).unwrap();
 //!
 //! // Loop over all samples and print their values
 //! for channel in 0..2 {
@@ -359,7 +359,7 @@ mod tests {
     #[test]
     fn read_i32() {
         let data: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
-        let buffer: InterleavedNumbers<&[i32], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -371,7 +371,7 @@ mod tests {
     #[test]
     fn read_i16() {
         let data: [i16; 6] = [0, -2 << 14, 2 << 13, -2 << 13, 2 << 12, -2 << 12];
-        let buffer: InterleavedNumbers<&[i16], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -383,7 +383,7 @@ mod tests {
     #[test]
     fn read_i8() {
         let data: [i8; 6] = [0, -2 << 6, 2 << 5, -2 << 5, 2 << 4, -2 << 4];
-        let buffer: InterleavedNumbers<&[i8], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -402,7 +402,7 @@ mod tests {
             128 + (2 << 4),
             128 - (2 << 4),
         ];
-        let buffer: InterleavedNumbers<&[u8], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -415,8 +415,7 @@ mod tests {
     fn write_i32() {
         let expected: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
         let mut data = [0; 6];
-        let mut buffer: InterleavedNumbers<&mut [i32], f32> =
-            InterleavedNumbers::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer = InterleavedNumbers::<_, f32>::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_sample(0, 0, &0.0).unwrap();
         buffer.write_sample(1, 0, &-1.0).unwrap();
@@ -431,8 +430,7 @@ mod tests {
     fn write_i16() {
         let expected: [i16; 6] = [0, -2 << 14, 2 << 13, -2 << 13, 2 << 12, -2 << 12];
         let mut data = [0; 6];
-        let mut buffer: InterleavedNumbers<&mut [i16], f32> =
-            InterleavedNumbers::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer = InterleavedNumbers::<_, f32>::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_sample(0, 0, &0.0).unwrap();
         buffer.write_sample(1, 0, &-1.0).unwrap();
@@ -449,8 +447,8 @@ mod tests {
         let values_left = [0.0, 0.5, 0.25];
         let values_right = [-1.0, -0.5, -0.25];
         let mut data = [0; 6];
-        let mut buffer: InterleavedNumbers<&mut [i32], f32> =
-            InterleavedNumbers::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer =
+            InterleavedNumbers::<_, f32>::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_from_slice_to_channel(0, 0, &values_left);
         buffer.write_from_slice_to_channel(1, 0, &values_right);
@@ -464,7 +462,7 @@ mod tests {
         let expected_right = [-1.0, -0.5, -0.25];
         let mut values_left = [0.0; 3];
         let mut values_right = [0.0; 3];
-        let buffer: InterleavedNumbers<&[i32], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer: InterleavedNumbers<_, f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
 
         buffer.write_from_channel_to_slice(0, 0, &mut values_left);
         buffer.write_from_channel_to_slice(1, 0, &mut values_right);
@@ -486,8 +484,7 @@ mod tests {
     #[test]
     fn read_i16_bytes_interleaved() {
         let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
-        let buffer: InterleavedNumbers<&[I16LE], f32> =
-            InterleavedNumbers::new_from_bytes(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<&[I16LE], f32>::new_from_bytes(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -500,8 +497,8 @@ mod tests {
     fn write_i16_bytes_interleaved() {
         let expected: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
         let mut data = [0; 12];
-        let mut buffer: InterleavedNumbers<&mut [I16LE], f32> =
-            InterleavedNumbers::new_from_bytes_mut(&mut data, 2, 3).unwrap();
+        let mut buffer =
+            InterleavedNumbers::<&mut [I16LE], f32>::new_from_bytes_mut(&mut data, 2, 3).unwrap();
         buffer.write_sample(0, 0, &0.0).unwrap();
         buffer.write_sample(1, 0, &-1.0).unwrap();
         buffer.write_sample(0, 1, &0.5).unwrap();
@@ -514,8 +511,7 @@ mod tests {
     #[test]
     fn read_i24_bytes_interleaved() {
         let data: [u8; 18] = [0, 0, 0, 0, 0, 128, 0, 0, 64, 0, 0, 192, 0, 0, 32, 0, 0, 224];
-        let buffer: InterleavedNumbers<&[I24LE<3>], f32> =
-            InterleavedNumbers::new_from_bytes(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<&[I24LE<3>], f32>::new_from_bytes(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);

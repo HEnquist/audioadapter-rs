@@ -17,10 +17,10 @@
 //! let data: Vec<i16> = vec![1, 2, 3, 4, 5, 6];
 //!
 //! // Wrap the data as an interleaved i16 buffer.
-//! let int_buffer: InterleavedSlice<&[i16]> = InterleavedSlice::new(&data, 2, 3).unwrap();
+//! let int_buffer = InterleavedSlice::new(&data, 2, 3).unwrap();
 //!
 //! // Wrap this buffer with a converter to read the values as floats.
-//! let converter: ConvertNumbers<&dyn Adapter<i16>, f32> = ConvertNumbers::new(&int_buffer as &dyn Adapter<i16>);
+//! let converter = ConvertNumbers::<_, f32>::new(&int_buffer as &dyn Adapter<i16>);
 //!
 //! // Loop over all samples and print their values
 //! for channel in 0..2 {
