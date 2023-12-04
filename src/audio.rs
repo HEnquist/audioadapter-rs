@@ -1,7 +1,7 @@
-//! # `audio` crate compatibility
+//! # [audio](https://crates.io/crates/audio)  crate compatibility
 //!
 //! This module implements the `audioadapter` traits
-//! for `ExactSizeBuf` buffers from the `audio` crate.
+//! for `ExactSizeBuf` buffers from the [audio](https://crates.io/crates/audio) crate.
 
 use crate::{Adapter, AdapterMut};
 
@@ -21,7 +21,7 @@ where
     }
 
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.get(channel).unwrap().get(frame).unwrap()
+        self.get_channel(channel).unwrap().get(frame).unwrap()
     }
 
     fn write_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
@@ -33,7 +33,7 @@ where
         } else {
             slice.len()
         };
-        let chan = self.get(channel).unwrap();
+        let chan = self.get_channel(channel).unwrap();
         chan.iter()
             .skip(skip)
             .take(frames_to_write)
@@ -49,7 +49,11 @@ where
     U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-        *self.get_mut(channel).unwrap().get_mut(frame).unwrap() = *value;
+        *self
+            .get_channel_mut(channel)
+            .unwrap()
+            .get_mut(frame)
+            .unwrap() = *value;
         false
     }
 
@@ -67,7 +71,7 @@ where
         } else {
             slice.len()
         };
-        let mut chan = self.get_mut(channel).unwrap();
+        let mut chan = self.get_channel_mut(channel).unwrap();
         chan.iter_mut()
             .skip(skip)
             .take(frames_to_read)
@@ -87,6 +91,9 @@ where
 mod tests {
     use super::*;
     use crate::adapter_to_float::ConvertNumbers;
+    use crate::byte_slice_as_type;
+    use crate::sample::I16LE;
+    use crate::sample::RawSample;
     use audio::wrap;
 
     #[test]
@@ -107,10 +114,10 @@ mod tests {
             buf.write_sample_unchecked(0, 1, &3);
             buf.write_sample_unchecked(1, 1, &4);
         }
-        assert_eq!(buf.get(0).unwrap().get(0).unwrap(), 1);
-        assert_eq!(buf.get(1).unwrap().get(0).unwrap(), 2);
-        assert_eq!(buf.get(0).unwrap().get(1).unwrap(), 3);
-        assert_eq!(buf.get(1).unwrap().get(1).unwrap(), 4);
+        assert_eq!(buf.get_channel(0).unwrap().get(0).unwrap(), 1);
+        assert_eq!(buf.get_channel(1).unwrap().get(0).unwrap(), 2);
+        assert_eq!(buf.get_channel(0).unwrap().get(1).unwrap(), 3);
+        assert_eq!(buf.get_channel(1).unwrap().get(1).unwrap(), 4);
     }
 
     #[cfg(feature = "std")]
@@ -130,10 +137,10 @@ mod tests {
         let other = vec![1, 2, 3];
         let mut buf = audio::buf::Interleaved::<i32>::with_topology(2, 4);
         buf.write_from_slice_to_channel(0, 1, &other);
-        assert_eq!(buf.get(0).unwrap().get(0).unwrap(), 0);
-        assert_eq!(buf.get(0).unwrap().get(1).unwrap(), 1);
-        assert_eq!(buf.get(0).unwrap().get(2).unwrap(), 2);
-        assert_eq!(buf.get(0).unwrap().get(3).unwrap(), 3);
+        assert_eq!(buf.get_channel(0).unwrap().get(0).unwrap(), 0);
+        assert_eq!(buf.get_channel(0).unwrap().get(1).unwrap(), 1);
+        assert_eq!(buf.get_channel(0).unwrap().get(2).unwrap(), 2);
+        assert_eq!(buf.get_channel(0).unwrap().get(3).unwrap(), 3);
     }
 
     #[test]
@@ -152,23 +159,51 @@ mod tests {
         buf.write_sample(1, 0, &2).unwrap();
         buf.write_sample(0, 1, &3).unwrap();
         buf.write_sample(1, 1, &4).unwrap();
-        assert_eq!(buf.get(0).unwrap().get(0).unwrap(), 1);
-        assert_eq!(buf.get(1).unwrap().get(0).unwrap(), 2);
-        assert_eq!(buf.get(0).unwrap().get(1).unwrap(), 3);
-        assert_eq!(buf.get(1).unwrap().get(1).unwrap(), 4);
+        assert_eq!(buf.get_channel(0).unwrap().get(0).unwrap(), 1);
+        assert_eq!(buf.get_channel(1).unwrap().get(0).unwrap(), 2);
+        assert_eq!(buf.get_channel(0).unwrap().get(1).unwrap(), 3);
+        assert_eq!(buf.get_channel(1).unwrap().get(1).unwrap(), 4);
     }
 
     #[test]
     fn test_convert_i16() {
         let data: [i16; 6] = [0, i16::MIN, 1 << 14, -(1 << 14), 1 << 13, -(1 << 13)];
         let buffer = wrap::interleaved(&data, 2);
-        let converter: ConvertNumbers<&dyn Adapter<i16>, f32> =
-            ConvertNumbers::new(&buffer as &dyn Adapter<i16>);
+        let converter =
+            ConvertNumbers::<_, f32>::new(&buffer as &dyn Adapter<i16>);
         assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
         assert_eq!(converter.read_sample(1, 1).unwrap(), -0.5);
         assert_eq!(converter.read_sample(0, 2).unwrap(), 0.25);
         assert_eq!(converter.read_sample(1, 2).unwrap(), -0.25);
+    }
+
+    #[test]
+    fn test_convert_i16_bytes_with_converter() {
+        let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let data_view = byte_slice_as_type!(data, I16LE);
+        let buffer = wrap::interleaved(data_view, 2);
+        let converter =
+            ConvertNumbers::<&dyn Adapter<I16LE>, f32>::new(&buffer as &dyn Adapter<I16LE>);
+        assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(converter.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(converter.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(converter.read_sample(1, 2).unwrap(), -0.25);
+    }
+
+    #[test]
+    fn test_convert_i16_bytes_with_rawsample() {
+        let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let data_view = byte_slice_as_type!(data, I16LE);
+        let buffer = wrap::interleaved(data_view, 2);
+        assert_eq!(buffer.read_sample(0, 0).unwrap().to_scaled_float::<f32>(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap().to_scaled_float::<f32>(), -1.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap().to_scaled_float::<f32>(), 0.5);
+        assert_eq!(buffer.read_sample(1, 1).unwrap().to_scaled_float::<f32>(), -0.5);
+        assert_eq!(buffer.read_sample(0, 2).unwrap().to_scaled_float::<f32>(), 0.25);
+        assert_eq!(buffer.read_sample(1, 2).unwrap().to_scaled_float::<f32>(), -0.25);
     }
 }

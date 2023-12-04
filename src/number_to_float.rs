@@ -19,7 +19,7 @@
 //! let data: Vec<i16> = vec![1, 2, 3, 4, 5, 6];
 //!
 //! // wrap the data
-//! let buffer: InterleavedNumbers<&[i16], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+//! let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
 //!
 //! // Loop over all samples and print their values
 //! for channel in 0..2 {
@@ -32,12 +32,66 @@
 //!     }
 //! }
 //! ```
+//!
+//! ## Example with raw bytes
+//! Wrap a Vec of bytes as an interleaved buffer of 16-bit little endian
+//! integer samples and print all the values.
+//! ```
+//! use audioadapter::number_to_float::InterleavedNumbers;
+//! use audioadapter::Adapter;
+//! use audioadapter::sample::I16LE;
+//!
+//! // make a vector with some dummy data.
+//! // 2 channels * 3 frames * 2 bytes per sample => 12 bytes
+//! let data: Vec<u8> = vec![0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+//!
+//! // wrap the data
+//! let buffer = InterleavedNumbers::<&[I16LE], f32>::new_from_bytes(&data, 2, 3).unwrap();
+//!
+//! // Loop over all samples and print their values
+//! for channel in 0..2 {
+//!     for frame in 0..3 {
+//!         let value = buffer.read_sample(channel, frame).unwrap();
+//!         println!(
+//!             "Channel: {}, frame: {}, value: {}",
+//!             channel, frame, value
+//!         );
+//!     }
+//! }
+use core::mem::size_of;
+
 use num_traits::Float;
 
 use crate::sample::RawSample;
 use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
+
+/// A macro for creating a view of an immutable slice of bytes
+/// as a different type.
+#[macro_export]
+macro_rules! byte_slice_as_type {
+    ($slice:ident, $type:ty) => {
+        unsafe {
+            let ptr = $slice.as_ptr() as *const $type;
+            let len = $slice.len();
+            core::slice::from_raw_parts(ptr, len / core::mem::size_of::<$type>())
+        }
+    };
+}
+
+/// A macro for creating a view of a mutable slice of bytes
+/// as a different type.
+#[macro_export]
+macro_rules! byte_slice_as_type_mut {
+    ($slice:ident, $type:ty) => {
+        unsafe {
+            let ptr = $slice.as_mut_ptr() as *mut $type;
+            let len = $slice.len();
+            core::slice::from_raw_parts_mut(ptr, len / core::mem::size_of::<$type>())
+        }
+    };
+}
 
 /// A wrapper for a slice containing interleaved numerical samples.
 pub struct InterleavedNumbers<U, V> {
@@ -72,7 +126,7 @@ where
     T: 'a,
 {
     /// Create a new wrapper for an immutable slice
-    /// of numerical samples
+    /// of numerical samples implementing [RawSample],
     /// stored in _interleaved_ order.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
@@ -83,6 +137,28 @@ where
         Ok(Self {
             _phantom: core::marker::PhantomData,
             buf,
+            frames,
+            channels,
+        })
+    }
+
+    /// Create a new wrapper for a mutable slice
+    /// of numerical samples implementing [RawSample],
+    /// stored as raw bytes in _interleaved_ order.
+    /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` trait methods.
+    pub fn new_from_bytes(
+        buf: &'a [u8],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len(), size_of::<U>());
+        let buf_view = byte_slice_as_type!(buf, U);
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            buf: buf_view,
             frames,
             channels,
         })
@@ -94,7 +170,7 @@ where
     T: 'a,
 {
     /// Create a new wrapper for a mutable slice
-    /// of numerical samples
+    /// of numerical samples implementing [RawSample],
     /// stored in _interleaved_ order.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
@@ -109,6 +185,28 @@ where
             channels,
         })
     }
+
+    /// Create a new wrapper for a mutable slice
+    /// of numerical samples implementing [RawSample],
+    /// stored as raw bytes in _interleaved_ order.
+    /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` trait methods.
+    pub fn new_from_bytes_mut(
+        buf: &'a mut [u8],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len(), size_of::<U>());
+        let buf_view = byte_slice_as_type_mut!(buf, U);
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            buf: buf_view,
+            frames,
+            channels,
+        })
+    }
 }
 
 impl<'a, U, T> SequentialNumbers<&'a [U], T>
@@ -116,7 +214,7 @@ where
     T: 'a,
 {
     /// Create a new wrapper for an immutable slice
-    /// of numerical samples
+    /// of numerical samples implementing [RawSample],
     /// stored in _sequential_ order.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
@@ -131,6 +229,28 @@ where
             channels,
         })
     }
+
+    /// Create a new wrapper for a mutable slice
+    /// of numerical samples implementing [RawSample],
+    /// stored as raw bytes in _sequential_ order.
+    /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` trait methods.
+    pub fn new_from_bytes(
+        buf: &'a [u8],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len(), size_of::<U>());
+        let buf_view = byte_slice_as_type!(buf, U);
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            buf: buf_view,
+            frames,
+            channels,
+        })
+    }
 }
 
 impl<'a, U, T> SequentialNumbers<&'a mut [U], T>
@@ -138,7 +258,7 @@ where
     T: 'a,
 {
     /// Create a new wrapper for a mutable slice
-    /// of numerical samples
+    /// of numerical samples implementing [RawSample],
     /// stored in _sequential_ order.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
@@ -153,14 +273,37 @@ where
             channels,
         })
     }
+
+    /// Create a new wrapper for a mutable slice
+    /// of numerical samples implementing [RawSample],
+    /// stored as raw bytes in _sequential_ order.
+    /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
+    /// It is allowed to be longer than needed,
+    /// but these extra values cannot
+    /// be accessed via the `Adapter` trait methods.
+    pub fn new_from_bytes_mut(
+        buf: &'a mut [u8],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_length!(channels, frames, buf.len(), size_of::<U>());
+        let buf_view = byte_slice_as_type_mut!(buf, U);
+        Ok(Self {
+            _phantom: core::marker::PhantomData,
+            buf: buf_view,
+            frames,
+            channels,
+        })
+    }
 }
 
 macro_rules! impl_traits_newtype {
-    ($type:expr, $order:ident) => {
+    ($order:ident) => {
         paste::item! {
-            impl<'a, T> Adapter<'a, T> for [< $order Numbers >]<&'a [$type], T>
+            impl<'a, T, U> Adapter<'a, T> for [< $order Numbers >]<&'a [U], T>
             where
                 T: Float + 'a,
+                U: RawSample,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let index = self.calc_index(channel, frame);
@@ -170,9 +313,10 @@ macro_rules! impl_traits_newtype {
                 implement_size_getters!();
             }
 
-            impl<'a, T> Adapter<'a, T> for [< $order Numbers >]<&'a mut [$type], T>
+            impl<'a, T, U> Adapter<'a, T> for [< $order Numbers >]<&'a mut [U], T>
             where
                 T: Float + 'a,
+                U: RawSample,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let index = self.calc_index(channel, frame);
@@ -182,13 +326,14 @@ macro_rules! impl_traits_newtype {
                 implement_size_getters!();
             }
 
-            impl<'a, T> AdapterMut<'a, T> for [< $order Numbers >]<&'a mut [$type], T>
+            impl<'a, T, U> AdapterMut<'a, T> for [< $order Numbers >]<&'a mut [U], T>
             where
                 T: Float + 'a,
+                U: RawSample,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let index = self.calc_index(channel, frame);
-                    let converted = $type::from_scaled_float(*value);
+                    let converted = U::from_scaled_float(*value);
                     self.buf[index] = converted.value;
                     converted.clipped
                 }
@@ -197,27 +342,8 @@ macro_rules! impl_traits_newtype {
     };
 }
 
-impl_traits_newtype!(i8, Interleaved);
-impl_traits_newtype!(u8, Interleaved);
-impl_traits_newtype!(i16, Interleaved);
-impl_traits_newtype!(u16, Interleaved);
-impl_traits_newtype!(i32, Interleaved);
-impl_traits_newtype!(u32, Interleaved);
-impl_traits_newtype!(i64, Interleaved);
-impl_traits_newtype!(u64, Interleaved);
-impl_traits_newtype!(f32, Interleaved);
-impl_traits_newtype!(f64, Interleaved);
-
-impl_traits_newtype!(i8, Sequential);
-impl_traits_newtype!(u8, Sequential);
-impl_traits_newtype!(i16, Sequential);
-impl_traits_newtype!(u16, Sequential);
-impl_traits_newtype!(i32, Sequential);
-impl_traits_newtype!(u32, Sequential);
-impl_traits_newtype!(i64, Sequential);
-impl_traits_newtype!(u64, Sequential);
-impl_traits_newtype!(f32, Sequential);
-impl_traits_newtype!(f64, Sequential);
+impl_traits_newtype!(Interleaved);
+impl_traits_newtype!(Sequential);
 
 //   _____         _
 //  |_   _|__  ___| |_ ___
@@ -228,11 +354,12 @@ impl_traits_newtype!(f64, Sequential);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sample::{I16LE, I24LE};
 
     #[test]
     fn read_i32() {
         let data: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
-        let buffer: InterleavedNumbers<&[i32], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -244,7 +371,7 @@ mod tests {
     #[test]
     fn read_i16() {
         let data: [i16; 6] = [0, -2 << 14, 2 << 13, -2 << 13, 2 << 12, -2 << 12];
-        let buffer: InterleavedNumbers<&[i16], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -256,7 +383,7 @@ mod tests {
     #[test]
     fn read_i8() {
         let data: [i8; 6] = [0, -2 << 6, 2 << 5, -2 << 5, 2 << 4, -2 << 4];
-        let buffer: InterleavedNumbers<&[i8], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -275,7 +402,7 @@ mod tests {
             128 + (2 << 4),
             128 - (2 << 4),
         ];
-        let buffer: InterleavedNumbers<&[u8], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer = InterleavedNumbers::<_, f32>::new(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
@@ -288,8 +415,7 @@ mod tests {
     fn write_i32() {
         let expected: [i32; 6] = [0, -2 << 30, 2 << 29, -2 << 29, 2 << 28, -2 << 28];
         let mut data = [0; 6];
-        let mut buffer: InterleavedNumbers<&mut [i32], f32> =
-            InterleavedNumbers::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer = InterleavedNumbers::<_, f32>::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_sample(0, 0, &0.0).unwrap();
         buffer.write_sample(1, 0, &-1.0).unwrap();
@@ -304,8 +430,7 @@ mod tests {
     fn write_i16() {
         let expected: [i16; 6] = [0, -2 << 14, 2 << 13, -2 << 13, 2 << 12, -2 << 12];
         let mut data = [0; 6];
-        let mut buffer: InterleavedNumbers<&mut [i16], f32> =
-            InterleavedNumbers::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer = InterleavedNumbers::<_, f32>::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_sample(0, 0, &0.0).unwrap();
         buffer.write_sample(1, 0, &-1.0).unwrap();
@@ -322,8 +447,8 @@ mod tests {
         let values_left = [0.0, 0.5, 0.25];
         let values_right = [-1.0, -0.5, -0.25];
         let mut data = [0; 6];
-        let mut buffer: InterleavedNumbers<&mut [i32], f32> =
-            InterleavedNumbers::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer =
+            InterleavedNumbers::<_, f32>::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_from_slice_to_channel(0, 0, &values_left);
         buffer.write_from_slice_to_channel(1, 0, &values_right);
@@ -337,7 +462,7 @@ mod tests {
         let expected_right = [-1.0, -0.5, -0.25];
         let mut values_left = [0.0; 3];
         let mut values_right = [0.0; 3];
-        let buffer: InterleavedNumbers<&[i32], f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
+        let buffer: InterleavedNumbers<_, f32> = InterleavedNumbers::new(&data, 2, 3).unwrap();
 
         buffer.write_from_channel_to_slice(0, 0, &mut values_left);
         buffer.write_from_channel_to_slice(1, 0, &mut values_right);
@@ -354,5 +479,44 @@ mod tests {
         fn is_sync<T: Sync>() {}
         is_send::<InterleavedNumbers<&[i32], f32>>();
         is_sync::<InterleavedNumbers<&[i32], f32>>();
+    }
+
+    #[test]
+    fn read_i16_bytes_interleaved() {
+        let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let buffer = InterleavedNumbers::<&[I16LE], f32>::new_from_bytes(&data, 2, 3).unwrap();
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), -0.25);
+    }
+
+    #[test]
+    fn write_i16_bytes_interleaved() {
+        let expected: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let mut data = [0; 12];
+        let mut buffer =
+            InterleavedNumbers::<&mut [I16LE], f32>::new_from_bytes_mut(&mut data, 2, 3).unwrap();
+        buffer.write_sample(0, 0, &0.0).unwrap();
+        buffer.write_sample(1, 0, &-1.0).unwrap();
+        buffer.write_sample(0, 1, &0.5).unwrap();
+        buffer.write_sample(1, 1, &-0.5).unwrap();
+        buffer.write_sample(0, 2, &0.25).unwrap();
+        buffer.write_sample(1, 2, &-0.25).unwrap();
+        assert_eq!(data, expected);
+    }
+
+    #[test]
+    fn read_i24_bytes_interleaved() {
+        let data: [u8; 18] = [0, 0, 0, 0, 0, 128, 0, 0, 64, 0, 0, 192, 0, 0, 32, 0, 0, 224];
+        let buffer = InterleavedNumbers::<&[I24LE<3>], f32>::new_from_bytes(&data, 2, 3).unwrap();
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(buffer.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(buffer.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(buffer.read_sample(1, 2).unwrap(), -0.25);
     }
 }

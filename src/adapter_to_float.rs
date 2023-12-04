@@ -17,10 +17,10 @@
 //! let data: Vec<i16> = vec![1, 2, 3, 4, 5, 6];
 //!
 //! // Wrap the data as an interleaved i16 buffer.
-//! let int_buffer: InterleavedSlice<&[i16]> = InterleavedSlice::new(&data, 2, 3).unwrap();
+//! let int_buffer = InterleavedSlice::new(&data, 2, 3).unwrap();
 //!
 //! // Wrap this buffer with a converter to read the values as floats.
-//! let converter: ConvertNumbers<&dyn Adapter<i16>, f32> = ConvertNumbers::new(&int_buffer as &dyn Adapter<i16>);
+//! let converter = ConvertNumbers::<_, f32>::new(&int_buffer as &dyn Adapter<i16>);
 //!
 //! // Loop over all samples and print their values
 //! for channel in 0..2 {
@@ -40,6 +40,18 @@ use crate::sample::BytesSample;
 use crate::sample::RawSample;
 use crate::sample::I16LE;
 use crate::{Adapter, AdapterMut};
+
+macro_rules! implement_wrapped_size_getters {
+    () => {
+        fn channels(&self) -> usize {
+            self.buf.channels()
+        }
+
+        fn frames(&self) -> usize {
+            self.buf.frames()
+        }
+    };
+}
 
 /// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
 /// stored as byte arrays.
@@ -103,13 +115,7 @@ macro_rules! byte_convert_traits_newtype {
                     sample.to_scaled_float::<T>()
                 }
 
-                fn channels(&self) -> usize {
-                    self.buf.channels()
-                }
-
-                fn frames(&self) -> usize {
-                    self.buf.frames()
-                }
+                implement_wrapped_size_getters!();
             }
 
             impl<'a, T, U> Adapter<'a, T> for ConvertBytes<T, U, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
@@ -123,13 +129,7 @@ macro_rules! byte_convert_traits_newtype {
                     sample.to_scaled_float::<T>()
                 }
 
-                fn channels(&self) -> usize {
-                    self.buf.channels()
-                }
-
-                fn frames(&self) -> usize {
-                    self.buf.frames()
-                }
+                implement_wrapped_size_getters!();
             }
 
             impl<'a, T, U> AdapterMut<'a, T> for ConvertBytes<T, U, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
@@ -197,13 +197,7 @@ where
             .to_scaled_float()
     }
 
-    fn channels(&self) -> usize {
-        self.buf.channels()
-    }
-
-    fn frames(&self) -> usize {
-        self.buf.frames()
-    }
+    implement_wrapped_size_getters!();
 }
 
 impl<'a, T, U> Adapter<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
@@ -217,13 +211,7 @@ where
             .to_scaled_float()
     }
 
-    fn channels(&self) -> usize {
-        self.buf.channels()
-    }
-
-    fn frames(&self) -> usize {
-        self.buf.frames()
-    }
+    implement_wrapped_size_getters!();
 }
 
 impl<'a, T, U> AdapterMut<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>

@@ -1,81 +1,86 @@
 use num_traits::{Float, PrimInt};
 
+#[cfg(feature = "audio")]
+use audio_core::Sample;
+
 /// 24 bit signed integer, little endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
-#[derive(Debug)]
-pub struct I24LE<U>(U);
+#[derive(Debug, Clone, Copy)]
+pub struct I24LE<const N: usize>([u8; N]);
 
 /// 24 bit signed integer, big endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
-#[derive(Debug)]
-pub struct I24BE<U>(U);
+#[derive(Debug, Clone, Copy)]
+pub struct I24BE<const N: usize>([u8; N]);
 
 /// 24 bit unsigned integer, little endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
-pub struct U24LE<U>(U);
+#[derive(Debug, Clone, Copy)]
+pub struct U24LE<const N: usize>([u8; N]);
 
 /// 24 bit unsigned integer, big endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
-pub struct U24BE<U>(U);
+#[derive(Debug, Clone, Copy)]
+pub struct U24BE<const N: usize>([u8; N]);
 
 /// 32 bit signed integer, little endian. Stored as 4 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct I32LE([u8; 4]);
 
 /// 32 bit signed integer, big endian. Stored as 4 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct I32BE([u8; 4]);
 
 /// 64 bit signed integer, little endian. Stored as 8 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct I64LE([u8; 8]);
 
 /// 64 bit signed integer, big endian. Stored as 8 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct I64BE([u8; 8]);
 
 /// 16 bit signed integer, little endian. Stored as 2 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct I16LE([u8; 2]);
 
 /// 16 bit signed integer, big endian. Stored as 2 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct I16BE([u8; 2]);
 
 /// 32 bit unsigned integer, little endian. Stored as 4 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct U32LE([u8; 4]);
 
 /// 32 bit unsigned integer, big endian. Stored as 4 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct U32BE([u8; 4]);
 
 /// 64 bit unsigned integer, little endian. Stored as 8 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct U64LE([u8; 8]);
 
 /// 64 bit unsigned integer, big endian. Stored as 8 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct U64BE([u8; 8]);
 
 /// 16 bit unsigned integer, little endian. Stored as 2 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct U16LE([u8; 2]);
 
 /// 16 bit unsigned integer, big endian. Stored as 2 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct U16BE([u8; 2]);
 
 /// 32 bit floating point, little endian. Stored as 4 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct F32LE([u8; 4]);
 
 /// 32 bit floating point, big endian. Stored as 4 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct F32BE([u8; 4]);
 
 /// 64 bit floating point, little endian. Stored as 8 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct F64LE([u8; 8]);
 
 /// 64 bit floating point, big endian. Stored as 8 bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct F64BE([u8; 8]);
 
 /// Convert a float to an integer, clamp at the min and max limits of the integer.
@@ -234,9 +239,9 @@ rawsample_for_float!(f64, to_f64);
 // because they don't map directly to a normal numerical type,
 
 /// 24 bit signed integer, little endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
-impl BytesSample for I24LE<[u8; 4]> {
+impl BytesSample for I24LE<4> {
     type NumericType = i32;
-    const BYTES_PER_SAMPLE: usize = 4;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
@@ -258,9 +263,9 @@ impl BytesSample for I24LE<[u8; 4]> {
 }
 
 /// 24 bit signed integer, little endian, stored as 3 bytes without padding.
-impl BytesSample for I24LE<[u8; 3]> {
+impl BytesSample for I24LE<3> {
     type NumericType = i32;
-    const BYTES_PER_SAMPLE: usize = 3;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -282,9 +287,9 @@ impl BytesSample for I24LE<[u8; 3]> {
 }
 
 /// 24 bit signed integer, big endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
-impl BytesSample for I24BE<[u8; 4]> {
+impl BytesSample for I24BE<4> {
     type NumericType = i32;
-    const BYTES_PER_SAMPLE: usize = 4;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
@@ -306,9 +311,9 @@ impl BytesSample for I24BE<[u8; 4]> {
 }
 
 /// 24 bit signed integer, big endian, stored as 3 bytes without padding.
-impl BytesSample for I24BE<[u8; 3]> {
+impl BytesSample for I24BE<3> {
     type NumericType = i32;
-    const BYTES_PER_SAMPLE: usize = 3;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -330,9 +335,9 @@ impl BytesSample for I24BE<[u8; 3]> {
 }
 
 /// 24 bit unsigned integer, little endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
-impl BytesSample for U24LE<[u8; 4]> {
+impl BytesSample for U24LE<4> {
     type NumericType = u32;
-    const BYTES_PER_SAMPLE: usize = 4;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
@@ -354,9 +359,9 @@ impl BytesSample for U24LE<[u8; 4]> {
 }
 
 /// 24 bit unsigned integer, little endian, stored as 3 bytes without padding.
-impl BytesSample for U24LE<[u8; 3]> {
+impl BytesSample for U24LE<3> {
     type NumericType = u32;
-    const BYTES_PER_SAMPLE: usize = 3;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -378,9 +383,9 @@ impl BytesSample for U24LE<[u8; 3]> {
 }
 
 /// 24 bit unsigned integer, big endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
-impl BytesSample for U24BE<[u8; 4]> {
+impl BytesSample for U24BE<4> {
     type NumericType = u32;
-    const BYTES_PER_SAMPLE: usize = 4;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
@@ -402,9 +407,9 @@ impl BytesSample for U24BE<[u8; 4]> {
 }
 
 /// 24 bit unsigned integer, big endian, stored as 3 bytes without padding.
-impl BytesSample for U24BE<[u8; 3]> {
+impl BytesSample for U24BE<3> {
     type NumericType = u32;
-    const BYTES_PER_SAMPLE: usize = 3;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -488,6 +493,74 @@ where
         }
     }
 }
+
+// Implement Sample for the audioadapter types
+#[cfg(feature = "audio")]
+macro_rules! impl_sample_for_newtype {
+    ($newtype:ident, $bytes:expr) => {
+        unsafe impl Sample for $newtype {
+            const ZERO: $newtype = $newtype([0; $bytes]);
+        }
+    };
+}
+
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(I64LE, 8);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(U64LE, 8);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(I64BE, 8);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(U64BE, 8);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(I16LE, 2);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(U16LE, 2);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(I16BE, 2);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(U16BE, 2);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(I32LE, 4);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(U32LE, 4);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(I32BE, 4);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(U32BE, 4);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(F32LE, 4);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(F32BE, 4);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(F64LE, 8);
+#[cfg(feature = "audio")]
+impl_sample_for_newtype!(F64BE, 8);
+
+#[cfg(feature = "audio")]
+macro_rules! impl_sample_for_generic_newtype {
+    ($newtype:ident, $bytes:expr) => {
+        unsafe impl Sample for $newtype<$bytes> {
+            const ZERO: $newtype<$bytes> = $newtype([0; $bytes]);
+        }
+    };
+}
+#[cfg(feature = "audio")]
+impl_sample_for_generic_newtype!(I24BE, 3);
+#[cfg(feature = "audio")]
+impl_sample_for_generic_newtype!(I24LE, 3);
+#[cfg(feature = "audio")]
+impl_sample_for_generic_newtype!(U24BE, 3);
+#[cfg(feature = "audio")]
+impl_sample_for_generic_newtype!(U24LE, 3);
+#[cfg(feature = "audio")]
+impl_sample_for_generic_newtype!(I24BE, 4);
+#[cfg(feature = "audio")]
+impl_sample_for_generic_newtype!(I24LE, 4);
+#[cfg(feature = "audio")]
+impl_sample_for_generic_newtype!(U24BE, 4);
+#[cfg(feature = "audio")]
+impl_sample_for_generic_newtype!(U24LE, 4);
 
 #[cfg(test)]
 mod tests {

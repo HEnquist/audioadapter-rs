@@ -101,10 +101,10 @@ By accessing the audio data via the trait methods instead
 of indexing the data structure directly,
 an application or library becomes independant of how the data is stored.
 
-## Compatibility with the [audio] crate
+## Compatibility with the [audio](https://crates.io/crates/audio) crate
 In addition to the provided wrappers, the [Adapter], [AdapterMut] traits are implemented for
 buffers implementing the [audio_core::Buf], [audio_core::BufMut] and [audio_core::ExactSizeBuf]
-traits from the [audio] crate.
+traits from the [audio](https://crates.io/crates/audio) crate.
 This is enabled via the `audio` Cargo feature, which is enabled by default.
 
 Example: Create a buffer and access it using [Adapter] methods.
@@ -134,5 +134,7 @@ for a vector of strings.
 ### Ideas for future improvements
 - methods for selective clearing (frame 0..n, n..end etc)
 - adapters with on-the-fly conversion to/from integers
+- read-only iterators (copy from old Direct trait)
+- index iterator (providing channel, frame)
 
 ## License: MIT
