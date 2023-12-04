@@ -1,6 +1,10 @@
 //! # audioadapter traits
 //!
 //! A set of traits for making it easier to work with buffers of audio data.
+//! 
+use crate::iterators::{
+    ChannelSamples, Channels, FrameSamples, Frames
+};
 
 // -------------------- The main buffer trait --------------------
 
@@ -85,6 +89,23 @@ pub trait Adapter<'a, T: 'a> {
             unsafe { *item = self.read_sample_unchecked(skip + n, frame) };
         }
         channels_to_write
+    }
+
+
+    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T, U>> {
+        ChannelSamples::new(self, channel)
+    }
+
+    fn iter_channels(&self) -> Channels<'a, '_, T, U> {
+        Channels::new(self)
+    }
+
+    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T, U>> {
+        FrameSamples::new(self, frame)
+    }
+
+    fn iter_frames(&self) -> Frames<'a, '_, T, U> {
+        Frames::new(self)
     }
 }
 

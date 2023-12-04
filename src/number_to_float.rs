@@ -228,7 +228,7 @@ where
         let buf_view = unsafe {
             let ptr = buf.as_ptr() as *const U;
             let len = buf.len();
-            core::slice::from_raw_parts(ptr, len / size_of::<U>())
+            std::slice::from_raw_parts(ptr, len / size_of::<U>())
         };
         Ok(Self {
             _phantom: core::marker::PhantomData,
@@ -276,7 +276,7 @@ where
         let buf_view = unsafe {
             let ptr = buf.as_mut_ptr() as *mut U;
             let len = buf.len();
-            core::slice::from_raw_parts_mut(ptr, len / size_of::<U>())
+            std::slice::from_raw_parts_mut(ptr, len / size_of::<U>())
         };
         Ok(Self {
             _phantom: core::marker::PhantomData,
