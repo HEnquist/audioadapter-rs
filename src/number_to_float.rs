@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn read_i24_bytes_interleaved() {
         let data: [u8; 18] = [0, 0, 0, 0, 0, 128, 0, 0, 64, 0, 0, 192, 0, 0, 32, 0, 0, 224];
-        let buffer: InterleavedNumbers<&[I24LE<[u8; 3]>], f32> =
+        let buffer: InterleavedNumbers<&[I24LE<3>], f32> =
             InterleavedNumbers::new_from_bytes(&data, 2, 3).unwrap();
         assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(buffer.read_sample(1, 0).unwrap(), -1.0);

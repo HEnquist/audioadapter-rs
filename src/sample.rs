@@ -5,19 +5,19 @@ use audio_core::Sample;
 
 /// 24 bit signed integer, little endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
 #[derive(Debug, Clone, Copy)]
-pub struct I24LE<U>(U);
+pub struct I24LE<const N: usize>([u8; N]);
 
 /// 24 bit signed integer, big endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
 #[derive(Debug, Clone, Copy)]
-pub struct I24BE<U>(U);
+pub struct I24BE<const N: usize>([u8; N]);
 
 /// 24 bit unsigned integer, little endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
 #[derive(Debug, Clone, Copy)]
-pub struct U24LE<U>(U);
+pub struct U24LE<const N: usize>([u8; N]);
 
 /// 24 bit unsigned integer, big endian. 24 bits stored packed as as 3 bytes or padded as 4 bytes.
 #[derive(Debug, Clone, Copy)]
-pub struct U24BE<U>(U);
+pub struct U24BE<const N: usize>([u8; N]);
 
 /// 32 bit signed integer, little endian. Stored as 4 bytes.
 #[derive(Debug, Clone, Copy)]
@@ -239,9 +239,9 @@ rawsample_for_float!(f64, to_f64);
 // because they don't map directly to a normal numerical type,
 
 /// 24 bit signed integer, little endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
-impl BytesSample for I24LE<[u8; 4]> {
+impl BytesSample for I24LE<4> {
     type NumericType = i32;
-    const BYTES_PER_SAMPLE: usize = 4;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
@@ -263,9 +263,9 @@ impl BytesSample for I24LE<[u8; 4]> {
 }
 
 /// 24 bit signed integer, little endian, stored as 3 bytes without padding.
-impl BytesSample for I24LE<[u8; 3]> {
+impl BytesSample for I24LE<3> {
     type NumericType = i32;
-    const BYTES_PER_SAMPLE: usize = 3;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -287,9 +287,9 @@ impl BytesSample for I24LE<[u8; 3]> {
 }
 
 /// 24 bit signed integer, big endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
-impl BytesSample for I24BE<[u8; 4]> {
+impl BytesSample for I24BE<4> {
     type NumericType = i32;
-    const BYTES_PER_SAMPLE: usize = 4;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
@@ -311,9 +311,9 @@ impl BytesSample for I24BE<[u8; 4]> {
 }
 
 /// 24 bit signed integer, big endian, stored as 3 bytes without padding.
-impl BytesSample for I24BE<[u8; 3]> {
+impl BytesSample for I24BE<3> {
     type NumericType = i32;
-    const BYTES_PER_SAMPLE: usize = 3;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -335,9 +335,9 @@ impl BytesSample for I24BE<[u8; 3]> {
 }
 
 /// 24 bit unsigned integer, little endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
-impl BytesSample for U24LE<[u8; 4]> {
+impl BytesSample for U24LE<4> {
     type NumericType = u32;
-    const BYTES_PER_SAMPLE: usize = 4;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
@@ -359,9 +359,9 @@ impl BytesSample for U24LE<[u8; 4]> {
 }
 
 /// 24 bit unsigned integer, little endian, stored as 3 bytes without padding.
-impl BytesSample for U24LE<[u8; 3]> {
+impl BytesSample for U24LE<3> {
     type NumericType = u32;
-    const BYTES_PER_SAMPLE: usize = 3;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -383,9 +383,9 @@ impl BytesSample for U24LE<[u8; 3]> {
 }
 
 /// 24 bit unsigned integer, big endian, stored as 4 bytes. The data is in the lower 3 bytes and the most significant byte is padding.
-impl BytesSample for U24BE<[u8; 4]> {
+impl BytesSample for U24BE<4> {
     type NumericType = u32;
-    const BYTES_PER_SAMPLE: usize = 4;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
@@ -407,9 +407,9 @@ impl BytesSample for U24BE<[u8; 4]> {
 }
 
 /// 24 bit unsigned integer, big endian, stored as 3 bytes without padding.
-impl BytesSample for U24BE<[u8; 3]> {
+impl BytesSample for U24BE<3> {
     type NumericType = u32;
-    const BYTES_PER_SAMPLE: usize = 3;
+    const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -540,8 +540,8 @@ impl_sample_for_newtype!(F64BE, 8);
 #[cfg(feature = "audio")]
 macro_rules! impl_sample_for_generic_newtype {
     ($newtype:ident, $bytes:expr) => {
-        unsafe impl Sample for $newtype<[u8; $bytes]> {
-            const ZERO: $newtype<[u8; $bytes]> = $newtype([0; $bytes]);
+        unsafe impl Sample for $newtype<$bytes> {
+            const ZERO: $newtype<$bytes> = $newtype([0; $bytes]);
         }
     };
 }
