@@ -91,6 +91,8 @@ where
 mod tests {
     use super::*;
     use crate::adapter_to_float::ConvertNumbers;
+    use crate::byte_slice_as_type;
+    use crate::sample::I16LE;
     use audio::wrap;
 
     #[test]
@@ -168,6 +170,21 @@ mod tests {
         let buffer = wrap::interleaved(&data, 2);
         let converter: ConvertNumbers<&dyn Adapter<i16>, f32> =
             ConvertNumbers::new(&buffer as &dyn Adapter<i16>);
+        assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(converter.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(converter.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(converter.read_sample(1, 2).unwrap(), -0.25);
+    }
+
+    #[test]
+    fn test_convert_i16_bytes() {
+        let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
+        let data_view = byte_slice_as_type!(data, I16LE);
+        let buffer = wrap::interleaved(data_view, 2);
+        let converter: ConvertNumbers<&dyn Adapter<I16LE>, f32> =
+            ConvertNumbers::new(&buffer as &dyn Adapter<I16LE>);
         assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);

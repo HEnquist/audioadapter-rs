@@ -67,6 +67,32 @@ use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
 
+/// A macro for creating a view of an immutable slice of bytes
+/// as a different type.
+#[macro_export]
+macro_rules! byte_slice_as_type {
+    ($slice:ident, $type:ty) => {
+        unsafe {
+            let ptr = $slice.as_ptr() as *const $type;
+            let len = $slice.len();
+            core::slice::from_raw_parts(ptr, len / core::mem::size_of::<$type>())
+        }
+    };
+}
+
+/// A macro for creating a view of a mutable slice of bytes
+/// as a different type.
+#[macro_export]
+macro_rules! byte_slice_as_type_mut {
+    ($slice:ident, $type:ty) => {
+        unsafe {
+            let ptr = $slice.as_mut_ptr() as *mut $type;
+            let len = $slice.len();
+            core::slice::from_raw_parts_mut(ptr, len / core::mem::size_of::<$type>())
+        }
+    };
+}
+
 /// A wrapper for a slice containing interleaved numerical samples.
 pub struct InterleavedNumbers<U, V> {
     _phantom: core::marker::PhantomData<V>,
@@ -129,11 +155,7 @@ where
         frames: usize,
     ) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
-        let buf_view = unsafe {
-            let ptr = buf.as_ptr() as *const U;
-            let len = buf.len();
-            core::slice::from_raw_parts(ptr, len / size_of::<U>())
-        };
+        let buf_view = byte_slice_as_type!(buf, U);
         Ok(Self {
             _phantom: core::marker::PhantomData,
             buf: buf_view,
@@ -177,11 +199,7 @@ where
         frames: usize,
     ) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
-        let buf_view = unsafe {
-            let ptr = buf.as_mut_ptr() as *mut U;
-            let len = buf.len();
-            core::slice::from_raw_parts_mut(ptr, len / size_of::<U>())
-        };
+        let buf_view = byte_slice_as_type_mut!(buf, U);
         Ok(Self {
             _phantom: core::marker::PhantomData,
             buf: buf_view,
@@ -225,11 +243,7 @@ where
         frames: usize,
     ) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
-        let buf_view = unsafe {
-            let ptr = buf.as_ptr() as *const U;
-            let len = buf.len();
-            core::slice::from_raw_parts(ptr, len / size_of::<U>())
-        };
+        let buf_view = byte_slice_as_type!(buf, U);
         Ok(Self {
             _phantom: core::marker::PhantomData,
             buf: buf_view,
@@ -273,11 +287,7 @@ where
         frames: usize,
     ) -> Result<Self, SizeError> {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
-        let buf_view = unsafe {
-            let ptr = buf.as_mut_ptr() as *mut U;
-            let len = buf.len();
-            core::slice::from_raw_parts_mut(ptr, len / size_of::<U>())
-        };
+        let buf_view = byte_slice_as_type_mut!(buf, U);
         Ok(Self {
             _phantom: core::marker::PhantomData,
             buf: buf_view,
