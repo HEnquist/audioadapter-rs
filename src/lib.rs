@@ -18,6 +18,9 @@ pub mod sample;
 /// Calculate statistics for adapters with numerical sample types
 pub mod stats;
 
+/// Read-only iterators
+pub mod iterators;
+
 #[cfg(feature = "std")]
 use std::error::Error;
 #[cfg(feature = "std")]

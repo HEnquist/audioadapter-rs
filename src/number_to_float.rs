@@ -447,8 +447,7 @@ mod tests {
         let values_left = [0.0, 0.5, 0.25];
         let values_right = [-1.0, -0.5, -0.25];
         let mut data = [0; 6];
-        let mut buffer =
-            InterleavedNumbers::<_, f32>::new_mut(&mut data, 2, 3).unwrap();
+        let mut buffer = InterleavedNumbers::<_, f32>::new_mut(&mut data, 2, 3).unwrap();
 
         buffer.write_from_slice_to_channel(0, 0, &values_left);
         buffer.write_from_slice_to_channel(1, 0, &values_right);
