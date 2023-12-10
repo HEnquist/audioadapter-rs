@@ -2,13 +2,19 @@ use crate::Adapter;
 
 // -------------------- Iterators returning immutable samples --------------------
 
+/// A trait providing convenient iteration through frames and/or channels
+/// of an [Adapter].
 pub trait AdapterIterators<'a, T: 'a> {
+    /// Get an iterator that yields the sample value of the specified channel.
     fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>>;
 
+    /// Get an iterator that yields iterators for the channels.
     fn iter_channels(&self) -> Channels<'a, '_, T>;
 
+    /// Get an iterator that yields the sample values of the specified frame.
     fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T>>;
 
+    /// Get an iterator that yields iterators for the frames.
     fn iter_frames(&self) -> Frames<'a, '_, T>;
 }
 
@@ -34,7 +40,7 @@ where
     }
 }
 
-/// An iterator that yields immutable references to the samples of a channel.
+/// An iterator that yields the sample values of a channel.
 pub struct ChannelSamples<'a, 'b, T> {
     buf: &'b dyn Adapter<'a, T>,
     frame: usize,
@@ -79,7 +85,7 @@ where
     }
 }
 
-/// An iterator that yields immutable references to the samples of a frame.
+/// An iterator that yields the samples values of a frame.
 pub struct FrameSamples<'a, 'b, T> {
     buf: &'b dyn Adapter<'a, T>,
     frame: usize,

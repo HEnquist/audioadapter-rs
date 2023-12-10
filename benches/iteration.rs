@@ -1,4 +1,3 @@
-use audioadapter::iterators::*;
 use audioadapter::sample::*;
 use audioadapter::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};

@@ -19,7 +19,7 @@ pub mod sample;
 pub mod stats;
 
 /// Read-only iterators
-pub mod iterators;
+mod iterators;
 
 #[cfg(feature = "std")]
 use std::error::Error;
@@ -27,6 +27,8 @@ use std::error::Error;
 use std::fmt;
 
 pub use traits::{Adapter, AdapterMut};
+
+pub use iterators::AdapterIterators;
 
 #[cfg(feature = "audio")]
 pub mod audio;
