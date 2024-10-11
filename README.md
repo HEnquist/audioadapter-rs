@@ -133,8 +133,7 @@ for a vector of strings.
 
 ### Ideas for future improvements
 - methods for selective clearing (frame 0..n, n..end etc)
-- adapters with on-the-fly conversion to/from integers
-- read-only iterators (copy from old Direct trait)
 - index iterator (providing channel, frame)
+- supporting reuse of wrapping adapters by replacing inner data
 
 ## License: MIT
