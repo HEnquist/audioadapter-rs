@@ -53,6 +53,11 @@ pub enum SizeError {
         actual: usize,
         required: usize,
     },
+    Other {
+        actual: usize,
+        required: usize,
+        name: String,
+    }
 }
 
 #[cfg(feature = "std")]
@@ -81,6 +86,10 @@ impl fmt::Display for SizeError {
             SizeError::Total { actual, required } => format!(
                 "Buffer is too short, got: {}, required: {}",
                 actual, required
+            ),
+            SizeError::Other { actual, required, name } => format!(
+                "{} is wrong length, got: {}, required: {}",
+                name, actual, required
             ),
         };
         write!(f, "{}", &desc)

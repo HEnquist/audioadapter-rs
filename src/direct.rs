@@ -64,6 +64,31 @@ macro_rules! check_slice_and_vec_length {
             }
         }
     };
+    ($buf:expr, $channels:expr, $frames:expr, $mask:expr, sequential) => {
+        if $mask.len() != $channels {
+            return Err(SizeError::Other {
+                actual: $mask.len(),
+                required: $channels,
+                name: "Mask".to_string(),
+            });
+        }
+        if $buf.len() < $channels {
+            return Err(SizeError::Frame {
+                index: 0,
+                actual: $buf.len(),
+                required: $channels,
+            });
+        }
+        for (idx, (chan, active)) in $buf.iter().zip($mask).enumerate() {
+            if *active && chan.len() < $frames {
+                return Err(SizeError::Channel {
+                    index: idx,
+                    actual: chan.len(),
+                    required: $frames,
+                });
+            }
+        }
+    };
     ($buf:expr, $channels:expr, $frames:expr, interleaved) => {
         if $buf.len() < $frames {
             return Err(SizeError::Channel {
@@ -98,7 +123,7 @@ pub struct SequentialSliceOfVecs<U> {
 
 #[cfg(feature = "std")]
 impl<'a, T> SequentialSliceOfVecs<&'a [Vec<T>]> {
-    /// Create a new `SliceOfChannelVecs` to wrap a slice of vectors.
+    /// Create a new `SequentialSliceOfVecs` to wrap a slice of vectors.
     /// The slice must contain at least `channels` vectors,
     /// and each vector must be at least `frames` long.
     /// They are allowed to be longer than needed,
@@ -116,7 +141,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a [Vec<T>]> {
 
 #[cfg(feature = "std")]
 impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
-    /// Create a new `SliceOfChannelVecs` to wrap a mutable slice of vectors.
+    /// Create a new `SequentialSliceOfVecs` to wrap a mutable slice of vectors.
     /// The slice must contain at least `channels` vectors,
     /// and each vector must be at least `frames` long.
     /// They are allowed to be longer than needed,
@@ -216,6 +241,171 @@ where
 }
 
 //
+// =========================== SparseSequentialSliceOfVecs ===========================
+//
+
+/// Wrapper for a slice of length `channels`, containing vectors of length `frames`.
+/// Each vector contains the samples for all frames of one channel.
+/// This is similar to [SequentialSliceOfVecs],
+/// but here vectors for unused channels may be empty.
+#[cfg(feature = "std")]
+pub struct SparseSequentialSliceOfVecs<U> {
+    buf: U,
+    frames: usize,
+    channels: usize,
+    mask: Vec<bool>,
+}
+
+#[cfg(feature = "std")]
+impl<'a, T> SparseSequentialSliceOfVecs<&'a [Vec<T>]> {
+    /// Create a new `SparseSequentialSliceOfVecs` to wrap a slice of vectors.
+    /// The slice must contain at least `channels` vectors.
+    /// The vectors for channels that are marked as active
+    /// must be at least `frames` long.
+    /// They are allowed to be longer than needed,
+    /// but these extra frames or channels cannot
+    /// be accessed via the trait methods.
+    /// Vectors for unused channels are never accessed and can have any length.
+    pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize, active_channels_mask: &[bool]) -> Result<Self, SizeError> {
+        let mask = active_channels_mask.to_vec();
+        check_slice_and_vec_length!(buf, channels, frames, &mask, sequential);
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+            mask,
+        })
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, T> SparseSequentialSliceOfVecs<&'a mut [Vec<T>]> {
+    /// Create a new `SparseSequentialSliceOfVecs` to wrap a mutable slice of vectors.
+    /// The slice must contain at least `channels` vectors,
+    /// and each vector must be at least `frames` long.
+    /// They are allowed to be longer than needed,
+    /// but these extra frames or channels cannot
+    /// be accessed via the trait methods.
+    pub fn new_mut(
+        buf: &'a mut [Vec<T>],
+        channels: usize,
+        frames: usize,
+        active_channels_mask: &[bool],
+    ) -> Result<Self, SizeError> {
+        let mask = active_channels_mask.to_vec();
+        check_slice_and_vec_length!(buf, channels, frames, &mask, sequential);
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+            mask,
+        })
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a [Vec<T>]>
+where
+    T: Clone,
+{
+
+    fn read_sample(&self, channel: usize, frame: usize) -> Option<T> {
+        if channel >= self.channels || !self.mask[channel]  || frame >= self.frames {
+            return None;
+        }
+        Some(unsafe { self.read_sample_unchecked(channel, frame) })
+    }
+
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+    }
+
+    implement_size_getters!();
+
+    fn write_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || !self.mask[channel] || skip >= self.frames {
+            return 0;
+        }
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
+        } else {
+            slice.len()
+        };
+        slice[..frames_to_write].clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
+        frames_to_write
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
+where
+    T: Clone,
+{
+
+    fn read_sample(&self, channel: usize, frame: usize) -> Option<T> {
+        if channel >= self.channels || !self.mask[channel]  || frame >= self.frames {
+            return None;
+        }
+        Some(unsafe { self.read_sample_unchecked(channel, frame) })
+    }
+
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+    }
+
+    implement_size_getters!();
+
+    fn write_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || !self.mask[channel] || skip >= self.frames {
+            return 0;
+        }
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
+        } else {
+            slice.len()
+        };
+        slice[..frames_to_write].clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
+        frames_to_write
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, T> AdapterMut<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
+where
+    T: Clone,
+{
+    fn write_sample(&mut self, channel: usize, frame: usize, value: &T) -> Option<bool> {
+        if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
+            return None;
+        }
+        Some(unsafe { self.write_sample_unchecked(channel, frame, value) })
+    }
+
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+        *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+        false
+    }
+
+    fn write_from_slice_to_channel(
+        &mut self,
+        channel: usize,
+        skip: usize,
+        slice: &[T],
+    ) -> (usize, usize) {
+        if channel >= self.channels || !self.mask[channel] || skip >= self.frames {
+            return (0, 0);
+        }
+        let frames_to_read = if (self.frames - skip) < slice.len() {
+            self.frames - skip
+        } else {
+            slice.len()
+        };
+        self.buf[channel][skip..skip + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
+        (frames_to_read, 0)
+    }
+}
+
+//
 // =========================== InterleavedSliceOfVecs ===========================
 //
 
@@ -230,7 +420,7 @@ pub struct InterleavedSliceOfVecs<U> {
 
 #[cfg(feature = "std")]
 impl<'a, T> InterleavedSliceOfVecs<&'a [Vec<T>]> {
-    /// Create a new `InterleavedWrapper` to wrap a slice of vectors.
+    /// Create a new `InterleavedSliceOfVecs` to wrap a slice of vectors.
     /// The slice must contain at least `frames` vectors,
     /// and each vector must be at least `channels` long.
     /// They are allowed to be longer than needed,
@@ -248,7 +438,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a [Vec<T>]> {
 
 #[cfg(feature = "std")]
 impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
-    /// Create a new `InterleavedWrapper` to wrap a mutable slice of vectors.
+    /// Create a new `InterleavedSliceOfVecs` to wrap a mutable slice of vectors.
     /// The slice must contain at least `frames` vectors,
     /// and each vector must be at least `channels` long.
     /// They are allowed to be longer than needed,
@@ -372,7 +562,7 @@ impl<U> InterleavedSlice<U> {
 }
 
 impl<'a, T> InterleavedSlice<&'a [T]> {
-    /// Create a new `InterleavedWrapper` to wrap a slice.
+    /// Create a new `InterleavedSlice` to wrap a slice.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
@@ -388,7 +578,7 @@ impl<'a, T> InterleavedSlice<&'a [T]> {
 }
 
 impl<'a, T> InterleavedSlice<&'a mut [T]> {
-    /// Create a new `InterleavedWrapper` to wrap a mutable slice.
+    /// Create a new `InterleavedSlice` to wrap a mutable slice.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
@@ -511,7 +701,7 @@ impl<U> SequentialSlice<U> {
 }
 
 impl<'a, T> SequentialSlice<&'a [T]> {
-    /// Create a new `SequentialWrapper` to wrap a slice.
+    /// Create a new `SequentialSlice` to wrap a slice.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
@@ -527,7 +717,7 @@ impl<'a, T> SequentialSlice<&'a [T]> {
 }
 
 impl<'a, T> SequentialSlice<&'a mut [T]> {
-    /// Create a new `SequentialWrapper` to wrap a mutable slice.
+    /// Create a new `SequentialSlice` to wrap a mutable slice.
     /// The slice length must be at least `frames*channels`.
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
@@ -826,5 +1016,17 @@ mod tests {
         buffer.fill_with(&2);
         let expected: [i32; 6] = [2; 6];
         assert_eq!(data, expected);
+    }
+
+    #[test]
+    fn sparse_sequential() {
+        let mut data = vec![vec![1, 2, 3], Vec::new()];
+        let mask = vec![true, false];
+        let mut buffer = SparseSequentialSliceOfVecs::new_mut(&mut data, 2, 3, &mask).unwrap();
+        assert_eq!(buffer.read_sample(0, 1), Some(2));
+        assert_eq!(buffer.read_sample(1, 1), None);
+        assert_eq!(buffer.write_sample(0, 1, &25), Some(false));
+        assert_eq!(buffer.write_sample(1, 1, &26), None);
+        assert_eq!(buffer.read_sample(0, 1), Some(25));
     }
 }
