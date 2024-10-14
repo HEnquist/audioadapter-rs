@@ -4,7 +4,7 @@
 //!
 //! ## Available wrappers
 //! Wrappers are available for vectors, `Vec<T>`,
-//! with samples stored in  _interleaved_ and _sequential_ order.
+//! with samples stored in _interleaved_ and _sequential_ order.
 //!
 //! ### Example
 //! Wrap a `Vec<i32>` as an interleaved buffer

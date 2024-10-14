@@ -18,12 +18,17 @@ pub mod sample;
 /// Calculate statistics for adapters with numerical sample types
 pub mod stats;
 
+/// Read-only iterators
+mod iterators;
+
 #[cfg(feature = "std")]
 use std::error::Error;
 #[cfg(feature = "std")]
 use std::fmt;
 
 pub use traits::{Adapter, AdapterMut};
+
+pub use iterators::AdapterIterators;
 
 #[cfg(feature = "audio")]
 pub mod audio;
@@ -48,6 +53,11 @@ pub enum SizeError {
         actual: usize,
         required: usize,
     },
+    Other {
+        actual: usize,
+        required: usize,
+        name: String,
+    }
 }
 
 #[cfg(feature = "std")]
@@ -76,6 +86,10 @@ impl fmt::Display for SizeError {
             SizeError::Total { actual, required } => format!(
                 "Buffer is too short, got: {}, required: {}",
                 actual, required
+            ),
+            SizeError::Other { actual, required, name } => format!(
+                "{} is wrong length, got: {}, required: {}",
+                name, actual, required
             ),
         };
         write!(f, "{}", &desc)

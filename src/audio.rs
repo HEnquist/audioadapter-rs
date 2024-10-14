@@ -92,8 +92,8 @@ mod tests {
     use super::*;
     use crate::adapter_to_float::ConvertNumbers;
     use crate::byte_slice_as_type;
-    use crate::sample::I16LE;
     use crate::sample::RawSample;
+    use crate::sample::I16LE;
     use audio::wrap;
 
     #[test]
@@ -169,8 +169,7 @@ mod tests {
     fn test_convert_i16() {
         let data: [i16; 6] = [0, i16::MIN, 1 << 14, -(1 << 14), 1 << 13, -(1 << 13)];
         let buffer = wrap::interleaved(&data, 2);
-        let converter =
-            ConvertNumbers::<_, f32>::new(&buffer as &dyn Adapter<i16>);
+        let converter = ConvertNumbers::<_, f32>::new(&buffer as &dyn Adapter<i16>);
         assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
         assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
         assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
@@ -199,11 +198,29 @@ mod tests {
         let data: [u8; 12] = [0, 0, 0, 128, 0, 64, 0, 192, 0, 32, 0, 224];
         let data_view = byte_slice_as_type!(data, I16LE);
         let buffer = wrap::interleaved(data_view, 2);
-        assert_eq!(buffer.read_sample(0, 0).unwrap().to_scaled_float::<f32>(), 0.0);
-        assert_eq!(buffer.read_sample(1, 0).unwrap().to_scaled_float::<f32>(), -1.0);
-        assert_eq!(buffer.read_sample(0, 1).unwrap().to_scaled_float::<f32>(), 0.5);
-        assert_eq!(buffer.read_sample(1, 1).unwrap().to_scaled_float::<f32>(), -0.5);
-        assert_eq!(buffer.read_sample(0, 2).unwrap().to_scaled_float::<f32>(), 0.25);
-        assert_eq!(buffer.read_sample(1, 2).unwrap().to_scaled_float::<f32>(), -0.25);
+        assert_eq!(
+            buffer.read_sample(0, 0).unwrap().to_scaled_float::<f32>(),
+            0.0
+        );
+        assert_eq!(
+            buffer.read_sample(1, 0).unwrap().to_scaled_float::<f32>(),
+            -1.0
+        );
+        assert_eq!(
+            buffer.read_sample(0, 1).unwrap().to_scaled_float::<f32>(),
+            0.5
+        );
+        assert_eq!(
+            buffer.read_sample(1, 1).unwrap().to_scaled_float::<f32>(),
+            -0.5
+        );
+        assert_eq!(
+            buffer.read_sample(0, 2).unwrap().to_scaled_float::<f32>(),
+            0.25
+        );
+        assert_eq!(
+            buffer.read_sample(1, 2).unwrap().to_scaled_float::<f32>(),
+            -0.25
+        );
     }
 }
