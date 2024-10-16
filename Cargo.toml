@@ -18,14 +18,13 @@ audio = ["audio-core"]
 
 [dependencies]
 num-traits = "0.2.15"
-rawsample = { git = "https://github.com/HEnquist/rawsample.git", branch = "simplified_next" }
 paste = "1.0.12"
-audio-core = { git = "https://github.com/udoprog/audio.git", optional = true }
+audio-core = { version = "0.2.0", optional = true }
 
 
 [dev-dependencies]
 criterion = "0.5"
-audio = { git = "https://github.com/udoprog/audio.git" }
+audio = "0.2.0"
 
 [[bench]]
 name = "iteration"
