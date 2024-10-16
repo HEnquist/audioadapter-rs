@@ -56,7 +56,7 @@ pub enum SizeError {
     Mask {
         actual: usize,
         required: usize,
-    }
+    },
 }
 
 #[cfg(feature = "std")]
@@ -86,7 +86,7 @@ impl fmt::Display for SizeError {
                 "Buffer is too short, got: {}, required: {}",
                 actual, required
             ),
-            SizeError::Mask { actual, required} => format!(
+            SizeError::Mask { actual, required } => format!(
                 "Mask is wrong length, got: {}, required: {}",
                 actual, required
             ),

@@ -265,7 +265,12 @@ impl<'a, T> SparseSequentialSliceOfVecs<&'a [Vec<T>]> {
     /// but these extra frames or channels cannot
     /// be accessed via the trait methods.
     /// Vectors for unused channels are never accessed and can have any length.
-    pub fn new(buf: &'a [Vec<T>], channels: usize, frames: usize, active_channels_mask: &[bool]) -> Result<Self, SizeError> {
+    pub fn new(
+        buf: &'a [Vec<T>],
+        channels: usize,
+        frames: usize,
+        active_channels_mask: &[bool],
+    ) -> Result<Self, SizeError> {
         let mask = active_channels_mask.to_vec();
         check_slice_and_vec_length!(buf, channels, frames, &mask, sequential);
         Ok(Self {
@@ -307,9 +312,8 @@ impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone,
 {
-
     fn read_sample(&self, channel: usize, frame: usize) -> Option<T> {
-        if channel >= self.channels || !self.mask[channel]  || frame >= self.frames {
+        if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
             return None;
         }
         Some(unsafe { self.read_sample_unchecked(channel, frame) })
@@ -340,9 +344,8 @@ impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone,
 {
-
     fn read_sample(&self, channel: usize, frame: usize) -> Option<T> {
-        if channel >= self.channels || !self.mask[channel]  || frame >= self.frames {
+        if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
             return None;
         }
         Some(unsafe { self.read_sample_unchecked(channel, frame) })
