@@ -2,8 +2,14 @@
 name = "audioadapter"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+rust-version = "1.74"
+authors = ["HEnquist <henrik.enquist@gmail.com>"]
+description = "A library for making it easier to work with buffers of audio data"
+license = "MIT"
+repository = "https://github.com/HEnquist/audioadapter-rs"
+keywords = ["audio", "buffer", "dsp", "sample", "pcm"]
+categories = ["multimedia::audio"]
+readme = "README.md"
 
 [features]
 default = ["std", "audio"]
