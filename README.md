@@ -101,6 +101,48 @@ By accessing the audio data via the trait methods instead
 of indexing the data structure directly,
 an application or library becomes independant of how the data is stored.
 
+## Handling buffers of raw bytes
+Audio is often exchanged as buffers of raw bytes, and it is up to each application
+to treat those bytes as samples of the correct format.
+The [number_to_float] module is desgined to help with this.
+
+Example, wrap a buffer of bytes containing interleaved raw samples in 24-bit integer format,
+while converting them to f32:
+```rust
+use audioadapter::number_to_float::InterleavedNumbers;
+use audioadapter::Adapter;
+use audioadapter::sample::I24LE;
+
+// make a vector with some dummy data.
+// 2 channels * 3 frames * 3 bytes per sample => 18 bytes
+let data: Vec<u8> = vec![
+    1, 1, 1, //frame 1, left
+    2, 2, 2, //frame 1, right
+    3, 3, 3, //frame 2, left
+    4, 4, 4, //frame 2, right
+    5, 5, 5, //frame 3, left
+    6, 6, 6  //frame 3, right
+];
+
+// wrap the data
+let buffer = InterleavedNumbers::<&[I24LE<3>], f32>::new_from_bytes(&data, 2, 3).unwrap();
+
+// Loop over all samples and print their values
+for channel in 0..buffer.channels() {
+    for frame in 0..buffer.frames() {
+        let value = buffer.read_sample(channel, frame).unwrap();
+        println!(
+            "Channel: {}, frame: {}, value: {}",
+            channel, frame, value
+        );
+    }
+}
+```
+Note that the example uses `I24LE<3>`, which means 24-bit samples
+stored as 3 bytes in little-endian order without padding.
+24-bit samples are also commonly stored with a padding byte, so that each sample takes up four bytes.
+This is handled by selecting `I24LE<4>` as the format.
+
 ## Compatibility with the [audio](https://crates.io/crates/audio) crate
 In addition to the provided wrappers, the [Adapter], [AdapterMut] traits are implemented for
 buffers implementing the [audio_core::Buf], [audio_core::BufMut] and [audio_core::ExactSizeBuf]
