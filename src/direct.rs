@@ -66,10 +66,9 @@ macro_rules! check_slice_and_vec_length {
     };
     ($buf:expr, $channels:expr, $frames:expr, $mask:expr, sequential) => {
         if $mask.len() != $channels {
-            return Err(SizeError::Other {
+            return Err(SizeError::Mask {
                 actual: $mask.len(),
                 required: $channels,
-                name: "Mask".to_string(),
             });
         }
         if $buf.len() < $channels {
@@ -1018,6 +1017,7 @@ mod tests {
         assert_eq!(data, expected);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn sparse_sequential() {
         let mut data = vec![vec![1, 2, 3], Vec::new()];
