@@ -45,6 +45,7 @@ the data can be ordered in two main ways.
   This is normally called _interleaved_, and this is how the data in a .wav file is ordered.
   The sample order of a stereo file with 3 frames becomes:
   `L1, R1, L2, R2, L3, R3`
+
 In a more general sense, the same applies when storing
 any multi-dimensional array in linear storage such as RAM or a file.
 A 2D matrix can then be stored in _row-major_ or _column-major_ order.
@@ -138,6 +139,7 @@ for channel in 0..buffer.channels() {
     }
 }
 ```
+
 Note that the example uses `I24LE<3>`, which means 24-bit samples
 stored as 3 bytes in little-endian order without padding.
 24-bit samples are also commonly stored with a padding byte, so that each sample takes up four bytes.
