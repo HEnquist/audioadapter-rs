@@ -142,6 +142,10 @@ macro_rules! byte_convert_traits_newtype {
                     self.buf.write_sample_unchecked(channel, frame, converted.value.as_slice().try_into().unwrap());
                     converted.clipped
                 }
+
+                fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+                    self.buf.copy_frames_within(src, dest, count)
+                }
             }
         }
 }
@@ -217,13 +221,17 @@ where
 impl<'a, T, U> AdapterMut<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
 where
     T: Float + 'a,
-    U: RawSample + Clone + 'a,
+    U: RawSample + Clone + Copy + 'a,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let converted = U::from_scaled_float(*value);
         self.buf
             .write_sample_unchecked(channel, frame, &converted.value);
         converted.clipped
+    }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        self.buf.copy_frames_within(src, dest, count)
     }
 }
 

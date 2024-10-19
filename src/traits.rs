@@ -271,4 +271,6 @@ where
             self.fill_channel_with(channel, value).unwrap_or_default();
         }
     }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize>;
 }

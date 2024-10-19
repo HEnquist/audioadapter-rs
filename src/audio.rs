@@ -79,6 +79,10 @@ where
             .for_each(|(s, o)| *s = *o);
         (frames_to_read, 0)
     }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        unimplemented!()
+    }
 }
 
 //   _____         _

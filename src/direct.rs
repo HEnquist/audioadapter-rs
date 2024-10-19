@@ -213,7 +213,7 @@ where
 #[cfg(feature = "std")]
 impl<'a, T> AdapterMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
-    T: Clone,
+    T: Clone + Copy
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
@@ -236,6 +236,16 @@ where
         };
         self.buf[channel][skip..skip + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
         (frames_to_read, 0)
+    }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        for ch in self.buf.iter_mut() {
+            ch.copy_within(src..src+count, dest);
+        }
+        Some(count)
     }
 }
 
@@ -374,7 +384,7 @@ where
 #[cfg(feature = "std")]
 impl<'a, T> AdapterMut<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
-    T: Clone,
+    T: Clone + Copy,
 {
     fn write_sample(&mut self, channel: usize, frame: usize, value: &T) -> Option<bool> {
         if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
@@ -404,6 +414,18 @@ where
         };
         self.buf[channel][skip..skip + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
         (frames_to_read, 0)
+    }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        for (ch, active) in self.buf.iter_mut().zip(self.mask.iter()) {
+            if *active {
+                ch.copy_within(src..src+count, dest);
+            }
+        }
+        Some(count)
     }
 }
 
@@ -539,6 +561,10 @@ where
         self.buf[frame][skip..skip + channels_to_read].clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        unimplemented!()
+    }
 }
 
 //
@@ -651,7 +677,7 @@ where
 
 impl<'a, T> AdapterMut<'a, T> for InterleavedSlice<&'a mut [T]>
 where
-    T: Clone,
+    T: Clone + Copy,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);
@@ -677,6 +703,14 @@ where
         self.buf[buffer_skip..buffer_skip + channels_to_read]
             .clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
+    }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        self.buf.copy_within(src*self.channels..(src+count)*self.channels, dest*self.channels);
+        Some(count)
     }
 }
 
@@ -791,7 +825,7 @@ where
 
 impl<'a, T> AdapterMut<'a, T> for SequentialSlice<&'a mut [T]>
 where
-    T: Clone,
+    T: Clone + Copy,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);
@@ -817,6 +851,17 @@ where
         self.buf[buffer_skip..buffer_skip + frames_to_read]
             .clone_from_slice(&slice[..frames_to_read]);
         (frames_to_read, 0)
+    }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        for ch in 0..self.channels {
+            let offset = ch*self.frames;
+            self.buf.copy_within(src + offset..src+offset+count, dest+offset);
+        }
+        Some(count)
     }
 }
 

@@ -168,6 +168,7 @@ where
 impl<'a, U, T> InterleavedNumbers<&'a mut [U], T>
 where
     T: 'a,
+    U:Copy,
 {
     /// Create a new wrapper for a mutable slice
     /// of numerical samples implementing [RawSample],
@@ -206,6 +207,14 @@ where
             frames,
             channels,
         })
+    }
+
+    fn copy_frames_within_impl(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        self.buf.copy_within(src*self.channels..(src+count)*self.channels, dest*self.channels);
+        Some(count)
     }
 }
 
@@ -256,6 +265,7 @@ where
 impl<'a, U, T> SequentialNumbers<&'a mut [U], T>
 where
     T: 'a,
+    U:Copy,
 {
     /// Create a new wrapper for a mutable slice
     /// of numerical samples implementing [RawSample],
@@ -295,6 +305,17 @@ where
             channels,
         })
     }
+
+    fn copy_frames_within_impl(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        for ch in 0..self.channels {
+            let offset = ch*self.frames;
+            self.buf.copy_within(src + offset..src+offset+count, dest+offset);
+        }
+        Some(count)
+    }
 }
 
 macro_rules! impl_traits_newtype {
@@ -329,13 +350,17 @@ macro_rules! impl_traits_newtype {
             impl<'a, T, U> AdapterMut<'a, T> for [< $order Numbers >]<&'a mut [U], T>
             where
                 T: Float + 'a,
-                U: RawSample,
+                U: RawSample + Copy,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let index = self.calc_index(channel, frame);
                     let converted = U::from_scaled_float(*value);
                     self.buf[index] = converted.value;
                     converted.clipped
+                }
+
+                fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+                    self.copy_frames_within_impl(src, dest, count)
                 }
             }
         }
