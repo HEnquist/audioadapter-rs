@@ -281,6 +281,9 @@ where
         if src + count > self.frames() || dest + count > self.frames() {
             return None;
         }
+        if count == 0 || src == dest {
+            return Some(count);
+        }
         // This generic implementation is slow, overriding is recommended.
         if dest < src {
             for channel in 0..self.channels() {
@@ -292,7 +295,7 @@ where
                     }
                 }
             }
-        } else if src < dest {
+        } else {
             for channel in 0..self.channels() {
                 // iterate backwards
                 for frame in 0..count {

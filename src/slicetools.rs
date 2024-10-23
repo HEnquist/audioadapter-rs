@@ -6,15 +6,11 @@ unsafe fn copy_without_overlap<T: Clone>(slice: &mut [T], src: usize, dest: usiz
 }
 
 pub unsafe fn copy_within_slice<T: Clone>(slice: &mut [T], src: usize, dest: usize, count: usize) {
-    if count == 0 {
+    if count == 0 || src == dest {
         return;
     }
     if dest < src {
         let diff = src - dest;
-        if diff >= count {
-            copy_without_overlap(slice, src, dest, count);
-            return;
-        }
         let mut remaining = count;
         let mut copied = 0;
         while copied < count {
@@ -25,12 +21,8 @@ pub unsafe fn copy_within_slice<T: Clone>(slice: &mut [T], src: usize, dest: usi
             remaining -= to_copy;
             copied += to_copy;
         }
-    } else if dest > src {
+    } else {
         let diff = dest - src;
-        if diff >= count {
-            copy_without_overlap(slice, src, dest, count);
-            return;
-        }
         let mut remaining = count;
         let mut copied = 0;
         while copied < count {
