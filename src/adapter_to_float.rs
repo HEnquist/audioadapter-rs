@@ -221,7 +221,7 @@ where
 impl<'a, T, U> AdapterMut<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
 where
     T: Float + 'a,
-    U: RawSample + Clone + Copy + 'a,
+    U: RawSample + Clone + 'a,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let converted = U::from_scaled_float(*value);

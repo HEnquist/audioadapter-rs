@@ -63,6 +63,7 @@ use core::mem::size_of;
 use num_traits::Float;
 
 use crate::sample::RawSample;
+use crate::slicetools::copy_within_slice;
 use crate::SizeError;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
@@ -168,7 +169,7 @@ where
 impl<'a, U, T> InterleavedNumbers<&'a mut [U], T>
 where
     T: 'a,
-    U:Copy,
+    U: Clone,
 {
     /// Create a new wrapper for a mutable slice
     /// of numerical samples implementing [RawSample],
@@ -213,7 +214,14 @@ where
         if src + count > self.frames || dest + count > self.frames {
             return None;
         }
-        self.buf.copy_within(src*self.channels..(src+count)*self.channels, dest*self.channels);
+        unsafe {
+            copy_within_slice(
+                self.buf,
+                src * self.channels,
+                dest * self.channels,
+                count * self.channels,
+            );
+        }
         Some(count)
     }
 }
@@ -265,7 +273,7 @@ where
 impl<'a, U, T> SequentialNumbers<&'a mut [U], T>
 where
     T: 'a,
-    U:Copy,
+    U: Clone,
 {
     /// Create a new wrapper for a mutable slice
     /// of numerical samples implementing [RawSample],
@@ -311,8 +319,10 @@ where
             return None;
         }
         for ch in 0..self.channels {
-            let offset = ch*self.frames;
-            self.buf.copy_within(src + offset..src+offset+count, dest+offset);
+            let offset = ch * self.frames;
+            unsafe {
+                copy_within_slice(self.buf, src + offset, dest + offset, count);
+            }
         }
         Some(count)
     }
@@ -350,7 +360,7 @@ macro_rules! impl_traits_newtype {
             impl<'a, T, U> AdapterMut<'a, T> for [< $order Numbers >]<&'a mut [U], T>
             where
                 T: Float + 'a,
-                U: RawSample + Copy,
+                U: RawSample + Clone,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let index = self.calc_index(channel, frame);
