@@ -21,6 +21,8 @@ pub mod stats;
 /// Read-only iterators
 mod iterators;
 
+mod slicetools;
+
 #[cfg(feature = "std")]
 use std::error::Error;
 #[cfg(feature = "std")]

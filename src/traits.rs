@@ -271,4 +271,42 @@ where
             self.fill_channel_with(channel, value).unwrap_or_default();
         }
     }
+
+    /// Copy frames within the buffer.
+    /// Copying is performed for all channels.
+    /// Copies (by cloning) `count` frames, from the range `src` - `src+count-1`,
+    /// to the range `dest` - `dest+count-1`.
+    /// The two regions are allowed to overlap.
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames() || dest + count > self.frames() {
+            return None;
+        }
+        if count == 0 || src == dest {
+            return Some(count);
+        }
+        // This generic implementation is slow, overriding is recommended.
+        if dest < src {
+            for channel in 0..self.channels() {
+                // iterate forward
+                for frame in 0..count {
+                    unsafe {
+                        let value = self.read_sample_unchecked(channel, frame + src);
+                        self.write_sample_unchecked(channel, frame + dest, &value);
+                    }
+                }
+            }
+        } else {
+            for channel in 0..self.channels() {
+                // iterate backwards
+                for frame in 0..count {
+                    let backwards = count - frame - 1;
+                    unsafe {
+                        let value = self.read_sample_unchecked(channel, backwards + src);
+                        self.write_sample_unchecked(channel, backwards + dest, &value);
+                    }
+                }
+            }
+        }
+        Some(count)
+    }
 }
