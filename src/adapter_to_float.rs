@@ -1,4 +1,5 @@
 //! # Converting wrappers for existing `audioadapter` buffers
+//!
 //! This module provides wrappers for buffers
 //! that already implement the `audioadapter` traits.
 //! The wrappers enable reading and writing samples from/to another buffer
@@ -142,6 +143,10 @@ macro_rules! byte_convert_traits_newtype {
                     self.buf.write_sample_unchecked(channel, frame, converted.value.as_slice().try_into().unwrap());
                     converted.clipped
                 }
+
+                fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+                    self.buf.copy_frames_within(src, dest, count)
+                }
             }
         }
 }
@@ -224,6 +229,10 @@ where
         self.buf
             .write_sample_unchecked(channel, frame, &converted.value);
         converted.clipped
+    }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        self.buf.copy_frames_within(src, dest, count)
     }
 }
 

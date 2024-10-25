@@ -5,7 +5,7 @@
 // -------------------- The main buffer trait --------------------
 
 /// A trait for reading samples from a buffer.
-/// Samples accessed indirectly by a `read` method.
+/// Samples are accessed indirectly by a `read_sample` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before returning it.
 pub trait Adapter<'a, T: 'a> {
@@ -89,7 +89,7 @@ pub trait Adapter<'a, T: 'a> {
 }
 
 /// A trait for writing samples to a buffer.
-/// Samples are accessed indirectly by a `write` method.
+/// Samples are accessed indirectly by a `write_sample` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before writing to the underlying buffer.
 pub trait AdapterMut<'a, T>: Adapter<'a, T>
@@ -263,6 +263,22 @@ where
         Some(())
     }
 
+    /// Write the provided value to every sample in a range of frames.
+    /// Can be used to clear a range of frames by writing zeroes,
+    /// or to initialize each sample to a certain value.
+    /// Returns `None` if called with a too large range.
+    fn fill_frames_with(&mut self, start: usize, count: usize, value: &T) -> Option<usize> {
+        if start + count >= self.frames() {
+            return None;
+        }
+        for channel in 0..self.channels() {
+            for frame in start..start + count {
+                unsafe { self.write_sample_unchecked(channel, frame, value) };
+            }
+        }
+        Some(count)
+    }
+
     /// Write the provided value to every sample in the entire buffer.
     /// Can be used to clear a buffer by writing zeroes,
     /// or to initialize each sample to a certain value.
@@ -270,5 +286,43 @@ where
         for channel in 0..self.channels() {
             self.fill_channel_with(channel, value).unwrap_or_default();
         }
+    }
+
+    /// Copy frames within the buffer.
+    /// Copying is performed for all channels.
+    /// Copies (by cloning) `count` frames, from the range `src..src+count`,
+    /// to the range `dest..dest+count`.
+    /// The two regions are allowed to overlap.
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames() || dest + count > self.frames() {
+            return None;
+        }
+        if count == 0 || src == dest {
+            return Some(count);
+        }
+        // This generic implementation is slow, overriding is recommended.
+        if dest < src {
+            for channel in 0..self.channels() {
+                // iterate forward
+                for frame in 0..count {
+                    unsafe {
+                        let value = self.read_sample_unchecked(channel, frame + src);
+                        self.write_sample_unchecked(channel, frame + dest, &value);
+                    }
+                }
+            }
+        } else {
+            for channel in 0..self.channels() {
+                // iterate backwards
+                for frame in 0..count {
+                    let backwards = count - frame - 1;
+                    unsafe {
+                        let value = self.read_sample_unchecked(channel, backwards + src);
+                        self.write_sample_unchecked(channel, backwards + dest, &value);
+                    }
+                }
+            }
+        }
+        Some(count)
     }
 }

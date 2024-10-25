@@ -1,4 +1,4 @@
-//! # owning wrappers
+//! # Owning wrappers
 //!
 //! This module is a collection of wrappers that own the sample data.
 //!
@@ -38,6 +38,7 @@
 
 use crate::SizeError;
 
+use crate::slicetools::copy_within_slice;
 use crate::{check_slice_length, implement_size_getters};
 use crate::{Adapter, AdapterMut};
 
@@ -152,6 +153,21 @@ where
             .clone_from_slice(&slice[..channels_to_read]);
         (channels_to_read, 0)
     }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        unsafe {
+            copy_within_slice(
+                &mut self.buf,
+                src * self.channels,
+                dest * self.channels,
+                count * self.channels,
+            );
+        }
+        Some(count)
+    }
 }
 
 //
@@ -264,6 +280,19 @@ where
         self.buf[buffer_skip..buffer_skip + frames_to_read]
             .clone_from_slice(&slice[..frames_to_read]);
         (frames_to_read, 0)
+    }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        for ch in 0..self.channels {
+            let offset = ch * self.frames;
+            unsafe {
+                copy_within_slice(&mut self.buf, src + offset, dest + offset, count);
+            }
+        }
+        Some(count)
     }
 }
 
