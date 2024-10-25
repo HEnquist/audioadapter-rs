@@ -1,4 +1,5 @@
 //! # Converting wrappers for numerical values
+//!
 //! This module provides wrappers for slices of numbers.
 //! The wrapper enables reading and writing samples from/to the slice with
 //! on-the-fly format conversion between the original type and float.

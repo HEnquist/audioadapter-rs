@@ -1,4 +1,5 @@
 //! # Converting wrappers for existing `audioadapter` buffers
+//!
 //! This module provides wrappers for buffers
 //! that already implement the `audioadapter` traits.
 //! The wrappers enable reading and writing samples from/to another buffer

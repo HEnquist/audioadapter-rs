@@ -1,4 +1,4 @@
-//! # owning wrappers
+//! # Owning wrappers
 //!
 //! This module is a collection of wrappers that own the sample data.
 //!

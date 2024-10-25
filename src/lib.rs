@@ -129,3 +129,61 @@ macro_rules! check_slice_length {
     };
 }
 pub(crate) use check_slice_length;
+
+#[cfg(test)]
+mod tests {
+    use crate::AdapterMut;
+
+    fn prepare_test_data(buffer: &mut dyn AdapterMut<u32>) {
+        for channel in 0..buffer.channels() {
+            for frame in 0..buffer.frames() {
+                let value = (100 * channel + frame) as u32;
+                buffer.write_sample(channel, frame, &value);
+            }
+        }
+    }
+
+    pub(crate) fn check_copy_within(buffer: &mut dyn AdapterMut<u32>) {
+        assert!(buffer.channels() > 1, "Too few chanels to run tests");
+        assert!(buffer.frames() > 8, "Too few frames to run test");
+        // copy forward, no overlap
+        prepare_test_data(buffer);
+        assert_eq!(buffer.copy_frames_within(1, 5, 3), Some(3));
+        check_copy_result(buffer, 1, 5, 3);
+
+        // copy backwards, no overlap
+        prepare_test_data(buffer);
+        assert_eq!(buffer.copy_frames_within(5, 1, 3), Some(3));
+        check_copy_result(buffer, 5, 1, 3);
+
+        // copy forward, with overlap
+        prepare_test_data(buffer);
+        assert_eq!(buffer.copy_frames_within(1, 3, 5), Some(5));
+        check_copy_result(buffer, 1, 3, 5);
+
+        // copy backwards, with overlap
+        prepare_test_data(buffer);
+        assert_eq!(buffer.copy_frames_within(3, 1, 5), Some(5));
+        check_copy_result(buffer, 3, 1, 5);
+    }
+
+    fn check_copy_result(buffer: &dyn AdapterMut<u32>, src: usize, dest: usize, count: usize) {
+        for channel in 0..buffer.channels() {
+            for frame in 0..buffer.frames() {
+                let copied_frame = if frame >= dest && frame < dest + count {
+                    frame + src - dest
+                } else {
+                    frame
+                };
+                let expected_value = (100 * channel + copied_frame) as u32;
+                assert_eq!(
+                    buffer.read_sample(channel, frame),
+                    Some(expected_value),
+                    "Wrong value at ch {}, frame {}",
+                    channel,
+                    frame
+                );
+            }
+        }
+    }
+}

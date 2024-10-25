@@ -5,7 +5,7 @@
 // -------------------- The main buffer trait --------------------
 
 /// A trait for reading samples from a buffer.
-/// Samples accessed indirectly by a `read` method.
+/// Samples are accessed indirectly by a `read_sample` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before returning it.
 pub trait Adapter<'a, T: 'a> {
@@ -89,7 +89,7 @@ pub trait Adapter<'a, T: 'a> {
 }
 
 /// A trait for writing samples to a buffer.
-/// Samples are accessed indirectly by a `write` method.
+/// Samples are accessed indirectly by a `write_sample` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before writing to the underlying buffer.
 pub trait AdapterMut<'a, T>: Adapter<'a, T>

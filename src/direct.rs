@@ -1,4 +1,4 @@
-//! # direct wrappers
+//! # Direct wrappers
 //!
 //! This module is a collection of wrappers that implement the
 //! `audioadapter` traits for various data structures.
@@ -327,13 +327,6 @@ impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a [Vec<T>]>
 where
     T: Clone + Default,
 {
-    fn read_sample(&self, channel: usize, frame: usize) -> Option<T> {
-        if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
-            return None;
-        }
-        Some(unsafe { self.read_sample_unchecked(channel, frame) })
-    }
-
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         if self.mask[channel] {
             return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
@@ -362,13 +355,6 @@ impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone + Default,
 {
-    fn read_sample(&self, channel: usize, frame: usize) -> Option<T> {
-        if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
-            return None;
-        }
-        Some(unsafe { self.read_sample_unchecked(channel, frame) })
-    }
-
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         if self.mask[channel] {
             return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
@@ -397,13 +383,6 @@ impl<'a, T> AdapterMut<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
     T: Clone + Default,
 {
-    fn write_sample(&mut self, channel: usize, frame: usize, value: &T) -> Option<bool> {
-        if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
-            return None;
-        }
-        Some(unsafe { self.write_sample_unchecked(channel, frame, value) })
-    }
-
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         if self.mask[channel] {
             *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
@@ -1088,13 +1067,57 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn sparse_sequential() {
+        use crate::stats::AdapterStats;
+
         let mut data = vec![vec![1, 2, 3], Vec::new()];
         let mask = vec![true, false];
         let mut buffer = SparseSequentialSliceOfVecs::new_mut(&mut data, 2, 3, &mask).unwrap();
+        // Read active channel gives the proper value
         assert_eq!(buffer.read_sample(0, 1), Some(2));
-        assert_eq!(buffer.read_sample(1, 1), None);
+        // Reading unused channel gives zero
+        assert_eq!(buffer.read_sample(1, 1), Some(0));
+        // write and read an active channel
         assert_eq!(buffer.write_sample(0, 1, &25), Some(false));
-        assert_eq!(buffer.write_sample(1, 1, &26), None);
         assert_eq!(buffer.read_sample(0, 1), Some(25));
+        // write to an unused channel is successful (but does nothing)
+        assert_eq!(buffer.write_sample(1, 1, &26), Some(false));
+        // reading outside the actual size gives None
+        assert_eq!(buffer.read_sample(0, 10), None);
+        assert_eq!(buffer.read_sample(1, 10), None);
+        assert_eq!(buffer.read_sample(2, 1), None);
+        // RMS of the active channel should be 14.55
+        assert!((buffer.channel_rms(0) - 14.5).abs() < 0.1);
+        // RMS of the unised channel should be zero
+        assert_eq!(buffer.channel_rms(1), 0.0);
+    }
+
+    use crate::tests::check_copy_within;
+
+    #[test]
+    fn copy_within_interleaved_slice() {
+        let mut data = vec![0; 20];
+        let mut adapter = InterleavedSlice::new_mut(&mut data, 2, 10).unwrap();
+        check_copy_within(&mut adapter);
+    }
+
+    #[test]
+    fn copy_within_sequential_slice() {
+        let mut data = vec![0; 20];
+        let mut adapter = SequentialSlice::new_mut(&mut data, 2, 10).unwrap();
+        check_copy_within(&mut adapter);
+    }
+
+    #[test]
+    fn copy_within_interleaved_vecs() {
+        let mut data = vec![vec![0; 2]; 10];
+        let mut adapter = InterleavedSliceOfVecs::new_mut(&mut data, 2, 10).unwrap();
+        check_copy_within(&mut adapter);
+    }
+
+    #[test]
+    fn copy_within_sequential_vecs() {
+        let mut data = vec![vec![0; 10]; 2];
+        let mut adapter = SequentialSliceOfVecs::new_mut(&mut data, 2, 10).unwrap();
+        check_copy_within(&mut adapter);
     }
 }
