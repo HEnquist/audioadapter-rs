@@ -260,6 +260,8 @@ where
 /// Each vector contains the samples for all frames of one channel.
 /// This is similar to [SequentialSliceOfVecs],
 /// but here vectors for unused channels may be empty.
+/// Reading from an unused channel returns `T::default()`,
+/// while writing does nothing.
 #[cfg(feature = "std")]
 pub struct SparseSequentialSliceOfVecs<U> {
     buf: U,
@@ -323,7 +325,7 @@ impl<'a, T> SparseSequentialSliceOfVecs<&'a mut [Vec<T>]> {
 #[cfg(feature = "std")]
 impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a [Vec<T>]>
 where
-    T: Clone,
+    T: Clone + Default,
 {
     fn read_sample(&self, channel: usize, frame: usize) -> Option<T> {
         if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
@@ -333,7 +335,10 @@ where
     }
 
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+        if self.mask[channel] {
+            return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
+        }
+        T::default()
     }
 
     implement_size_getters!();
@@ -355,7 +360,7 @@ where
 #[cfg(feature = "std")]
 impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
-    T: Clone,
+    T: Clone + Default,
 {
     fn read_sample(&self, channel: usize, frame: usize) -> Option<T> {
         if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
@@ -365,7 +370,10 @@ where
     }
 
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+        if self.mask[channel] {
+            return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
+        }
+        T::default()
     }
 
     implement_size_getters!();
@@ -387,7 +395,7 @@ where
 #[cfg(feature = "std")]
 impl<'a, T> AdapterMut<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
 where
-    T: Clone,
+    T: Clone + Default,
 {
     fn write_sample(&mut self, channel: usize, frame: usize, value: &T) -> Option<bool> {
         if channel >= self.channels || !self.mask[channel] || frame >= self.frames {
@@ -397,7 +405,9 @@ where
     }
 
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-        *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+        if self.mask[channel] {
+            *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+        }
         false
     }
 

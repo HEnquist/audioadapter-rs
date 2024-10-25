@@ -263,6 +263,22 @@ where
         Some(())
     }
 
+    /// Write the provided value to every sample in a range of frames.
+    /// Can be used to clear a range of frames by writing zeroes,
+    /// or to initialize each sample to a certain value.
+    /// Returns `None` if called with a too large range.
+    fn fill_frames_with(&mut self, start: usize, count: usize, value: &T) -> Option<usize> {
+        if start + count >= self.frames() {
+            return None;
+        }
+        for channel in 0..self.channels() {
+            for frame in start..start + count {
+                unsafe { self.write_sample_unchecked(channel, frame, value) };
+            }
+        }
+        Some(count)
+    }
+
     /// Write the provided value to every sample in the entire buffer.
     /// Can be used to clear a buffer by writing zeroes,
     /// or to initialize each sample to a certain value.
@@ -274,8 +290,8 @@ where
 
     /// Copy frames within the buffer.
     /// Copying is performed for all channels.
-    /// Copies (by cloning) `count` frames, from the range `src` - `src+count-1`,
-    /// to the range `dest` - `dest+count-1`.
+    /// Copies (by cloning) `count` frames, from the range `src..src+count`,
+    /// to the range `dest..dest+count`.
     /// The two regions are allowed to overlap.
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
         if src + count > self.frames() || dest + count > self.frames() {
