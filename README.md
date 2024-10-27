@@ -176,7 +176,6 @@ This shows an implementation of [Adapter]
 for a vector of strings.
 
 ### Ideas for future improvements
-- methods for selective clearing (frame 0..n, n..end etc)
 - index iterator (providing channel, frame)
 - supporting reuse of wrapping adapters by replacing inner data
 

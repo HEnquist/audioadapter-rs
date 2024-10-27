@@ -565,7 +565,6 @@ impl_sample_for_generic_newtype!(U24LE, 4);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use paste::paste;
 
     macro_rules! assert_conversion_eq {
         ($result:expr, $value:expr, $clipped:expr, $desc:expr) => {
@@ -575,108 +574,140 @@ mod tests {
     }
 
     macro_rules! test_to_signed_int {
-        ($float:ty, $int:ident, $bits:expr) => {
-            paste! {
-                #[test]
-                fn [< test_ $float _to_ $int >]() {
-                    let val: $float = 0.25;
-                    assert_conversion_eq!($int::from_scaled_float(val), 1 << ($bits - 3), false, "check +0.25");
-                    let val: $float = -0.25;
-                    assert_conversion_eq!($int::from_scaled_float(val), -1 << ($bits - 3), false, "check -0.25");
-                    let val: $float = 1.1;
-                    assert_conversion_eq!($int::from_scaled_float(val), $int::MAX, true, "clipped positive");
-                    let val: $float = -1.1;
-                    assert_conversion_eq!($int::from_scaled_float(val), $int::MIN, true, "clipped negative");
-                }
+        ($fname:ident, $float:ty, $int:ident, $bits:expr) => {
+            #[test]
+            fn $fname() {
+                let val: $float = 0.25;
+                assert_conversion_eq!(
+                    $int::from_scaled_float(val),
+                    1 << ($bits - 3),
+                    false,
+                    "check +0.25"
+                );
+                let val: $float = -0.25;
+                assert_conversion_eq!(
+                    $int::from_scaled_float(val),
+                    -1 << ($bits - 3),
+                    false,
+                    "check -0.25"
+                );
+                let val: $float = 1.1;
+                assert_conversion_eq!(
+                    $int::from_scaled_float(val),
+                    $int::MAX,
+                    true,
+                    "clipped positive"
+                );
+                let val: $float = -1.1;
+                assert_conversion_eq!(
+                    $int::from_scaled_float(val),
+                    $int::MIN,
+                    true,
+                    "clipped negative"
+                );
             }
         };
     }
 
     macro_rules! test_to_unsigned_int {
-        ($float:ty, $int:ident, $bits:expr) => {
-            paste! {
-                #[test]
-                fn [< test_ $float _to_ $int >]() {
-                    let val: $float = -0.5;
-                    assert_conversion_eq!($int::from_scaled_float(val), 1 << ($bits - 2), false, "check -0.5");
-                    let val: $float = 0.5;
-                    assert_conversion_eq!($int::from_scaled_float(val), $int::MAX - (1 << ($bits - 2)) + 1, false, "check 0.5");
-                    let val: $float = 1.1;
-                    assert_conversion_eq!($int::from_scaled_float(val), $int::MAX, true, "clipped positive");
-                    let val: $float = -1.1;
-                    assert_conversion_eq!($int::from_scaled_float(val), $int::MIN, true, "clipped negative");
-                }
+        ($fname:ident, $float:ty, $int:ident, $bits:expr) => {
+            #[test]
+            fn $fname() {
+                let val: $float = -0.5;
+                assert_conversion_eq!(
+                    $int::from_scaled_float(val),
+                    1 << ($bits - 2),
+                    false,
+                    "check -0.5"
+                );
+                let val: $float = 0.5;
+                assert_conversion_eq!(
+                    $int::from_scaled_float(val),
+                    $int::MAX - (1 << ($bits - 2)) + 1,
+                    false,
+                    "check 0.5"
+                );
+                let val: $float = 1.1;
+                assert_conversion_eq!(
+                    $int::from_scaled_float(val),
+                    $int::MAX,
+                    true,
+                    "clipped positive"
+                );
+                let val: $float = -1.1;
+                assert_conversion_eq!(
+                    $int::from_scaled_float(val),
+                    $int::MIN,
+                    true,
+                    "clipped negative"
+                );
             }
         };
     }
 
-    test_to_signed_int!(f32, i8, 8);
-    test_to_signed_int!(f64, i8, 8);
-    test_to_signed_int!(f32, i16, 16);
-    test_to_signed_int!(f64, i16, 16);
-    test_to_signed_int!(f32, i32, 32);
-    test_to_signed_int!(f64, i32, 32);
-    test_to_signed_int!(f32, i64, 64);
-    test_to_signed_int!(f64, i64, 64);
+    test_to_signed_int!(convert_f32_to_i8, f32, i8, 8);
+    test_to_signed_int!(convert_642_to_i8, f64, i8, 8);
+    test_to_signed_int!(convert_f32_to_i16, f32, i16, 16);
+    test_to_signed_int!(convert_f64_to_i16, f64, i16, 16);
+    test_to_signed_int!(convert_f32_to_i32, f32, i32, 32);
+    test_to_signed_int!(convert_f64_to_i32, f64, i32, 32);
+    test_to_signed_int!(convert_f32_to_i64, f32, i64, 64);
+    test_to_signed_int!(convert_f64_to_i64, f64, i64, 64);
 
-    test_to_unsigned_int!(f32, u8, 8);
-    test_to_unsigned_int!(f64, u8, 8);
-    test_to_unsigned_int!(f32, u16, 16);
-    test_to_unsigned_int!(f64, u16, 16);
-    test_to_unsigned_int!(f32, u32, 32);
-    test_to_unsigned_int!(f64, u32, 32);
-    test_to_unsigned_int!(f32, u64, 64);
-    test_to_unsigned_int!(f64, u64, 64);
+    test_to_unsigned_int!(convert_f32_to_u8, f32, u8, 8);
+    test_to_unsigned_int!(convert_f64_to_u8, f64, u8, 8);
+    test_to_unsigned_int!(convert_f32_to_u16, f32, u16, 16);
+    test_to_unsigned_int!(convert_f64_to_u16, f64, u16, 16);
+    test_to_unsigned_int!(convert_f32_to_u32, f32, u32, 32);
+    test_to_unsigned_int!(convert_f64_to_u32, f64, u32, 32);
+    test_to_unsigned_int!(convert_f32_to_u64, f32, u64, 64);
+    test_to_unsigned_int!(convert_f64_to_u64, f64, u64, 64);
 
     macro_rules! test_from_signed_int {
-        ($float:ty, $int:ident, $bits:expr) => {
-            paste! {
-                #[test]
-                fn [< test_ $float _from_ $int >]() {
-                    let val: $int = -1 << ($bits - 2);
-                    assert_eq!(val.to_scaled_float::<$float>(), -0.5, "check -0.5");
-                    let val: $int = 1 << ($bits - 2);
-                    assert_eq!(val.to_scaled_float::<$float>(), 0.5, "check 0.5");
-                    let val: $int = $int::MIN;
-                    assert_eq!(val.to_scaled_float::<$float>(), -1.0, "negative limit");
-                }
+        ($fname:ident, $float:ty, $int:ident, $bits:expr) => {
+            #[test]
+            fn $fname() {
+                let val: $int = -1 << ($bits - 2);
+                assert_eq!(val.to_scaled_float::<$float>(), -0.5, "check -0.5");
+                let val: $int = 1 << ($bits - 2);
+                assert_eq!(val.to_scaled_float::<$float>(), 0.5, "check 0.5");
+                let val: $int = $int::MIN;
+                assert_eq!(val.to_scaled_float::<$float>(), -1.0, "negative limit");
             }
         };
     }
 
     macro_rules! test_from_unsigned_int {
-        ($float:ty, $int:ident, $bits:expr) => {
-            paste! {
-                #[test]
-                fn [< test_ $float _from_ $int >]() {
-                    let val: $int = 1 << ($bits - 2);
-                    assert_eq!(val.to_scaled_float::<$float>(), -0.5, "check -0.5");
-                    let val: $int = $int::MAX - (1 << ($bits - 2)) + 1;
-                    assert_eq!(val.to_scaled_float::<$float>(), 0.5, "check 0.5");
-                    let val: $int = 0;
-                    assert_eq!(val.to_scaled_float::<$float>(), -1.0, "negative limit");
-                }
+        ($fname:ident, $float:ty, $int:ident, $bits:expr) => {
+            #[test]
+            fn $fname() {
+                let val: $int = 1 << ($bits - 2);
+                assert_eq!(val.to_scaled_float::<$float>(), -0.5, "check -0.5");
+                let val: $int = $int::MAX - (1 << ($bits - 2)) + 1;
+                assert_eq!(val.to_scaled_float::<$float>(), 0.5, "check 0.5");
+                let val: $int = 0;
+                assert_eq!(val.to_scaled_float::<$float>(), -1.0, "negative limit");
             }
         };
     }
 
-    test_from_signed_int!(f32, i8, 8);
-    test_from_signed_int!(f64, i8, 8);
-    test_from_signed_int!(f32, i16, 16);
-    test_from_signed_int!(f64, i16, 16);
-    test_from_signed_int!(f32, i32, 32);
-    test_from_signed_int!(f64, i32, 32);
-    test_from_signed_int!(f32, i64, 64);
-    test_from_signed_int!(f64, i64, 64);
+    test_from_signed_int!(convert_f32_from_i8, f32, i8, 8);
+    test_from_signed_int!(convert_f64_from_i8, f64, i8, 8);
+    test_from_signed_int!(convert_f32_from_i16, f32, i16, 16);
+    test_from_signed_int!(convert_f64_from_i16, f64, i16, 16);
+    test_from_signed_int!(convert_f32_from_i32, f32, i32, 32);
+    test_from_signed_int!(convert_f64_from_i32, f64, i32, 32);
+    test_from_signed_int!(convert_f32_from_i64, f32, i64, 64);
+    test_from_signed_int!(convert_f64_from_i64, f64, i64, 64);
 
-    test_from_unsigned_int!(f32, u8, 8);
-    test_from_unsigned_int!(f64, u8, 8);
-    test_from_unsigned_int!(f32, u16, 16);
-    test_from_unsigned_int!(f64, u16, 16);
-    test_from_unsigned_int!(f32, u32, 32);
-    test_from_unsigned_int!(f64, u32, 32);
-    test_from_unsigned_int!(f32, u64, 64);
-    test_from_unsigned_int!(f64, u64, 64);
+    test_from_unsigned_int!(convert_f32_from_u8, f32, u8, 8);
+    test_from_unsigned_int!(convert_f64_from_u8, f64, u8, 8);
+    test_from_unsigned_int!(convert_f32_from_u16, f32, u16, 16);
+    test_from_unsigned_int!(convert_f64_from_u16, f64, u16, 16);
+    test_from_unsigned_int!(convert_f32_from_u32, f32, u32, 32);
+    test_from_unsigned_int!(convert_f64_from_u32, f64, u32, 32);
+    test_from_unsigned_int!(convert_f32_from_u64, f32, u64, 64);
+    test_from_unsigned_int!(convert_f64_from_u64, f64, u64, 64);
 
     #[test]
     fn test_to_clamped_int() {
@@ -721,51 +752,47 @@ mod tests {
     }
 
     macro_rules! test_simple_int_bytes {
-        ($number:ty, $wrapper:ident, $endian:ident) => {
-            paste! {
-                #[test]
-                #[allow(non_snake_case)]
-                fn [< test_ $wrapper >]() {
-                    let number: $number = $number::MAX/5 * 4;
-                    let wrapped = $wrapper(number.[< to_ $endian _bytes>]());
-                    assert_eq!(number, wrapped.to_number());
-                }
+        ($fname:ident, $number:ty, $wrapper:ident, $to_bytes_fn:ident) => {
+            #[test]
+            #[allow(non_snake_case)]
+            fn $fname() {
+                let number: $number = <$number>::MAX / 5 * 4;
+                let wrapped = $wrapper(number.$to_bytes_fn());
+                assert_eq!(number, wrapped.to_number());
             }
         };
     }
 
     macro_rules! test_float_bytes {
-        ($number:ty, $wrapper:ident, $endian:ident) => {
-            paste! {
-                #[test]
-                #[allow(non_snake_case)]
-                fn [< test_ $wrapper >]() {
-                    let number: $number = 12345.0;
-                    let wrapped = $wrapper(number.[< to_ $endian _bytes>]());
-                    assert_eq!(number, wrapped.to_number());
-                }
+        ($fname:ident, $number:ty, $wrapper:ident, $to_bytes_fn:ident) => {
+            #[test]
+            #[allow(non_snake_case)]
+            fn $fname() {
+                let number: $number = 12345.0;
+                let wrapped = $wrapper(number.$to_bytes_fn());
+                assert_eq!(number, wrapped.to_number());
             }
         };
     }
 
-    test_simple_int_bytes!(i16, I16LE, le);
-    test_simple_int_bytes!(i16, I16BE, be);
-    test_simple_int_bytes!(i32, I32LE, le);
-    test_simple_int_bytes!(i32, I32BE, be);
-    test_simple_int_bytes!(i64, I64LE, le);
-    test_simple_int_bytes!(i64, I64BE, be);
+    test_simple_int_bytes!(convert_i16_from_I16LE, i16, I16LE, to_le_bytes);
+    test_simple_int_bytes!(convert_i16_from_I16BE, i16, I16BE, to_be_bytes);
+    test_simple_int_bytes!(convert_i32_from_I32LE, i32, I32LE, to_le_bytes);
+    test_simple_int_bytes!(convert_i32_from_I32BE, i32, I32BE, to_be_bytes);
+    test_simple_int_bytes!(convert_i64_from_I64LE, i64, I64LE, to_le_bytes);
+    test_simple_int_bytes!(convert_i64_from_I64BE, i64, I64BE, to_be_bytes);
 
-    test_simple_int_bytes!(u16, U16LE, le);
-    test_simple_int_bytes!(u16, U16BE, be);
-    test_simple_int_bytes!(u32, U32LE, le);
-    test_simple_int_bytes!(u32, U32BE, be);
-    test_simple_int_bytes!(u64, U64LE, le);
-    test_simple_int_bytes!(u64, U64BE, be);
+    test_simple_int_bytes!(convert_u16_from_U16LE, u16, U16LE, to_le_bytes);
+    test_simple_int_bytes!(convert_u16_from_U16BE, u16, U16BE, to_be_bytes);
+    test_simple_int_bytes!(convert_u32_from_U32LE, u32, U32LE, to_le_bytes);
+    test_simple_int_bytes!(convert_u32_from_U32BE, u32, U32BE, to_be_bytes);
+    test_simple_int_bytes!(convert_u64_from_U64LE, u64, U64LE, to_le_bytes);
+    test_simple_int_bytes!(convert_u64_from_U64BE, u64, U64BE, to_be_bytes);
 
-    test_float_bytes!(f32, F32LE, le);
-    test_float_bytes!(f32, F32BE, be);
-    test_float_bytes!(f64, F64LE, le);
-    test_float_bytes!(f64, F64BE, be);
+    test_float_bytes!(convert_f32_fom_F32LE, f32, F32LE, to_le_bytes);
+    test_float_bytes!(convert_f32_fom_F32BE, f32, F32BE, to_be_bytes);
+    test_float_bytes!(convert_f64_fom_F64LE, f64, F64LE, to_le_bytes);
+    test_float_bytes!(convert_f64_fom_F64BE, f64, F64BE, to_be_bytes);
 
     #[test]
     #[allow(non_snake_case)]
