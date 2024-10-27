@@ -330,56 +330,64 @@ where
 }
 
 macro_rules! impl_traits_newtype {
-    ($order:ident) => {
-        paste::item! {
-            impl<'a, T, U> Adapter<'a, T> for [< $order Numbers >]<&'a [U], T>
-            where
-                T: Float + 'a,
-                U: RawSample,
-            {
-                unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-                    let index = self.calc_index(channel, frame);
-                    self.buf[index].to_scaled_float()
-                }
-
-                implement_size_getters!();
+    ($structname:ident) => {
+        impl<'a, T, U> Adapter<'a, T> for $structname<&'a [U], T>
+        where
+            T: Float + 'a,
+            U: RawSample,
+        {
+            unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+                let index = self.calc_index(channel, frame);
+                self.buf[index].to_scaled_float()
             }
 
-            impl<'a, T, U> Adapter<'a, T> for [< $order Numbers >]<&'a mut [U], T>
-            where
-                T: Float + 'a,
-                U: RawSample,
-            {
-                unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-                    let index = self.calc_index(channel, frame);
-                    self.buf[index].to_scaled_float()
-                }
+            implement_size_getters!();
+        }
 
-                implement_size_getters!();
+        impl<'a, T, U> Adapter<'a, T> for $structname<&'a mut [U], T>
+        where
+            T: Float + 'a,
+            U: RawSample,
+        {
+            unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+                let index = self.calc_index(channel, frame);
+                self.buf[index].to_scaled_float()
             }
 
-            impl<'a, T, U> AdapterMut<'a, T> for [< $order Numbers >]<&'a mut [U], T>
-            where
-                T: Float + 'a,
-                U: RawSample + Clone,
-            {
-                unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-                    let index = self.calc_index(channel, frame);
-                    let converted = U::from_scaled_float(*value);
-                    self.buf[index] = converted.value;
-                    converted.clipped
-                }
+            implement_size_getters!();
+        }
 
-                fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-                    self.copy_frames_within_impl(src, dest, count)
-                }
+        impl<'a, T, U> AdapterMut<'a, T> for $structname<&'a mut [U], T>
+        where
+            T: Float + 'a,
+            U: RawSample + Clone,
+        {
+            unsafe fn write_sample_unchecked(
+                &mut self,
+                channel: usize,
+                frame: usize,
+                value: &T,
+            ) -> bool {
+                let index = self.calc_index(channel, frame);
+                let converted = U::from_scaled_float(*value);
+                self.buf[index] = converted.value;
+                converted.clipped
+            }
+
+            fn copy_frames_within(
+                &mut self,
+                src: usize,
+                dest: usize,
+                count: usize,
+            ) -> Option<usize> {
+                self.copy_frames_within_impl(src, dest, count)
             }
         }
     };
 }
 
-impl_traits_newtype!(Interleaved);
-impl_traits_newtype!(Sequential);
+impl_traits_newtype!(InterleavedNumbers);
+impl_traits_newtype!(SequentialNumbers);
 
 //   _____         _
 //  |_   _|__  ___| |_ ___
