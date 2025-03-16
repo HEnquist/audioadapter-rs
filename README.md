@@ -145,6 +145,25 @@ stored as 3 bytes in little-endian order without padding.
 24-bit samples are also commonly stored with a padding byte, so that each sample takes up four bytes.
 This is handled by selecting `I24LE<4>` as the format.
 
+## Reading and writing samples from types implementing `Read` and `Write`
+The [std::io::Read] and [std::io::Write] traits are useful for reading
+and writing raw bytes to and from for example files.
+The [readwrite] module adds methods for reading and writing samples,
+with on-the-fly conversion between bytes and the numerical values.
+
+Example
+```rust
+use audioadapter::sample::I16LE;
+use audioadapter::readwrite::ReadSamples;
+
+// make a vector with some dummy data.
+let data: Vec<u8> = vec![1, 2, 3, 4];
+// slices implement Read.
+let mut slice = &data[..];
+// read the first value as 16 bit integer, convert to f32.
+let float_value = slice.read_converted::<I16LE, f32>();
+```
+
 ## Compatibility with the [audio](https://crates.io/crates/audio) crate
 In addition to the provided wrappers, the [Adapter], [AdapterMut] traits are implemented for
 buffers implementing the [audio_core::Buf], [audio_core::BufMut] and [audio_core::ExactSizeBuf]
