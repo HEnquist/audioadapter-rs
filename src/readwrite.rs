@@ -26,9 +26,9 @@ pub trait ReadSamples: io::Read {
     /// * The number of bytes read is not sufficient to represent a complete sample.
     fn read_number<T: BytesSample>(&mut self) -> io::Result<T::NumericType> {
         let mut buf = [0; 8];
-        let mut sliced_buf = &mut buf[..T::BYTES_PER_SAMPLE];
-        self.read_exact(&mut sliced_buf)?;
-        Ok(T::from_slice(&sliced_buf).to_number())
+        let sliced_buf = &mut buf[..T::BYTES_PER_SAMPLE];
+        self.read_exact(sliced_buf)?;
+        Ok(T::from_slice(sliced_buf).to_number())
     }
 
     /// Read a single sample and convert it to a floating-point number.
@@ -56,9 +56,9 @@ pub trait ReadSamples: io::Read {
     /// * The number of bytes read is not sufficient to represent a complete sample.
     fn read_converted<T: RawSample + BytesSample, U: Float>(&mut self) -> io::Result<U> {
         let mut buf = [0; 8];
-        let mut sliced_buf = &mut buf[..T::BYTES_PER_SAMPLE];
-        self.read_exact(&mut sliced_buf)?;
-        Ok(T::from_slice(&sliced_buf).to_scaled_float::<U>())
+        let sliced_buf = &mut buf[..T::BYTES_PER_SAMPLE];
+        self.read_exact(sliced_buf)?;
+        Ok(T::from_slice(sliced_buf).to_scaled_float::<U>())
     }
 
     /// Read multiple samples and store them as numeric types in a provided buffer.
