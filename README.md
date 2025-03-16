@@ -5,7 +5,7 @@ A library for making it easier to work with buffers of audio data.
 Audio data can be stored in many different ways,
 where both the layout of the data, and the numerical representation can vary.
 The `audioadapter` crate aims at helping with the differences
-in layout both layout and data type.
+in both layout and data type.
 
 This crate does not provide any data structures of its own
 for storing the audio data.
