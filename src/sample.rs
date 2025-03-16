@@ -150,7 +150,7 @@ where
 /// associated type.
 pub trait BytesSample {
     /// The closest matching numeric type.
-    type NumericType;
+    type NumericType: Copy;
 
     /// The number of bytes making up each sample value.
     const BYTES_PER_SAMPLE: usize;
