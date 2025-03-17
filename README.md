@@ -1,22 +1,18 @@
 # audioadapter
 
-A library for making it easier to work with buffers of audio data.
+The `audioadapter` library simplifies working with audio data buffers.
 
-Audio data can be stored in many different ways,
-where both the layout of the data, and the numerical representation can vary.
-The `audioadapter` crate aims at helping with the differences
-in both layout and data type.
+Audio data can vary in layout and numerical representation.
+This crate bridges these differences, handling both layout and data types effectively.
 
-This crate does not provide any data structures of its own
-for storing the audio data.
-Instead it functions as an adapter.
-The "raw" audio data is stored in existing structures
-such as the built-in vectors and arrays.
-The crate then provides adapters for these.
-An adapter consist of a wrapping structure that provides
-a set of common methods for reading and writing the sample values
-from the wrapped data structure. 
-
+It does not introduce new data structures for storing audio data.
+Instead, it acts as an adapter, leveraging existing structures
+like vectors and arrays to store raw audio data.
+The library provides adapter wrappers for these structures.
+The adapters implement traits that define a common set of methods
+for accessing and modifying audio samples.
+These methods enable the development of applications that can read
+and write audio data regardless of its layout and numerical representation.
 
 ## Background
 Libraries and applications that process audio usually use
