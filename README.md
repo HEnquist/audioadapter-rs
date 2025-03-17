@@ -1,22 +1,18 @@
 # audioadapter
 
-A library for making it easier to work with buffers of audio data.
+The `audioadapter` library simplifies working with audio data buffers.
 
-Audio data can be stored in many different ways,
-where both the layout of the data, and the numerical representation can vary.
-The `audioadapter` crate aims at helping with the differences
-in layout both layout and data type.
+Audio data can vary in layout and numerical representation.
+This crate bridges these differences, handling both layout and data types effectively.
 
-This crate does not provide any data structures of its own
-for storing the audio data.
-Instead it functions as an adapter.
-The "raw" audio data is stored in existing structures
-such as the built-in vectors and arrays.
-The crate then provides adapters for these.
-An adapter consist of a wrapping structure that provides
-a set of common methods for reading and writing the sample values
-from the wrapped data structure. 
-
+It does not introduce new data structures for storing audio data.
+Instead, it acts as an adapter, leveraging existing structures
+like vectors and arrays to store raw audio data.
+The library provides adapter wrappers for these structures.
+The adapters implement traits that define a common set of methods
+for accessing and modifying audio samples.
+These methods enable the development of applications that can read
+and write audio data regardless of its layout and numerical representation.
 
 ## Background
 Libraries and applications that process audio usually use
@@ -144,6 +140,25 @@ Note that the example uses `I24LE<3>`, which means 24-bit samples
 stored as 3 bytes in little-endian order without padding.
 24-bit samples are also commonly stored with a padding byte, so that each sample takes up four bytes.
 This is handled by selecting `I24LE<4>` as the format.
+
+## Reading and writing samples from types implementing `Read` and `Write`
+The [std::io::Read] and [std::io::Write] traits are useful for reading
+and writing raw bytes to and from for example files.
+The [readwrite] module adds methods for reading and writing samples,
+with on-the-fly conversion between bytes and the numerical values.
+
+Example
+```rust
+use audioadapter::sample::I16LE;
+use audioadapter::readwrite::ReadSamples;
+
+// make a vector with some dummy data.
+let data: Vec<u8> = vec![1, 2, 3, 4];
+// slices implement Read.
+let mut slice = &data[..];
+// read the first value as 16 bit integer, convert to f32.
+let float_value = slice.read_converted::<I16LE, f32>();
+```
 
 ## Compatibility with the [audio](https://crates.io/crates/audio) crate
 In addition to the provided wrappers, the [Adapter], [AdapterMut] traits are implemented for

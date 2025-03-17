@@ -12,7 +12,7 @@ fn iter_with_unchecked_loop(buf: &direct::SequentialSliceOfVecs<&[Vec<i32>]>) ->
             }
         }
     }
-    return sum;
+    sum
 }
 
 pub fn bench_with_unchecked_loop(c: &mut Criterion) {
@@ -31,7 +31,7 @@ fn iter_with_safe_loop(buf: &direct::SequentialSliceOfVecs<&[Vec<i32>]>) -> i32 
             sum += buf.read_sample(channel, frame).unwrap();
         }
     }
-    return sum;
+    sum
 }
 
 pub fn bench_with_safe_loop(c: &mut Criterion) {
@@ -50,7 +50,7 @@ fn iter_with_iter_trait(buf: &direct::SequentialSliceOfVecs<&[Vec<i32>]>) -> i32
             sum += value;
         }
     }
-    return sum;
+    sum
 }
 
 pub fn bench_with_iter_trait(c: &mut Criterion) {
@@ -71,7 +71,7 @@ fn iter_with_i32le_float_conversion(
             sum += value;
         }
     }
-    return sum;
+    sum
 }
 
 pub fn bench_with_i32le_float_conversion(c: &mut Criterion) {
@@ -94,7 +94,7 @@ fn iter_with_i24le_float_conversion(
             sum += value;
         }
     }
-    return sum;
+    sum
 }
 
 pub fn bench_with_i24le_float_conversion(c: &mut Criterion) {
@@ -110,7 +110,7 @@ pub fn bench_with_i24le_float_conversion(c: &mut Criterion) {
 // standard iteration of slices, for comparison
 fn iter_slice(buf: &[Vec<i32>]) -> i32 {
     let sum = buf.iter().map(|v| v.iter().sum::<i32>()).sum();
-    return sum;
+    sum
 }
 
 pub fn bench_slice_iter(c: &mut Criterion) {

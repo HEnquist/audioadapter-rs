@@ -150,7 +150,7 @@ where
 /// associated type.
 pub trait BytesSample {
     /// The closest matching numeric type.
-    type NumericType;
+    type NumericType: Copy;
 
     /// The number of bytes making up each sample value.
     const BYTES_PER_SAMPLE: usize;
@@ -162,6 +162,9 @@ pub trait BytesSample {
 
     /// Return the raw bytes as a slice.
     fn as_slice(&self) -> &[u8];
+
+    /// Return the raw bytes as a mutable slice.
+    fn as_mut_slice(&mut self) -> &mut [u8];
 
     /// Convert the raw bytes to a numerical value.
     fn to_number(&self) -> Self::NumericType;
@@ -251,6 +254,10 @@ impl BytesSample for I24LE<4> {
         &self.0
     }
 
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+
     fn to_number(&self) -> Self::NumericType {
         let padded = [0, self.0[0], self.0[1], self.0[2]];
         i32::from_le_bytes(padded)
@@ -273,6 +280,10 @@ impl BytesSample for I24LE<3> {
 
     fn as_slice(&self) -> &[u8] {
         &self.0
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.0
     }
 
     fn to_number(&self) -> Self::NumericType {
@@ -299,6 +310,10 @@ impl BytesSample for I24BE<4> {
         &self.0
     }
 
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+
     fn to_number(&self) -> Self::NumericType {
         let padded = [self.0[1], self.0[2], self.0[3], 0];
         i32::from_be_bytes(padded)
@@ -321,6 +336,10 @@ impl BytesSample for I24BE<3> {
 
     fn as_slice(&self) -> &[u8] {
         &self.0
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.0
     }
 
     fn to_number(&self) -> Self::NumericType {
@@ -347,6 +366,10 @@ impl BytesSample for U24LE<4> {
         &self.0
     }
 
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+
     fn to_number(&self) -> Self::NumericType {
         let padded = [0, self.0[0], self.0[1], self.0[2]];
         u32::from_le_bytes(padded)
@@ -369,6 +392,10 @@ impl BytesSample for U24LE<3> {
 
     fn as_slice(&self) -> &[u8] {
         &self.0
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.0
     }
 
     fn to_number(&self) -> Self::NumericType {
@@ -395,6 +422,10 @@ impl BytesSample for U24BE<4> {
         &self.0
     }
 
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+
     fn to_number(&self) -> Self::NumericType {
         let padded = [self.0[1], self.0[2], self.0[3], 0];
         u32::from_be_bytes(padded)
@@ -417,6 +448,10 @@ impl BytesSample for U24BE<3> {
 
     fn as_slice(&self) -> &[u8] {
         &self.0
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.0
     }
 
     fn to_number(&self) -> Self::NumericType {
@@ -442,6 +477,10 @@ macro_rules! bytessample_for_newtype {
 
             fn as_slice(&self) -> &[u8] {
                 &self.0
+            }
+
+            fn as_mut_slice(&mut self) -> &mut [u8] {
+                &mut self.0
             }
 
             fn to_number(&self) -> Self::NumericType {

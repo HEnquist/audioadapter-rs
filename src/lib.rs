@@ -15,6 +15,10 @@ mod traits;
 /// Type conversion of samples values.
 pub mod sample;
 
+/// Extensions to the standard [std::io::Read] and [std::io::Write] traits.
+#[cfg(feature = "std")]
+pub mod readwrite;
+
 /// Calculate statistics for adapters with numerical sample types
 pub mod stats;
 

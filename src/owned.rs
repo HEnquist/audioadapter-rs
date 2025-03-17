@@ -64,9 +64,9 @@ impl<U> InterleavedOwned<U> {
     }
 }
 
-impl<'a, T> InterleavedOwned<T>
+impl<T> InterleavedOwned<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     /// Create a new `InterleavedOwned` by allocaing a new vector filled with `value`.
     pub fn new(value: T, channels: usize, frames: usize) -> Self {
@@ -192,9 +192,9 @@ impl<U> SequentialOwned<U> {
     }
 }
 
-impl<'a, T> SequentialOwned<T>
+impl<T> SequentialOwned<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     /// Create a new `SequentialOwned` by allocaing a new vector filled with `value`.
     pub fn new(value: T, channels: usize, frames: usize) -> Self {

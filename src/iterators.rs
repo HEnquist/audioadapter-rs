@@ -69,7 +69,7 @@ where
     }
 }
 
-impl<'a, 'b, T> Iterator for ChannelSamples<'a, 'b, T>
+impl<T> Iterator for ChannelSamples<'_, '_, T>
 where
     T: Clone,
 {
@@ -111,7 +111,7 @@ where
     }
 }
 
-impl<'a, 'b, T> Iterator for FrameSamples<'a, 'b, T>
+impl<T> Iterator for FrameSamples<'_, '_, T>
 where
     T: Clone,
 {
