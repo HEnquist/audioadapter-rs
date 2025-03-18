@@ -181,9 +181,13 @@ pub trait ReadSamples: io::Read {
 
     /// Read samples until the end of the stream, storing them in a vector.
     ///
-    /// This method reads samples from the underlying reader until an error is encountered
-    /// (typically, the end of the stream). Each sample is read and interpreted as a type `T`
+    /// This method reads samples from the underlying reader until reaching
+    /// the end of the stream, the optional limit, or encountering an error.
+    /// Each sample is read and interpreted as a type `T`
     /// before being appended to the provided vector `buf`.
+    ///
+    /// Only complete samples are read. If the last bytes at the end of the stream
+    /// are too few to make up a complete sample, then they are ignored.
     ///
     /// # Type Parameters
     ///
@@ -192,6 +196,7 @@ pub trait ReadSamples: io::Read {
     /// # Arguments
     ///
     /// * `buf`: A mutable vector where the samples will be appended.
+    /// * `limit`: An optional limit for how many samples to read.
     ///
     /// # Returns
     /// The number of samples read.
@@ -199,22 +204,42 @@ pub trait ReadSamples: io::Read {
     /// # Errors
     ///
     /// * The underlying reader returns an error (except for EOF).
-    /// * The number of bytes read is not sufficient to represent a complete sample.
-    fn read_samples_to_end<T: BytesSample>(&mut self, buf: &mut Vec<T>) -> io::Result<usize> {
+    fn read_samples_to_limit_or_end<T: BytesSample>(
+        &mut self,
+        buf: &mut Vec<T>,
+        limit: Option<usize>,
+    ) -> io::Result<usize> {
         let mut count = 0;
-        while let Ok(sample) = self.read_sample::<T>() {
-            buf.push(sample);
-            count += 1;
+        loop {
+            match self.read_sample::<T>() {
+                Ok(sample) => {
+                    buf.push(sample);
+                    count += 1;
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => {
+                    break;
+                }
+                Err(e) => return Err(e),
+            }
+            if let Some(limit) = limit {
+                if count >= limit {
+                    break;
+                }
+            }
         }
         Ok(count)
     }
 
     /// Read samples until the end of the stream, storing them as numeric types in a vector.
     ///
-    /// This method reads samples from the underlying reader until an error is encountered
-    /// (typically, the end of the stream). Each sample is read and interpreted as
+    /// This method reads samples from the underlying reader until reaching
+    /// the end of the stream, the optional limit, or encountering an error.
+    /// Each sample is read and interpreted as
     /// a type `T`, then converted to its associated `NumericType` before being
     /// appended to the provided vector `buf`.
+    ///
+    /// Only complete samples are read. If the last bytes at the end of the stream
+    /// are too few to make up a complete sample, then they are ignored.
     ///
     /// # Type Parameters
     ///
@@ -223,6 +248,7 @@ pub trait ReadSamples: io::Read {
     /// # Arguments
     ///
     /// * `buf`: A mutable vector where the samples will be appended.
+    /// * `limit`: An optional limit for how many samples to read.
     ///
     /// # Returns
     ///
@@ -233,24 +259,41 @@ pub trait ReadSamples: io::Read {
     /// This function will return an error if:
     ///
     /// * The underlying reader returns an error (except for EOF).
-    /// * The number of bytes read is not sufficient to represent a complete sample.
-    fn read_numbers_to_end<T: BytesSample>(
+    fn read_numbers_to_limit_or_end<T: BytesSample>(
         &mut self,
         buf: &mut Vec<T::NumericType>,
+        limit: Option<usize>,
     ) -> io::Result<usize> {
         let mut count = 0;
-        while let Ok(sample) = self.read_number::<T>() {
-            buf.push(sample);
-            count += 1;
+        loop {
+            match self.read_number::<T>() {
+                Ok(sample) => {
+                    buf.push(sample);
+                    count += 1;
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => {
+                    break;
+                }
+                Err(e) => return Err(e),
+            }
+            if let Some(limit) = limit {
+                if count >= limit {
+                    break;
+                }
+            }
         }
         Ok(count)
     }
 
     /// Read samples until the end of the stream, converting them to floats, and store in a vector.
     ///
-    /// This method reads samples from the underlying reader until an error is encountered
-    /// (typically, the end of the stream). Each sample is read, converted to a
+    /// This method reads samples from the underlying reader until reaching
+    /// the end of the stream, the optional limit, or encountering an error.
+    /// Each sample is read, converted to a
     /// floating-point number of type `U`, and appended to the provided vector `buf`.
+    ///
+    /// Only complete samples are read. If the last bytes at the end of the stream
+    /// are too few to make up a complete sample, then they are ignored.
     ///
     /// # Type Parameters
     ///
@@ -260,6 +303,7 @@ pub trait ReadSamples: io::Read {
     /// # Arguments
     ///
     /// * `buf`: A mutable vector where the converted samples will be appended.
+    /// * `limit`: An optional limit for how many samples to read.
     ///
     /// # Returns
     ///
@@ -270,15 +314,28 @@ pub trait ReadSamples: io::Read {
     /// This function will return an error if:
     ///
     /// * The underlying reader returns an error (except for EOF).
-    /// * The number of bytes read is not sufficient to represent a complete sample.
-    fn read_converted_to_end<T: RawSample + BytesSample, U: Float>(
+    fn read_converted_to_limit_or_end<T: RawSample + BytesSample, U: Float>(
         &mut self,
         buf: &mut Vec<U>,
+        limit: Option<usize>,
     ) -> io::Result<usize> {
         let mut count = 0;
-        while let Ok(sample) = self.read_converted::<T, U>() {
-            buf.push(sample);
-            count += 1;
+        loop {
+            match self.read_converted::<T, U>() {
+                Ok(sample) => {
+                    buf.push(sample);
+                    count += 1;
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => {
+                    break;
+                }
+                Err(e) => return Err(e),
+            }
+            if let Some(limit) = limit {
+                if count >= limit {
+                    break;
+                }
+            }
         }
         Ok(count)
     }
@@ -510,20 +567,38 @@ mod tests {
 
     #[test]
     fn test_read_numbers_to_end_i16() {
-        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        // four complete samples, and one extra byte at the end
+        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6, 7, 8];
         let mut slice = &data[..];
         let mut buf = Vec::new();
-        slice.read_numbers_to_end::<I16LE>(&mut buf).unwrap();
+        slice
+            .read_numbers_to_limit_or_end::<I16LE>(&mut buf, None)
+            .unwrap();
         assert_eq!(buf, [256, 3 * 256 + 2, 5 * 256 + 4, 7 * 256 + 6]);
+        let mut slice2 = &data[..];
+        let mut buf2 = Vec::new();
+        slice2
+            .read_numbers_to_limit_or_end::<I16LE>(&mut buf2, Some(2))
+            .unwrap();
+        assert_eq!(buf2, [256, 3 * 256 + 2]);
     }
 
     #[test]
     fn test_read_converted_to_end_i16() {
-        let data: Vec<u8> = vec![0, 64, 0, 32, 0, 16, 0, 8];
+        // four complete samples, and one extra byte at the end
+        let data: Vec<u8> = vec![0, 64, 0, 32, 0, 16, 0, 8, 0];
         let mut slice = &data[..];
         let mut buf = Vec::new();
-        slice.read_converted_to_end::<I16LE, f32>(&mut buf).unwrap();
+        slice
+            .read_converted_to_limit_or_end::<I16LE, f32>(&mut buf, None)
+            .unwrap();
         assert_eq!(buf, [0.5, 0.25, 0.125, 0.0625]);
+        let mut slice2 = &data[..];
+        let mut buf2 = Vec::new();
+        slice2
+            .read_converted_to_limit_or_end::<I16LE, f32>(&mut buf2, Some(2))
+            .unwrap();
+        assert_eq!(buf2, [0.5, 0.25]);
     }
 
     #[test]

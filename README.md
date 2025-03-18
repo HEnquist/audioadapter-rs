@@ -144,7 +144,7 @@ This is handled by selecting `I24LE<4>` as the format.
 ## Reading and writing samples from types implementing `Read` and `Write`
 The [std::io::Read] and [std::io::Write] traits are useful for reading
 and writing raw bytes to and from for example files.
-The [readwrite] module adds methods for reading and writing samples,
+The [readwrite] module extends these traits by providing methods for reading and writing samples,
 with on-the-fly conversion between bytes and the numerical values.
 
 Example
