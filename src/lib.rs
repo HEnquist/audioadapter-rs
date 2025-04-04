@@ -9,6 +9,9 @@ pub mod number_to_float;
 /// Wrappers that store their data in an owned vector.
 #[cfg(feature = "std")]
 pub mod owned;
+
+/// Dummy Adapter
+pub mod dummy;
 /// The traits for accessing samples in buffers.
 mod traits;
 
