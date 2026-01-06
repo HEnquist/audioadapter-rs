@@ -20,7 +20,7 @@
 /// # Safety
 ///
 /// This trait is `unsafe` because it relies on correct implementations of the
-/// `frames` and `channels` methods.
+/// `frame_capacity` and `channels` methods.
 /// The values returned by these methods are not allowed to change while an adapter is in use.
 pub unsafe trait Adapter<'a, T: 'a> {
     /// Read the sample at
