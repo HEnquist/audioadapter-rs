@@ -13,7 +13,7 @@ struct MyStruct<'a, T> {
     channels: usize,
 }
 
-impl<'a, T> Adapter<'a, T> for MyStruct<'a, T>
+unsafe impl<'a, T> Adapter<'a, T> for MyStruct<'a, T>
 where
     T: Clone + FromStr + Zero + 'a,
 {
@@ -21,7 +21,7 @@ where
         self.channels
     }
 
-    fn frames(&self) -> usize {
+    fn frame_capacity(&self) -> usize {
         self.data.len() / self.channels
     }
 

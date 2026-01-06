@@ -7,7 +7,7 @@ use crate::{Adapter, AdapterMut};
 
 use audio_core::{Buf, BufMut, Channel, ChannelMut, ExactSizeBuf, Sample};
 
-impl<'a, T, U> Adapter<'a, T> for U
+unsafe impl<'a, T, U> Adapter<'a, T> for U
 where
     T: Clone + Sample + 'a,
     U: Buf<Sample = T> + ExactSizeBuf<Sample = T>,
@@ -16,7 +16,7 @@ where
         self.channels()
     }
 
-    fn frames(&self) -> usize {
+    fn frame_capacity(&self) -> usize {
         self.frames()
     }
 
@@ -43,11 +43,15 @@ where
     }
 }
 
-impl<'a, T, U> AdapterMut<'a, T> for U
+unsafe impl<'a, T, U> AdapterMut<'a, T> for U
 where
     T: Clone + Sample + 'a,
     U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,
 {
+    unsafe fn set_frames_no_init(&mut self, _frames: usize) -> Option<usize> {
+        None
+    }
+
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         *self
             .get_channel_mut(channel)

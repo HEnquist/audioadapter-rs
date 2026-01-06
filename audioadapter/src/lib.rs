@@ -26,6 +26,7 @@ pub mod tests {
     pub struct MinimalAdapter<U> {
         buf: Vec<U>,
         frames: usize,
+        frame_capacity: usize,
         channels: usize,
     }
 
@@ -33,16 +34,22 @@ pub mod tests {
     where
         T: Clone,
     {
-        pub fn new_from_vec(buf: Vec<T>, channels: usize, frames: usize) -> Self {
+        pub fn new_from_vec(
+            buf: Vec<T>,
+            channels: usize,
+            frames: usize,
+            frame_capacity: usize,
+        ) -> Self {
             Self {
                 buf,
                 frames,
+                frame_capacity,
                 channels,
             }
         }
     }
 
-    impl<'a, T> Adapter<'a, T> for MinimalAdapter<T>
+    unsafe impl<'a, T> Adapter<'a, T> for MinimalAdapter<T>
     where
         T: Clone + 'a,
     {
@@ -58,12 +65,24 @@ pub mod tests {
         fn frames(&self) -> usize {
             self.frames
         }
+
+        fn frame_capacity(&self) -> usize {
+            self.frame_capacity
+        }
     }
 
-    impl<'a, T> AdapterMut<'a, T> for MinimalAdapter<T>
+    unsafe impl<'a, T> AdapterMut<'a, T> for MinimalAdapter<T>
     where
         T: Clone + 'a,
     {
+        unsafe fn set_frames_no_init(&mut self, frames: usize) -> Option<usize> {
+            if frames > self.frame_capacity {
+                return None;
+            }
+            self.frames = frames;
+            Some(frames)
+        }
+
         unsafe fn write_sample_unchecked(
             &mut self,
             channel: usize,
@@ -376,9 +395,24 @@ pub mod tests {
         );
     }
 
+    /// Generic test to verify changing the number of frames.
+    /// Assumes that the provided adapter has unused capacity of at least 2 frames.
+    pub fn test_resize_adapter<'a, T>(buffer: &mut dyn AdapterMut<'a, T>)
+    where
+        T: Default + Clone + PartialEq + std::fmt::Debug + From<usize> + Into<usize> + 'a,
+    {
+        assert_ne!(buffer.frames(), buffer.frame_capacity());
+    }
+
     #[test]
     fn test_vec_adapter() {
-        let mut buffer = MinimalAdapter::new_from_vec(vec![0; 8], 2, 4);
+        let mut buffer = MinimalAdapter::new_from_vec(vec![0; 8], 2, 4, 4);
         test_adapter_mut_methods(&mut buffer);
+    }
+
+    #[test]
+    fn test_frames_and_capacity() {
+        let mut buffer = MinimalAdapter::new_from_vec(vec![0; 8], 2, 4, 2);
+        test_resize_adapter(&mut buffer);
     }
 }
