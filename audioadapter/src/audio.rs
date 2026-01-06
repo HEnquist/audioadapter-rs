@@ -16,7 +16,7 @@ where
         self.channels()
     }
 
-    fn frame_capacity(&self) -> usize {
+    fn frames(&self) -> usize {
         self.frames()
     }
 
@@ -48,6 +48,10 @@ where
     T: Clone + Sample + 'a,
     U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,
 {
+    fn frame_capacity(&self) -> usize {
+        self.frames()
+    }
+
     unsafe fn set_frames_no_init(&mut self, _frames: usize) -> Option<usize> {
         None
     }

@@ -65,16 +65,16 @@ pub mod tests {
         fn frames(&self) -> usize {
             self.frames
         }
-
-        fn frame_capacity(&self) -> usize {
-            self.frame_capacity
-        }
     }
 
     unsafe impl<'a, T> AdapterMut<'a, T> for MinimalAdapter<T>
     where
         T: Clone + 'a,
     {
+        fn frame_capacity(&self) -> usize {
+            self.frame_capacity
+        }
+
         unsafe fn set_frames_no_init(&mut self, frames: usize) -> Option<usize> {
             if frames > self.frame_capacity {
                 return None;

@@ -9,19 +9,14 @@
 /// Implementations may perform any needed transformation
 /// of the sample value before returning it.
 ///
-/// An Adapter has a length in frames that works similarly to
-/// the length and capacity of a standard `Vec`.
-/// Trait implementors can choose to implement the `frames` method.
-/// The default implementation returns the capacity,
-/// meaning that the buffer is considered completely filled with data.
-/// Returning a smaller value means that the buffer is only partially filled,
-/// which may be useful for example if a buffer is reused to avoid allocations.
-///
 /// # Safety
 ///
 /// This trait is `unsafe` because it relies on correct implementations of the
-/// `frame_capacity` and `channels` methods.
-/// The values returned by these methods are not allowed to change while an adapter is in use.
+/// `frames` and `channels` methods.
+/// Users of an `Adapter` trait object must be able to rely on that these values are
+/// constant while the buffer is in use.
+/// The values returned by these methods are not allowed to change spontaneously,
+/// for example due to some internal logic or because of some action in another thread.
 pub unsafe trait Adapter<'a, T: 'a> {
     /// Read the sample at
     /// a given combination of frame and channel.
@@ -48,15 +43,8 @@ pub unsafe trait Adapter<'a, T: 'a> {
     /// Get the number of channels stored in this buffer.
     fn channels(&self) -> usize;
 
-    /// Get the number of frames currently stored in this buffer.
-    /// The default implementation makes no difference between the number of frames
-    /// currently stored and the buffer capacity.
-    fn frames(&self) -> usize {
-        self.frame_capacity()
-    }
-
-    /// Get the maximum number of frames that can be stored in this buffer.
-    fn frame_capacity(&self) -> usize;
+    /// Get the number of frames stored in this buffer.
+    fn frames(&self) -> usize;
 
     /// Copy values from a channel of self to a slice.
     /// The `skip` argument is the offset in samples from
@@ -114,20 +102,26 @@ pub unsafe trait Adapter<'a, T: 'a> {
 /// Implementations may perform any needed transformation
 /// of the sample value before writing to the underlying buffer.
 ///
+/// An AdapterMut has length and capacity in frames that works similarly to
+/// the length and capacity of a standard `Vec`.
+/// This allows partially filling a buffer wit data,
+/// which may be useful for example if a buffer is reused to avoid allocations.
 /// The number of frames stored can be changed by the `set_frames`
 /// or `set_frames_no_init` methods.
 ///
 /// # Safety
 ///
-/// This trait is `unsafe` because it relies on correct implementations of the
-/// `channels`, `frames` and `frame_capacity` methods.
-/// The values returned by these methods are not allowed to change spontaneously,
-/// for example from another thread.
-/// They are allowed to change when the `set_frames` method is called.
+/// This trait is `unsafe` because it relies on correct implementation
+/// of the `frame_capacity` method.
+/// The value returned by this method is not allowed to change spontaneously,
+/// for example due to some internal logic or because of some action in another thread.
 pub unsafe trait AdapterMut<'a, T>: Adapter<'a, T>
 where
     T: Clone + 'a,
 {
+    /// Get the maximum number of frames that can be stored in this buffer.
+    fn frame_capacity(&self) -> usize;
+
     /// Forces the number of frames currently stored in this buffer
     /// to a new value.
     ///
@@ -150,7 +144,7 @@ where
 
     /// Change the number of frames currently stored in this buffer.
     /// If the new number of frames is larger than the current number,
-    /// the samples of the new frames are initialized with the provided value.
+    /// the samples of the new frames are initialized with the provided fill value.
     /// The new number must not be larger than the capacity of the buffer.
     /// Returns the new number of frames if it could be applied,
     /// or None if it could not.
@@ -160,11 +154,7 @@ where
             // nothing to do, return early
             return Some(frames);
         }
-        let new_frames_option = unsafe { self.set_frames_no_init(frames) };
-        if new_frames_option.is_none() {
-            return None;
-        }
-        let new_frames = new_frames_option.unwrap();
+        let new_frames = unsafe { self.set_frames_no_init(frames) }?;
         if new_frames > current_frames {
             self.fill_frames_with(current_frames, new_frames - current_frames, fill_value);
         }

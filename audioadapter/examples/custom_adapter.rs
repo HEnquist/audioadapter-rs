@@ -21,7 +21,7 @@ where
         self.channels
     }
 
-    fn frame_capacity(&self) -> usize {
+    fn frames(&self) -> usize {
         self.data.len() / self.channels
     }
 
