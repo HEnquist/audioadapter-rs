@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn stats_integer() {
         let data = vec![1_i32, 1, -1, -1, 1, 1, -1, -1];
-        let buffer = MinimalAdapter::new_from_vec(data, 2, 4, 4);
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 4);
         assert_eq!(buffer.channel_rms(0), 1.0);
         assert_eq!(buffer.channel_min_and_max(0), (-1, 1));
         assert_eq!(buffer.channel_peak_to_peak(0), 2.0);
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn stats_float() {
         let data = vec![1.0_f32, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0];
-        let buffer = MinimalAdapter::new_from_vec(data, 2, 4, 4);
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 4);
         assert_eq!(buffer.channel_rms(0), 1.0);
         assert_eq!(buffer.channel_min_and_max(0), (-1.0, 1.0));
         assert_eq!(buffer.channel_peak_to_peak(0), 2.0);

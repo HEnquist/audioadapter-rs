@@ -456,7 +456,7 @@ mod tests {
 
     fn dummy_adapter() -> MinimalAdapter<i32> {
         let data = vec![1_i32, 2, 3, 4, 5, 6, 7, 8];
-        MinimalAdapter::new_from_vec(data, 2, 4, 4)
+        MinimalAdapter::new_from_vec(data, 2, 4)
     }
 
     #[test]

@@ -26,7 +26,6 @@ pub mod tests {
     pub struct MinimalAdapter<U> {
         buf: Vec<U>,
         frames: usize,
-        frame_capacity: usize,
         channels: usize,
     }
 
@@ -34,16 +33,14 @@ pub mod tests {
     where
         T: Clone,
     {
-        pub fn new_from_vec(
-            buf: Vec<T>,
-            channels: usize,
-            frames: usize,
-            frame_capacity: usize,
-        ) -> Self {
+        pub fn new_from_vec(buf: Vec<T>, channels: usize, frames: usize) -> Self {
+            let frame_capacity = buf.len() / channels;
+            if frames > frame_capacity {
+                panic!("Vector is too short!");
+            }
             Self {
                 buf,
                 frames,
-                frame_capacity,
                 channels,
             }
         }
@@ -72,11 +69,11 @@ pub mod tests {
         T: Clone + 'a,
     {
         fn frame_capacity(&self) -> usize {
-            self.frame_capacity
+            self.buf.len() / self.channels
         }
 
         unsafe fn set_frames_no_init(&mut self, frames: usize) -> Option<usize> {
-            if frames > self.frame_capacity {
+            if frames > self.frame_capacity() {
                 return None;
             }
             self.frames = frames;
@@ -406,13 +403,13 @@ pub mod tests {
 
     #[test]
     fn test_vec_adapter() {
-        let mut buffer = MinimalAdapter::new_from_vec(vec![0; 8], 2, 4, 4);
+        let mut buffer = MinimalAdapter::new_from_vec(vec![0; 8], 2, 4);
         test_adapter_mut_methods(&mut buffer);
     }
 
     #[test]
     fn test_frames_and_capacity() {
-        let mut buffer = MinimalAdapter::new_from_vec(vec![0; 8], 2, 4, 2);
+        let mut buffer = MinimalAdapter::new_from_vec(vec![0; 8], 2, 2);
         test_resize_adapter(&mut buffer);
     }
 }

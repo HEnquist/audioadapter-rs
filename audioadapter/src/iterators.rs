@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn interleaved() {
         let data = vec![1_i32, 4, 2, 5, 3, 6];
-        let buffer = MinimalAdapter::new_from_vec(data, 2, 3, 3);
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 3);
         let mut val: i32 = 1;
         for channel in buffer.iter_channels() {
             for sample in channel {
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn sequential() {
         let data = vec![1_i32, 2, 3, 4, 5, 6];
-        let buffer = MinimalAdapter::new_from_vec(data, 2, 3, 3);
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 3);
         let mut val: i32 = 1;
         for frame in buffer.iter_frames() {
             for sample in frame {
