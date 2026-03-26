@@ -16,7 +16,7 @@ default = ["std", "audio"]
 std = ["num-traits/std", "audio-core?/std", "audio/std"]
 audio = ["audio-core"]
 
-test-utils = []
+test-utils = ["std"]
 
 [dependencies]
 num-traits.workspace = true
