@@ -12,7 +12,8 @@ categories = ["multimedia::audio"]
 readme = "README.md"
 
 [features]
-default = ["audio"]
+default = ["std", "audio"]
+std = ["num-traits/std", "audio-core?/std"]
 audio = ["audio-core"]
 
 test-utils = []
@@ -22,9 +23,8 @@ num-traits.workspace = true
 audio-core = { workspace = true, optional = true }
 
 [dev-dependencies]
-audio = "0.2.0"
+audio = { version = "0.2.0" }
 criterion = "0.6"
-num-traits = { workspace = true, features = ["std"] }
 
 [[bench]]
 name = "sqrt"

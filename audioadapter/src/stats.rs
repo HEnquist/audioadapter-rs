@@ -38,7 +38,12 @@ where
                 .unwrap_or_default();
             square_sum += sample * sample;
         }
-        sqrt_newton(square_sum / self.frames() as f64)
+
+        #[cfg(feature = "std")]
+        return (square_sum / self.frames() as f64).sqrt();
+
+        #[cfg(not(feature = "std"))]
+        return sqrt_newton(square_sum / self.frames() as f64);
     }
 
     /// Calculate the RMS value of the given channel.
@@ -56,7 +61,12 @@ where
                 .unwrap_or_default();
             square_sum += sample * sample;
         }
-        sqrt_newton(square_sum / self.channels() as f64)
+
+        #[cfg(feature = "std")]
+        return (square_sum / self.channels() as f64).sqrt();
+
+        #[cfg(not(feature = "std"))]
+        return sqrt_newton(square_sum / self.channels() as f64);
     }
 
     /// Calculate the peak-to-peak value of the given channel.

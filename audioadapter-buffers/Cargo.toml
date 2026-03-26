@@ -13,12 +13,12 @@ readme = "README.md"
 
 [features]
 default = ["std"]
-std = ["audioadapter-sample/std", "num-traits/std", "alloc"]
+std = ["audioadapter/std", "audioadapter-sample/std", "num-traits/std", "alloc"]
 alloc = []
 
 [dependencies]
 num-traits.workspace = true
-audioadapter = { version = "2.0.2", path = "../audioadapter" }
+audioadapter = { version = "2.0.2", path = "../audioadapter", default-features = false }
 audioadapter-sample = { version = "2.0.1", path = "../audioadapter-sample", default-features = false, features = ["audio"] }
 
 

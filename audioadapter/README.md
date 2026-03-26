@@ -139,7 +139,6 @@ This shows a minimal implementation of [Adapter]
 for a vector of strings.
 
 ## Using without the standard library
-The `audioadapter` traits do not require the standard library,
-and can therefore be used in `no_std` environments.
+This crate can be used in `no_std` environments if the `std` Cargo feature is disabled.
 
 ## License: MIT
