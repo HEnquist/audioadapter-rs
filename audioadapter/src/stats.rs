@@ -2,12 +2,18 @@ use num_traits::{Num, ToPrimitive};
 
 use crate::Adapter;
 
+/// A simple implementation of the Newton's method for calculating the square root of a number.
+/// This is used to avoid depending on `std`, until math support in core is stable.
+/// See: https://doc.rust-lang.org/core/f64/math/fn.sqrt.html
 pub fn sqrt_newton(value: f64) -> f64 {
     if value <= 0.0 {
         return 0.0;
     }
 
+    // Get an initial guess using the exponent of the floating point representation.
     let mut estimate = f64::from_bits((value.to_bits() + (1023_u64 << 52)) >> 1);
+
+    // Perform 5 iterations of Newton's method to refine the estimate.
     for _ in 0..5 {
         estimate = 0.5 * (estimate + value / estimate);
     }
