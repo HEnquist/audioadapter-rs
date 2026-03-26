@@ -13,7 +13,7 @@ readme = "README.md"
 
 [features]
 default = ["std", "audio"]
-std = ["num-traits/std", "audio-core?/std"]
+std = ["num-traits/std", "audio-core?/std", "audio/std"]
 audio = ["audio-core"]
 
 test-utils = []
@@ -23,7 +23,7 @@ num-traits.workspace = true
 audio-core = { workspace = true, optional = true }
 
 [dev-dependencies]
-audio = { version = "0.2.0" }
+audio = { version = "0.2.0", default-features = false }
 criterion = "0.6"
 
 [[bench]]
