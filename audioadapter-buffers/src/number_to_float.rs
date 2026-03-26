@@ -557,7 +557,7 @@ mod tests {
     // meaning it can be sent between threads.
     // This test is not designed to be run, only to compile.
     #[allow(dead_code)]
-    fn test_adapter_send_and_sync<T: Sync + Send + Clone>() {
+    fn test_adapter_send_and_sync() {
         fn is_send<T: Send>() {}
         fn is_sync<T: Sync>() {}
         is_send::<InterleavedNumbers<&[i32], f32>>();

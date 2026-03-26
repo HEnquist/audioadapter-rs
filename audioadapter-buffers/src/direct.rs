@@ -1203,8 +1203,8 @@ mod tests {
     #[cfg(feature = "alloc")]
     #[test]
     fn boxed_buffer() {
-        let mut data = [1_i32, 2, 3, 4, 5, 6];
-        let boxed: Box<dyn Adapter<i32>> = Box::new(SequentialSlice::new(&mut data, 2, 3).unwrap());
+        let data = [1_i32, 2, 3, 4, 5, 6];
+        let boxed: Box<dyn Adapter<i32>> = Box::new(SequentialSlice::new(&data, 2, 3).unwrap());
         assert_eq!(boxed.read_sample(0, 0).unwrap(), 1);
     }
 
@@ -1212,7 +1212,7 @@ mod tests {
     // meaning it can be sent between threads.
     // This test is not designed to be run, only to compile.
     #[allow(dead_code)]
-    fn test_adapter_send_and_sync<T: Sync + Send + Clone>() {
+    fn test_adapter_send_and_sync() {
         fn is_send<T: Send>() {}
         fn is_sync<T: Sync>() {}
         is_send::<InterleavedSlice<f32>>();
