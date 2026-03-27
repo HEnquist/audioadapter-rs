@@ -47,7 +47,6 @@ use audioadapter::{Adapter, AdapterMut};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-#[cfg(feature = "alloc")]
 macro_rules! check_slice_and_vec_length {
     ($buf:expr, $channels:expr, $frames:expr, sequential) => {
         if $buf.len() < $channels {
@@ -303,15 +302,15 @@ where
 /// Reading from an unused channel returns `T::default()`,
 /// while writing does nothing.
 #[cfg(feature = "alloc")]
-pub struct SparseSequentialSliceOfVecs<U> {
+pub struct SparseSequentialSliceOfVecs<'a, U: 'a> {
     buf: U,
     frames: usize,
     channels: usize,
-    mask: Vec<bool>,
+    mask: &'a [bool],
 }
 
 #[cfg(feature = "alloc")]
-impl<'a, T> SparseSequentialSliceOfVecs<&'a [Vec<T>]> {
+impl<'a, T> SparseSequentialSliceOfVecs<'a, &'a [Vec<T>]> {
     /// Create a new `SparseSequentialSliceOfVecs` to wrap a slice of vectors.
     /// The slice must contain at least `channels` vectors.
     /// The vectors for channels that are marked as active
@@ -324,21 +323,20 @@ impl<'a, T> SparseSequentialSliceOfVecs<&'a [Vec<T>]> {
         buf: &'a [Vec<T>],
         channels: usize,
         frames: usize,
-        active_channels_mask: &[bool],
+        active_channels_mask: &'a [bool],
     ) -> Result<Self, SizeError> {
-        let mask = active_channels_mask.to_vec();
-        check_slice_and_vec_length!(buf, channels, frames, &mask, sequential);
+        check_slice_and_vec_length!(buf, channels, frames, active_channels_mask, sequential);
         Ok(Self {
             buf,
             frames,
             channels,
-            mask,
+            mask: active_channels_mask,
         })
     }
 }
 
 #[cfg(feature = "alloc")]
-impl<'a, T> SparseSequentialSliceOfVecs<&'a mut [Vec<T>]> {
+impl<'a, T> SparseSequentialSliceOfVecs<'a, &'a mut [Vec<T>]> {
     /// Create a new `SparseSequentialSliceOfVecs` to wrap a mutable slice of vectors.
     /// The slice must contain at least `channels` vectors,
     /// and each vector must be at least `frames` long.
@@ -349,21 +347,20 @@ impl<'a, T> SparseSequentialSliceOfVecs<&'a mut [Vec<T>]> {
         buf: &'a mut [Vec<T>],
         channels: usize,
         frames: usize,
-        active_channels_mask: &[bool],
+        active_channels_mask: &'a [bool],
     ) -> Result<Self, SizeError> {
-        let mask = active_channels_mask.to_vec();
-        check_slice_and_vec_length!(buf, channels, frames, &mask, sequential);
+        check_slice_and_vec_length!(buf, channels, frames, active_channels_mask, sequential);
         Ok(Self {
             buf,
             frames,
             channels,
-            mask,
+            mask: active_channels_mask,
         })
     }
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a [Vec<T>]>
+unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<'a, &'a [Vec<T>]>
 where
     T: Clone + Default,
 {
@@ -391,7 +388,7 @@ where
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
+unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<'a, &'a mut [Vec<T>]>
 where
     T: Clone + Default,
 {
@@ -419,7 +416,388 @@ where
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> AdapterMut<'a, T> for SparseSequentialSliceOfVecs<&'a mut [Vec<T>]>
+unsafe impl<'a, T> AdapterMut<'a, T> for SparseSequentialSliceOfVecs<'a, &'a mut [Vec<T>]>
+where
+    T: Clone + Default,
+{
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+        if self.mask[channel] {
+            *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+        }
+        false
+    }
+
+    fn copy_from_slice_to_channel(
+        &mut self,
+        channel: usize,
+        skip: usize,
+        slice: &[T],
+    ) -> (usize, usize) {
+        if channel >= self.channels || !self.mask[channel] || skip >= self.frames {
+            return (0, 0);
+        }
+        let frames_to_read = if (self.frames - skip) < slice.len() {
+            self.frames - skip
+        } else {
+            slice.len()
+        };
+        self.buf[channel][skip..skip + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
+        (frames_to_read, 0)
+    }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        for (ch, active) in self.buf.iter_mut().zip(self.mask.iter()) {
+            if *active {
+                unsafe {
+                    copy_within_slice(ch, src, dest, count);
+                }
+            }
+        }
+        Some(count)
+    }
+
+    fn copy_sample_within(
+        &mut self,
+        source_channel: usize,
+        source_frame: usize,
+        target_channel: usize,
+        target_frame: usize,
+    ) -> bool {
+        if source_channel >= self.channels
+            || source_frame >= self.frames
+            || target_channel >= self.channels
+            || target_frame >= self.frames
+            || !self.mask[source_channel]
+            || !self.mask[target_channel]
+        {
+            return false;
+        }
+        self.buf[target_channel][target_frame] = self.buf[source_channel][source_frame].clone();
+        true
+    }
+
+    fn swap_samples(
+        &mut self,
+        channel_a: usize,
+        frame_a: usize,
+        channel_b: usize,
+        frame_b: usize,
+    ) -> bool {
+        if channel_a >= self.channels
+            || frame_a >= self.frames
+            || channel_b >= self.channels
+            || frame_b >= self.frames
+            || !self.mask[channel_a]
+            || !self.mask[channel_b]
+        {
+            return false;
+        }
+        let temp = self.buf[channel_a][frame_a].clone();
+        self.buf[channel_a][frame_a] = self.buf[channel_b][frame_b].clone();
+        self.buf[channel_b][frame_b] = temp;
+        true
+    }
+}
+
+//
+// =========================== SequentialSliceOfSlices ===========================
+//
+
+/// Wrapper for a slice of length `channels`, containing slices of length `frames`.
+/// Each channel slice contains the samples for all frames of one channel.
+pub struct SequentialSliceOfSlices<U> {
+    buf: U,
+    frames: usize,
+    channels: usize,
+}
+
+impl<'a, T> SequentialSliceOfSlices<&'a [&'a [T]]> {
+    /// Create a new `SequentialSliceOfSlices` to wrap a slice of slices.
+    /// The slice must contain at least `channels` slices,
+    /// and each channel slice must be at least `frames` long.
+    /// They are allowed to be longer than needed,
+    /// but these extra frames or channels cannot
+    /// be accessed via the trait methods.
+    pub fn new(buf: &'a [&'a [T]], channels: usize, frames: usize) -> Result<Self, SizeError> {
+        check_slice_and_vec_length!(buf, channels, frames, sequential);
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+impl<'a, T> SequentialSliceOfSlices<&'a mut [&'a mut [T]]> {
+    /// Create a new `SequentialSliceOfSlices` to wrap a mutable slice of slices.
+    /// The slice must contain at least `channels` slices,
+    /// and each channel slice must be at least `frames` long.
+    /// They are allowed to be longer than needed,
+    /// but these extra frames or channels cannot
+    /// be accessed via the trait methods.
+    pub fn new_mut(
+        buf: &'a mut [&'a mut [T]],
+        channels: usize,
+        frames: usize,
+    ) -> Result<Self, SizeError> {
+        check_slice_and_vec_length!(buf, channels, frames, sequential);
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+        })
+    }
+}
+
+unsafe impl<'a, T> Adapter<'a, T> for SequentialSliceOfSlices<&'a [&'a [T]]>
+where
+    T: Clone,
+{
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+    }
+
+    implement_size_getters!();
+
+    fn copy_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || skip >= self.frames {
+            return 0;
+        }
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
+        } else {
+            slice.len()
+        };
+        slice[..frames_to_write].clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
+        frames_to_write
+    }
+}
+
+unsafe impl<'a, T> Adapter<'a, T> for SequentialSliceOfSlices<&'a mut [&'a mut [T]]>
+where
+    T: Clone,
+{
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+    }
+
+    implement_size_getters!();
+
+    fn copy_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || skip >= self.frames {
+            return 0;
+        }
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
+        } else {
+            slice.len()
+        };
+        slice[..frames_to_write].clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
+        frames_to_write
+    }
+}
+
+unsafe impl<'a, T> AdapterMut<'a, T> for SequentialSliceOfSlices<&'a mut [&'a mut [T]]>
+where
+    T: Clone,
+{
+    unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
+        *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+        false
+    }
+
+    fn copy_from_slice_to_channel(
+        &mut self,
+        channel: usize,
+        skip: usize,
+        slice: &[T],
+    ) -> (usize, usize) {
+        if channel >= self.channels || skip >= self.frames {
+            return (0, 0);
+        }
+        let frames_to_read = if (self.frames - skip) < slice.len() {
+            self.frames - skip
+        } else {
+            slice.len()
+        };
+        self.buf[channel][skip..skip + frames_to_read].clone_from_slice(&slice[..frames_to_read]);
+        (frames_to_read, 0)
+    }
+
+    fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
+        if src + count > self.frames || dest + count > self.frames {
+            return None;
+        }
+        for ch in self.buf.iter_mut() {
+            unsafe {
+                copy_within_slice(ch, src, dest, count);
+            }
+        }
+        Some(count)
+    }
+
+    fn copy_sample_within(
+        &mut self,
+        source_channel: usize,
+        source_frame: usize,
+        target_channel: usize,
+        target_frame: usize,
+    ) -> bool {
+        if source_channel >= self.channels
+            || source_frame >= self.frames
+            || target_channel >= self.channels
+            || target_frame >= self.frames
+        {
+            return false;
+        }
+        self.buf[target_channel][target_frame] = self.buf[source_channel][source_frame].clone();
+        true
+    }
+
+    fn swap_samples(
+        &mut self,
+        channel_a: usize,
+        frame_a: usize,
+        channel_b: usize,
+        frame_b: usize,
+    ) -> bool {
+        if channel_a >= self.channels
+            || frame_a >= self.frames
+            || channel_b >= self.channels
+            || frame_b >= self.frames
+        {
+            return false;
+        }
+        let temp = self.buf[channel_a][frame_a].clone();
+        self.buf[channel_a][frame_a] = self.buf[channel_b][frame_b].clone();
+        self.buf[channel_b][frame_b] = temp;
+        true
+    }
+}
+
+//
+// =========================== SparseSequentialSliceOfSlices ===========================
+//
+
+/// Wrapper for a slice of length `channels`, containing slices of length `frames`.
+/// Each channel slice contains the samples for all frames of one channel.
+/// This is similar to [SequentialSliceOfSlices],
+/// but here slices for unused channels may be empty.
+/// Reading from an unused channel returns `T::default()`,
+/// while writing does nothing.
+pub struct SparseSequentialSliceOfSlices<'a, U: 'a> {
+    buf: U,
+    frames: usize,
+    channels: usize,
+    mask: &'a [bool],
+}
+
+impl<'a, T> SparseSequentialSliceOfSlices<'a, &'a [&'a [T]]> {
+    /// Create a new `SparseSequentialSliceOfSlices` to wrap a slice of slices.
+    /// The slice must contain at least `channels` slices.
+    /// The slices for channels that are marked as active
+    /// must be at least `frames` long.
+    /// They are allowed to be longer than needed,
+    /// but these extra frames or channels cannot
+    /// be accessed via the trait methods.
+    /// Slices for unused channels are never accessed and can have any length.
+    pub fn new(
+        buf: &'a [&'a [T]],
+        channels: usize,
+        frames: usize,
+        active_channels_mask: &'a [bool],
+    ) -> Result<Self, SizeError> {
+        check_slice_and_vec_length!(buf, channels, frames, active_channels_mask, sequential);
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+            mask: active_channels_mask,
+        })
+    }
+}
+
+impl<'a, T> SparseSequentialSliceOfSlices<'a, &'a mut [&'a mut [T]]> {
+    /// Create a new `SparseSequentialSliceOfSlices` to wrap a mutable slice of slices.
+    /// The slice must contain at least `channels` slices,
+    /// and each channel slice must be at least `frames` long.
+    /// They are allowed to be longer than needed,
+    /// but these extra frames or channels cannot
+    /// be accessed via the trait methods.
+    pub fn new_mut(
+        buf: &'a mut [&'a mut [T]],
+        channels: usize,
+        frames: usize,
+        active_channels_mask: &'a [bool],
+    ) -> Result<Self, SizeError> {
+        check_slice_and_vec_length!(buf, channels, frames, active_channels_mask, sequential);
+        Ok(Self {
+            buf,
+            frames,
+            channels,
+            mask: active_channels_mask,
+        })
+    }
+}
+
+unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfSlices<'a, &'a [&'a [T]]>
+where
+    T: Clone + Default,
+{
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+        if self.mask[channel] {
+            return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
+        }
+        T::default()
+    }
+
+    implement_size_getters!();
+
+    fn copy_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || !self.mask[channel] || skip >= self.frames {
+            return 0;
+        }
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
+        } else {
+            slice.len()
+        };
+        slice[..frames_to_write].clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
+        frames_to_write
+    }
+}
+
+unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfSlices<'a, &'a mut [&'a mut [T]]>
+where
+    T: Clone + Default,
+{
+    unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+        if self.mask[channel] {
+            return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
+        }
+        T::default()
+    }
+
+    implement_size_getters!();
+
+    fn copy_from_channel_to_slice(&self, channel: usize, skip: usize, slice: &mut [T]) -> usize {
+        if channel >= self.channels || !self.mask[channel] || skip >= self.frames {
+            return 0;
+        }
+        let frames_to_write = if (self.frames - skip) < slice.len() {
+            self.frames - skip
+        } else {
+            slice.len()
+        };
+        slice[..frames_to_write].clone_from_slice(&self.buf[channel][skip..skip + frames_to_write]);
+        frames_to_write
+    }
+}
+
+unsafe impl<'a, T> AdapterMut<'a, T> for SparseSequentialSliceOfSlices<'a, &'a mut [&'a mut [T]]>
 where
     T: Clone + Default,
 {
@@ -1155,9 +1533,23 @@ mod tests {
 
     #[cfg(feature = "alloc")]
     #[test]
-    fn vec_of_channels() {
+    fn vec_of_vec_channels() {
         let mut data = vec![vec![0_i32; 3], vec![0_i32; 3]];
         let mut buffer = SequentialSliceOfVecs::new_mut(&mut data, 2, 3).unwrap();
+        test_get(&mut buffer);
+        test_slice_channel(&mut buffer);
+        test_slice_frame(&mut buffer);
+        test_mut_slice_channel(&mut buffer);
+        test_mut_slice_frame(&mut buffer);
+    }
+
+    #[test]
+    fn slice_of_slice_channels() {
+        let mut data_ch_0 = vec![0_i32; 3];
+        let mut data_ch_1 = vec![0_i32; 3];
+        let mut data = vec![data_ch_0.as_mut_slice(), data_ch_1.as_mut_slice()];
+
+        let mut buffer = SequentialSliceOfSlices::new_mut(&mut data, 2, 3).unwrap();
         test_get(&mut buffer);
         test_slice_channel(&mut buffer);
         test_slice_frame(&mut buffer);
@@ -1272,12 +1664,40 @@ mod tests {
 
     #[cfg(feature = "alloc")]
     #[test]
-    fn sparse_sequential() {
+    fn sparse_sequential_vecs() {
         use audioadapter::stats::AdapterStats;
 
         let mut data = vec![vec![1, 2, 3], Vec::new()];
         let mask = vec![true, false];
         let mut buffer = SparseSequentialSliceOfVecs::new_mut(&mut data, 2, 3, &mask).unwrap();
+        // Read active channel gives the proper value
+        assert_eq!(buffer.read_sample(0, 1), Some(2));
+        // Reading unused channel gives zero
+        assert_eq!(buffer.read_sample(1, 1), Some(0));
+        // write and read an active channel
+        assert_eq!(buffer.write_sample(0, 1, &25), Some(false));
+        assert_eq!(buffer.read_sample(0, 1), Some(25));
+        // write to an unused channel is successful (but does nothing)
+        assert_eq!(buffer.write_sample(1, 1, &26), Some(false));
+        // reading outside the actual size gives None
+        assert_eq!(buffer.read_sample(0, 10), None);
+        assert_eq!(buffer.read_sample(1, 10), None);
+        assert_eq!(buffer.read_sample(2, 1), None);
+        // RMS of the active channel should be 14.55
+        assert!((buffer.channel_rms(0) - 14.5).abs() < 0.1);
+        // RMS of the unised channel should be zero
+        assert_eq!(buffer.channel_rms(1), 0.0);
+    }
+
+    #[test]
+    fn sparse_sequential_slices() {
+        use audioadapter::stats::AdapterStats;
+
+        let mut data_ch_0 = vec![1, 2, 3];
+
+        let mut data = vec![data_ch_0.as_mut_slice(), &mut []];
+        let mask = vec![true, false];
+        let mut buffer = SparseSequentialSliceOfSlices::new_mut(&mut data, 2, 3, &mask).unwrap();
         // Read active channel gives the proper value
         assert_eq!(buffer.read_sample(0, 1), Some(2));
         // Reading unused channel gives zero
@@ -1330,6 +1750,16 @@ mod tests {
     }
 
     #[test]
+    fn copy_within_sequential_slices() {
+        let mut data_ch_0 = vec![0; 10];
+        let mut data_ch_1 = vec![0; 10];
+        let mut data = vec![data_ch_0.as_mut_slice(), data_ch_1.as_mut_slice()];
+
+        let mut adapter = SequentialSliceOfSlices::new_mut(&mut data, 2, 10).unwrap();
+        check_copy_within(&mut adapter);
+    }
+
+    #[test]
     fn test_interleaved_slice_with_generic_tester() {
         let mut data = vec![0usize; 8];
         let mut buffer = InterleavedSlice::new_mut(&mut data, 2, 4).unwrap();
@@ -1359,12 +1789,33 @@ mod tests {
         test_adapter_mut_methods(&mut buffer);
     }
 
+    #[test]
+    fn test_sequential_slice_of_slices_with_generic_tester() {
+        let mut data_ch_0 = vec![0usize; 4];
+        let mut data_ch_1 = vec![0usize; 4];
+        let mut data = vec![data_ch_0.as_mut_slice(), data_ch_1.as_mut_slice()];
+
+        let mut buffer = SequentialSliceOfSlices::new_mut(&mut data, 2, 4).unwrap();
+        test_adapter_mut_methods(&mut buffer);
+    }
+
     #[cfg(feature = "alloc")]
     #[test]
     fn test_sparse_sequential_slice_of_vecs_with_generic_tester() {
         let mut data = vec![vec![0usize; 4], vec![0usize; 4]];
         let mask = [true, true];
         let mut buffer = SparseSequentialSliceOfVecs::new_mut(&mut data, 2, 4, &mask).unwrap();
+        test_adapter_mut_methods(&mut buffer);
+    }
+
+    #[test]
+    fn test_sparse_sequential_slice_of_slices_with_generic_tester() {
+        let mut data_ch_0 = vec![0usize; 4];
+        let mut data_ch_1 = vec![0usize; 4];
+        let mut data = vec![data_ch_0.as_mut_slice(), data_ch_1.as_mut_slice()];
+
+        let mask = [true, true];
+        let mut buffer = SparseSequentialSliceOfSlices::new_mut(&mut data, 2, 4, &mask).unwrap();
         test_adapter_mut_methods(&mut buffer);
     }
 }
