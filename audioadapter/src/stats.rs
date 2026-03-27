@@ -5,7 +5,23 @@ use crate::Adapter;
 /// A simple implementation of the Newton's method for calculating the square root of a number.
 /// This is used to avoid depending on `std`, until math support in core is stable.
 /// See: <https://doc.rust-lang.org/core/f64/math/fn.sqrt.html>
+///
+/// Behavior:
+/// - `NaN` is propagated.
+/// - `+inf` returns `+inf`.
+/// - `-inf` returns `0.0`.
+/// - Negative finite values return `0.0`.
 pub fn sqrt_newton(value: f64) -> f64 {
+    if value.is_nan() {
+        return value;
+    }
+    if value.is_infinite() {
+        return if value.is_sign_positive() {
+            f64::INFINITY
+        } else {
+            0.0
+        };
+    }
     if value <= 0.0 {
         return 0.0;
     }
@@ -203,5 +219,12 @@ mod tests {
                 "value={value}, expected={expected}, actual={actual}, rel_err={rel_err}"
             );
         }
+    }
+
+    #[test]
+    fn sqrt_newton_special_values() {
+        assert!(super::sqrt_newton(f64::NAN).is_nan());
+        assert_eq!(super::sqrt_newton(f64::INFINITY), f64::INFINITY);
+        assert_eq!(super::sqrt_newton(f64::NEG_INFINITY), 0.0);
     }
 }

@@ -20,7 +20,6 @@ mod slicetools;
 
 use core::error::Error;
 use core::fmt;
-use core::write;
 
 pub mod adapter_to_float;
 
