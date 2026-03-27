@@ -29,7 +29,7 @@ where
     }
 
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        let raw = self.data.get_unchecked(self.channels * frame + channel);
+        let raw = unsafe { self.data.get_unchecked(self.channels * frame + channel) };
         raw.parse::<T>().unwrap_or(T::zero())
     }
 }

@@ -23,7 +23,7 @@ pub mod tests {
     use crate::{Adapter, AdapterMut};
     use alloc::vec;
     use alloc::vec::Vec;
-    use num_traits::{float::FloatCore, NumCast};
+    use num_traits::{NumCast, float::FloatCore};
 
     /// Minimal implementation of an Adapter based on a vec
     /// intended for testing purposes.
@@ -52,7 +52,7 @@ pub mod tests {
     {
         unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
             let index = frame * self.channels + channel;
-            self.buf.get_unchecked(index).clone()
+            unsafe { self.buf.get_unchecked(index).clone() }
         }
 
         fn channels(&self) -> usize {
@@ -75,7 +75,9 @@ pub mod tests {
             value: &T,
         ) -> bool {
             let index = frame * self.channels + channel;
-            *self.buf.get_unchecked_mut(index) = value.clone();
+            unsafe {
+                *self.buf.get_unchecked_mut(index) = value.clone();
+            }
             false
         }
     }

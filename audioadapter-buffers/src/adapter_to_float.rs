@@ -35,7 +35,7 @@
 //! }
 //! ```
 
-use num_traits::{float::FloatCore, ToPrimitive};
+use num_traits::{ToPrimitive, float::FloatCore};
 
 use audioadapter::{Adapter, AdapterMut};
 use audioadapter_sample::sample::*;
@@ -106,7 +106,7 @@ macro_rules! byte_convert_traits_newtype {
             T: FloatCore + ToPrimitive + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-                    let raw = self.buf.read_sample_unchecked(channel, frame);
+                    let raw = unsafe { self.buf.read_sample_unchecked(channel, frame) };
                     let sample = $typename::from_slice(&raw);
                     sample.to_scaled_float::<T>()
                 }
@@ -119,7 +119,7 @@ macro_rules! byte_convert_traits_newtype {
             T: FloatCore + ToPrimitive + 'a,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-                    let raw = self.buf.read_sample_unchecked(channel, frame);
+                    let raw = unsafe { self.buf.read_sample_unchecked(channel, frame) };
                     let sample = $typename::from_slice(&raw);
                     sample.to_scaled_float::<T>()
                 }
@@ -133,7 +133,9 @@ macro_rules! byte_convert_traits_newtype {
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let converted = $typename::from_scaled_float(*value);
-                    self.buf.write_sample_unchecked(channel, frame, converted.value.as_slice().try_into().unwrap());
+                    unsafe {
+                        self.buf.write_sample_unchecked(channel, frame, converted.value.as_slice().try_into().unwrap());
+                    }
                     converted.clipped
                 }
 
@@ -234,9 +236,11 @@ where
     U: RawSample + 'a,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf
-            .read_sample_unchecked(channel, frame)
-            .to_scaled_float()
+        unsafe {
+            self.buf
+                .read_sample_unchecked(channel, frame)
+                .to_scaled_float()
+        }
     }
 
     implement_wrapped_size_getters!();
@@ -248,9 +252,11 @@ where
     U: RawSample + 'a,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf
-            .read_sample_unchecked(channel, frame)
-            .to_scaled_float()
+        unsafe {
+            self.buf
+                .read_sample_unchecked(channel, frame)
+                .to_scaled_float()
+        }
     }
 
     implement_wrapped_size_getters!();
@@ -263,8 +269,10 @@ where
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let converted = U::from_scaled_float(*value);
-        self.buf
-            .write_sample_unchecked(channel, frame, &converted.value);
+        unsafe {
+            self.buf
+                .write_sample_unchecked(channel, frame, &converted.value);
+        }
         converted.clipped
     }
 
@@ -305,8 +313,8 @@ where
 mod tests {
     use super::*;
     use crate::direct::InterleavedSlice;
-    use audioadapter::tests::test_float_adapter_mut_methods;
     use audioadapter::Adapter;
+    use audioadapter::tests::test_float_adapter_mut_methods;
 
     #[test]
     fn read_i16_bytes() {

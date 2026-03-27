@@ -1,8 +1,8 @@
 [package]
 name = "audioadapter-buffers"
 version = "3.0.0"
-edition = "2021"
-rust-version = "1.74"
+edition = "2024"
+rust-version = "1.85"
 authors = ["HEnquist <henrik.enquist@gmail.com>"]
 description = "A selection of wrappers and buffers for audio data"
 license = "MIT OR Apache-2.0"

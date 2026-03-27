@@ -1,5 +1,5 @@
 use crate::sample::*;
-use num_traits::{float::FloatCore, ToPrimitive};
+use num_traits::{ToPrimitive, float::FloatCore};
 use std::io;
 
 /// A trait that extends [std::io::Read] with methods for reading samples directly.

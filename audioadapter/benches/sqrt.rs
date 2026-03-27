@@ -1,5 +1,5 @@
 use audioadapter::stats::sqrt_newton;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use num_traits::Float;
 use std::hint::black_box;
 

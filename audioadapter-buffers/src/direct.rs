@@ -39,8 +39,8 @@
 //! ```
 //!
 
-use crate::slicetools::copy_within_slice;
 use crate::SizeError;
+use crate::slicetools::copy_within_slice;
 use crate::{check_slice_length, implement_size_getters};
 use audioadapter::{Adapter, AdapterMut};
 
@@ -168,7 +168,7 @@ where
     T: Clone,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+        unsafe { self.buf.get_unchecked(channel).get_unchecked(frame).clone() }
     }
 
     implement_size_getters!();
@@ -193,7 +193,7 @@ where
     T: Clone,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+        unsafe { self.buf.get_unchecked(channel).get_unchecked(frame).clone() }
     }
 
     implement_size_getters!();
@@ -218,7 +218,9 @@ where
     T: Clone,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-        *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+        unsafe {
+            *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+        }
         false
     }
 
@@ -368,7 +370,7 @@ where
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         if self.mask[channel] {
-            return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
+            return unsafe { self.buf.get_unchecked(channel).get_unchecked(frame).clone() };
         }
         T::default()
     }
@@ -396,7 +398,7 @@ where
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         if self.mask[channel] {
-            return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
+            return unsafe { self.buf.get_unchecked(channel).get_unchecked(frame).clone() };
         }
         T::default()
     }
@@ -424,7 +426,9 @@ where
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         if self.mask[channel] {
-            *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+            unsafe {
+                *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+            }
         }
         false
     }
@@ -559,7 +563,7 @@ where
     T: Clone,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+        unsafe { self.buf.get_unchecked(channel).get_unchecked(frame).clone() }
     }
 
     implement_size_getters!();
@@ -583,7 +587,7 @@ where
     T: Clone,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf.get_unchecked(channel).get_unchecked(frame).clone()
+        unsafe { self.buf.get_unchecked(channel).get_unchecked(frame).clone() }
     }
 
     implement_size_getters!();
@@ -607,7 +611,9 @@ where
     T: Clone,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-        *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+        unsafe {
+            *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+        }
         false
     }
 
@@ -753,7 +759,7 @@ where
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         if self.mask[channel] {
-            return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
+            return unsafe { self.buf.get_unchecked(channel).get_unchecked(frame).clone() };
         }
         T::default()
     }
@@ -780,7 +786,7 @@ where
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         if self.mask[channel] {
-            return self.buf.get_unchecked(channel).get_unchecked(frame).clone();
+            return unsafe { self.buf.get_unchecked(channel).get_unchecked(frame).clone() };
         }
         T::default()
     }
@@ -807,7 +813,9 @@ where
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         if self.mask[channel] {
-            *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+            unsafe {
+                *self.buf.get_unchecked_mut(channel).get_unchecked_mut(frame) = value.clone();
+            }
         }
         false
     }
@@ -946,7 +954,7 @@ where
     T: Clone,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf.get_unchecked(frame).get_unchecked(channel).clone()
+        unsafe { self.buf.get_unchecked(frame).get_unchecked(channel).clone() }
     }
 
     implement_size_getters!();
@@ -972,7 +980,7 @@ where
     T: Clone,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        self.buf.get_unchecked(frame).get_unchecked(channel).clone()
+        unsafe { self.buf.get_unchecked(frame).get_unchecked(channel).clone() }
     }
 
     implement_size_getters!();
@@ -998,7 +1006,9 @@ where
     T: Clone,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
-        *self.buf.get_unchecked_mut(frame).get_unchecked_mut(channel) = value.clone();
+        unsafe {
+            *self.buf.get_unchecked_mut(frame).get_unchecked_mut(channel) = value.clone();
+        }
         false
     }
 
@@ -1119,7 +1129,7 @@ where
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index).clone()
+        unsafe { self.buf.get_unchecked(index).clone() }
     }
 
     implement_size_getters!();
@@ -1146,7 +1156,7 @@ where
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index).clone()
+        unsafe { self.buf.get_unchecked(index).clone() }
     }
 
     implement_size_getters!();
@@ -1173,7 +1183,9 @@ where
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);
-        *self.buf.get_unchecked_mut(index) = value.clone();
+        unsafe {
+            *self.buf.get_unchecked_mut(index) = value.clone();
+        }
         false
     }
 
@@ -1313,7 +1325,7 @@ where
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index).clone()
+        unsafe { self.buf.get_unchecked(index).clone() }
     }
 
     implement_size_getters!();
@@ -1341,7 +1353,7 @@ where
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index).clone()
+        unsafe { self.buf.get_unchecked(index).clone() }
     }
 
     implement_size_getters!();
@@ -1368,7 +1380,9 @@ where
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);
-        *self.buf.get_unchecked_mut(index) = value.clone();
+        unsafe {
+            *self.buf.get_unchecked_mut(index) = value.clone();
+        }
         false
     }
 

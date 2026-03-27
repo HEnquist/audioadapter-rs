@@ -1,7 +1,7 @@
 use audioadapter::*;
 use audioadapter_buffers::{direct, number_to_float};
 use audioadapter_sample::sample::*;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 
 // plain nested loops with unsafe read calls

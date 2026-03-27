@@ -1,7 +1,7 @@
 unsafe fn copy_without_overlap<T: Clone>(slice: &mut [T], src: usize, dest: usize, count: usize) {
     let start = slice.as_mut_ptr();
-    let src_slice = core::slice::from_raw_parts_mut(start.add(src), count);
-    let dest_slice = core::slice::from_raw_parts_mut(start.add(dest), count);
+    let src_slice = unsafe { core::slice::from_raw_parts_mut(start.add(src), count) };
+    let dest_slice = unsafe { core::slice::from_raw_parts_mut(start.add(dest), count) };
     dest_slice.clone_from_slice(src_slice);
 }
 
@@ -17,7 +17,9 @@ pub unsafe fn copy_within_slice<T: Clone>(slice: &mut [T], src: usize, dest: usi
             let to_copy = diff.min(remaining);
             let chunk_src = src + copied;
             let chunk_dest = dest + copied;
-            copy_without_overlap(slice, chunk_src, chunk_dest, to_copy);
+            unsafe {
+                copy_without_overlap(slice, chunk_src, chunk_dest, to_copy);
+            }
             remaining -= to_copy;
             copied += to_copy;
         }
@@ -29,7 +31,9 @@ pub unsafe fn copy_within_slice<T: Clone>(slice: &mut [T], src: usize, dest: usi
             let to_copy = diff.min(remaining);
             let chunk_src = src + count - copied - to_copy;
             let chunk_dest = dest + count - copied - to_copy;
-            copy_without_overlap(slice, chunk_src, chunk_dest, to_copy);
+            unsafe {
+                copy_without_overlap(slice, chunk_src, chunk_dest, to_copy);
+            }
             remaining -= to_copy;
             copied += to_copy;
         }

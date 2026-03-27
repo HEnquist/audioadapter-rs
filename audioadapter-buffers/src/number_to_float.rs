@@ -61,10 +61,10 @@
 //! }
 use core::mem::size_of;
 
-use num_traits::{float::FloatCore, ToPrimitive};
+use num_traits::{ToPrimitive, float::FloatCore};
 
-use crate::slicetools::copy_within_slice;
 use crate::SizeError;
+use crate::slicetools::copy_within_slice;
 use crate::{check_slice_length, implement_size_getters};
 use audioadapter::{Adapter, AdapterMut};
 use audioadapter_sample::sample::RawSample;

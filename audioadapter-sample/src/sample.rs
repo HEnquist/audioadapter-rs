@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use num_traits::{float::FloatCore, PrimInt, ToPrimitive};
+use num_traits::{PrimInt, ToPrimitive, float::FloatCore};
 
 #[cfg(feature = "audio")]
 use audio_core::Sample;
