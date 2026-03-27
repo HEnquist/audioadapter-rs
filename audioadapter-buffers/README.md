@@ -18,7 +18,7 @@ that implement the `audioadapter` traits.
 ## Direct wrappers
 The [owned] and [direct] modules
 contain implementations that pass the sample values on unchanged.
-These are used when the sample data is already in a useable format,
+These are used when the sample data is already in a usable format,
 and only the data layout needs to be handled.
 
 ### Example, wrap a vector of i16 as an interleaved stereo buffer
@@ -46,7 +46,7 @@ for channel in 0..adapter.channels() {
 ## Converting wrappers
 Audio is often exchanged as buffers of raw bytes, and it is up to each application
 to treat those bytes as samples of the correct format.
-The [number_to_float] module is desgined to help with this.
+The [number_to_float] module is designed to help with this.
 
 ### Example, wrap a buffer of bytes containing interleaved raw samples
 This shows how to read 24-bit integer format from raw bytes

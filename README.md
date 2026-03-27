@@ -23,7 +23,7 @@ by copying the data from a buffer using one layout
 to another buffer using the other layout.
 
 Similarly, an application may process audio data using one type,
-for example 16-bit integers of 32-bit floats.
+for example 16-bit integers or 32-bit floats.
 Applications that process audio often use floating point,
 while audio typically is stored in integer formats with 16, 24 or 32 bits.
 Applications thus need to handle the conversion from whatever format

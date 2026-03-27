@@ -132,7 +132,7 @@ mod tests {
     }
 
     pub(crate) fn check_copy_within(buffer: &mut dyn AdapterMut<u32>) {
-        assert!(buffer.channels() > 1, "Too few chanels to run tests");
+        assert!(buffer.channels() > 1, "Too few channels to run tests");
         assert!(buffer.frames() > 8, "Too few frames to run test");
         // copy forward, no overlap
         prepare_test_data(buffer);

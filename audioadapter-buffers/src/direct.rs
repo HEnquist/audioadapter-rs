@@ -10,7 +10,7 @@
 //! Wrappers are available for plain slices, `&[T]`,
 //! and slices of vectors, `&[Vec<T>]`.
 //!
-//! Each wrapper exist in an _interleaved_ and _sequential_ version.
+//! Each wrapper exists in an _interleaved_ and _sequential_ version.
 //!
 //! ### Example
 //! Wrap a Vec of i32 as an interleaved buffer
@@ -338,11 +338,13 @@ impl<'a, T> SparseSequentialSliceOfVecs<'a, &'a [Vec<T>]> {
 #[cfg(feature = "alloc")]
 impl<'a, T> SparseSequentialSliceOfVecs<'a, &'a mut [Vec<T>]> {
     /// Create a new `SparseSequentialSliceOfVecs` to wrap a mutable slice of vectors.
-    /// The slice must contain at least `channels` vectors,
-    /// and each vector must be at least `frames` long.
+    /// The slice must contain at least `channels` vectors.
+    /// The vectors for channels that are marked as active
+    /// must be at least `frames` long.
     /// They are allowed to be longer than needed,
     /// but these extra frames or channels cannot
     /// be accessed via the trait methods.
+    /// Vectors for unused channels are never accessed and can have any length.
     pub fn new_mut(
         buf: &'a mut [Vec<T>],
         channels: usize,
@@ -722,11 +724,13 @@ impl<'a, T> SparseSequentialSliceOfSlices<'a, &'a [&'a [T]]> {
 
 impl<'a, T> SparseSequentialSliceOfSlices<'a, &'a mut [&'a mut [T]]> {
     /// Create a new `SparseSequentialSliceOfSlices` to wrap a mutable slice of slices.
-    /// The slice must contain at least `channels` slices,
-    /// and each channel slice must be at least `frames` long.
+    /// The slice must contain at least `channels` slices.
+    /// The slices for channels that are marked as active
+    /// must be at least `frames` long.
     /// They are allowed to be longer than needed,
     /// but these extra frames or channels cannot
     /// be accessed via the trait methods.
+    /// Slices for unused channels are never accessed and can have any length.
     pub fn new_mut(
         buf: &'a mut [&'a mut [T]],
         channels: usize,
@@ -1685,7 +1689,7 @@ mod tests {
         assert_eq!(buffer.read_sample(2, 1), None);
         // RMS of the active channel should be 14.55
         assert!((buffer.channel_rms(0) - 14.5).abs() < 0.1);
-        // RMS of the unised channel should be zero
+        // RMS of the unused channel should be zero
         assert_eq!(buffer.channel_rms(1), 0.0);
     }
 
@@ -1713,7 +1717,7 @@ mod tests {
         assert_eq!(buffer.read_sample(2, 1), None);
         // RMS of the active channel should be 14.55
         assert!((buffer.channel_rms(0) - 14.5).abs() < 0.1);
-        // RMS of the unised channel should be zero
+        // RMS of the unused channel should be zero
         assert_eq!(buffer.channel_rms(1), 0.0);
     }
 
