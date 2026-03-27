@@ -4,7 +4,7 @@ use crate::Adapter;
 
 /// A simple implementation of the Newton's method for calculating the square root of a number.
 /// This is used to avoid depending on `std`, until math support in core is stable.
-/// See: https://doc.rust-lang.org/core/f64/math/fn.sqrt.html
+/// See: <https://doc.rust-lang.org/core/f64/math/fn.sqrt.html>
 pub fn sqrt_newton(value: f64) -> f64 {
     if value <= 0.0 {
         return 0.0;
