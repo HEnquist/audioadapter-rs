@@ -6,12 +6,16 @@ use crate::Adapter;
 /// This is used to avoid depending on `std`, until math support in core is stable.
 /// See: <https://doc.rust-lang.org/core/f64/math/fn.sqrt.html>
 ///
+/// This is not a fully standards-equivalent replacement for `f64::sqrt`.
+/// It is intentionally simplified for this crate's RMS/statistics use case,
+/// where inputs are expected to be finite and non-negative in normal operation.
+///
 /// Behavior:
 /// - `NaN` is propagated.
 /// - `+inf` returns `+inf`.
 /// - `-inf` returns `0.0`.
 /// - Negative finite values return `0.0`.
-pub fn sqrt_newton(value: f64) -> f64 {
+fn sqrt_newton(value: f64) -> f64 {
     if value.is_nan() {
         return value;
     }
@@ -226,5 +230,22 @@ mod tests {
         assert!(super::sqrt_newton(f64::NAN).is_nan());
         assert_eq!(super::sqrt_newton(f64::INFINITY), f64::INFINITY);
         assert_eq!(super::sqrt_newton(f64::NEG_INFINITY), 0.0);
+    }
+
+    #[test]
+    fn sqrt_newton_subnormal_value() {
+        let values = [
+            f64::from_bits(1),
+            f64::from_bits(f64::MIN_POSITIVE.to_bits() - 1),
+        ];
+        for value in values {
+            let expected = value.sqrt();
+            let actual = super::sqrt_newton(value);
+            let rel_err = (actual - expected).abs() / expected.max(1.0);
+            assert!(
+                rel_err < 1.0e-12,
+                "value={value:e}, expected={expected:e}, actual={actual:e}, rel_err={rel_err:e}"
+            );
+        }
     }
 }
