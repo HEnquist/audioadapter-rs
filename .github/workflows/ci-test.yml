@@ -37,12 +37,8 @@ jobs:
         run: cargo test --workspace --no-default-features
 
   publish_dry_run:
-    name: Publish dry-run (${{ matrix.package }})
+    name: Publish dry-run
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: [audioadapter, audioadapter-buffers, audioadapter-sample]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -50,8 +46,32 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run cargo publish dry-run
-        run: cargo publish --dry-run -p ${{ matrix.package }}
+      - name: Dry-run publish audioadapter crate
+        id: dry_run_audioadapter
+        continue-on-error: true
+        run: cargo publish --dry-run -p audioadapter
+
+      - name: Warn if audioadapter dry-run failed
+        if: steps.dry_run_audioadapter.outcome == 'failure'
+        run: echo "::warning::cargo publish --dry-run failed for audioadapter. This can happen when dependent crate versions are not yet available on crates.io; please review manually before merge."
+
+      - name: Dry-run publish sample crate
+        id: dry_run_sample
+        continue-on-error: true
+        run: cargo publish --dry-run -p audioadapter-sample
+
+      - name: Warn if sample dry-run failed
+        if: steps.dry_run_sample.outcome == 'failure'
+        run: echo "::warning::cargo publish --dry-run failed for audioadapter-sample. This can happen when dependent crate versions are not yet available on crates.io; please review manually before merge."
+
+      - name: Dry-run publish buffers crate
+        id: dry_run_buffers
+        continue-on-error: true
+        run: cargo publish --dry-run -p audioadapter-buffers
+
+      - name: Warn if buffers dry-run failed
+        if: steps.dry_run_buffers.outcome == 'failure'
+        run: echo "::warning::cargo publish --dry-run failed for audioadapter-buffers. This can happen when dependent crate versions are not yet available on crates.io; please review manually before merge."
 
   lints:
     name: Lints
