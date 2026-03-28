@@ -47,31 +47,37 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Dry-run publish audioadapter crate
-        id: dry_run_audioadapter
-        continue-on-error: true
-        run: cargo publish --dry-run -p audioadapter
-
-      - name: Warn if audioadapter dry-run failed
-        if: steps.dry_run_audioadapter.outcome == 'failure'
-        run: echo "::warning::cargo publish --dry-run failed for audioadapter. This can happen when dependent crate versions are not yet available on crates.io; please review manually before merge."
+        run: |
+          set +e
+          output=$(cargo publish --dry-run -p audioadapter 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -ne 0 ]; then
+            echo "::warning title=Dry-run failed (audioadapter)::cargo publish --dry-run exited with code $status. See log above."
+          fi
+          exit 0
 
       - name: Dry-run publish sample crate
-        id: dry_run_sample
-        continue-on-error: true
-        run: cargo publish --dry-run -p audioadapter-sample
-
-      - name: Warn if sample dry-run failed
-        if: steps.dry_run_sample.outcome == 'failure'
-        run: echo "::warning::cargo publish --dry-run failed for audioadapter-sample. This can happen when dependent crate versions are not yet available on crates.io; please review manually before merge."
+        run: |
+          set +e
+          output=$(cargo publish --dry-run -p audioadapter-sample 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -ne 0 ]; then
+            echo "::warning title=Dry-run failed (audioadapter-sample)::cargo publish --dry-run exited with code $status. See log above."
+          fi
+          exit 0
 
       - name: Dry-run publish buffers crate
-        id: dry_run_buffers
-        continue-on-error: true
-        run: cargo publish --dry-run -p audioadapter-buffers
-
-      - name: Warn if buffers dry-run failed
-        if: steps.dry_run_buffers.outcome == 'failure'
-        run: echo "::warning::cargo publish --dry-run failed for audioadapter-buffers. This can happen when dependent crate versions are not yet available on crates.io; please review manually before merge."
+        run: |
+          set +e
+          output=$(cargo publish --dry-run -p audioadapter-buffers 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -ne 0 ]; then
+            echo "::warning title=Dry-run failed (audioadapter-buffers)::cargo publish --dry-run exited with code $status. See log above."
+          fi
+          exit 0
 
   lints:
     name: Lints

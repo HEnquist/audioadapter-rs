@@ -19,37 +19,43 @@ jobs:
           components: rustfmt, clippy
 
       - name: Publish audioadapter crate
-        id: publish_audioadapter
-        continue-on-error: true
-        run: cargo publish -p audioadapter --token ${CARGO_REGISTRY_TOKEN}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Warn if audioadapter publish failed
-        if: steps.publish_audioadapter.outcome == 'failure'
-        run: echo "::warning::cargo publish failed for audioadapter (for example, version may already exist on crates.io)."
+        run: |
+          set +e
+          output=$(cargo publish -p audioadapter --token ${CARGO_REGISTRY_TOKEN} 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -ne 0 ]; then
+            echo "::warning title=Publish failed (audioadapter)::cargo publish exited with code $status. See log above."
+          fi
+          exit 0
 
       - name: Publish sample crate
-        id: publish_sample
-        continue-on-error: true
-        run: cargo publish -p audioadapter-sample --token ${CARGO_REGISTRY_TOKEN}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Warn if sample publish failed
-        if: steps.publish_sample.outcome == 'failure'
-        run: echo "::warning::cargo publish failed for audioadapter-sample (for example, version may already exist on crates.io)."
+        run: |
+          set +e
+          output=$(cargo publish -p audioadapter-sample --token ${CARGO_REGISTRY_TOKEN} 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -ne 0 ]; then
+            echo "::warning title=Publish failed (audioadapter-sample)::cargo publish exited with code $status. See log above."
+          fi
+          exit 0
 
       - name: Publish buffers crate
-        id: publish_buffers
-        continue-on-error: true
-        run: cargo publish -p audioadapter-buffers --token ${CARGO_REGISTRY_TOKEN}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Warn if buffers publish failed
-        if: steps.publish_buffers.outcome == 'failure'
-        run: echo "::warning::cargo publish failed for audioadapter-buffers (for example, version may already exist on crates.io)."
+        run: |
+          set +e
+          output=$(cargo publish -p audioadapter-buffers --token ${CARGO_REGISTRY_TOKEN} 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -ne 0 ]; then
+            echo "::warning title=Publish failed (audioadapter-buffers)::cargo publish exited with code $status. See log above."
+          fi
+          exit 0
 
 
 
