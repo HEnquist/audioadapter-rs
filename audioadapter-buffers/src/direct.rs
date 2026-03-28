@@ -50,15 +50,14 @@ use alloc::vec::Vec;
 macro_rules! check_slice_and_vec_length {
     ($buf:expr, $channels:expr, $frames:expr, sequential) => {
         if $buf.len() < $channels {
-            return Err(SizeError::Frame {
-                index: 0,
+            return Err(SizeError::ChannelsContainer {
                 actual: $buf.len(),
                 required: $channels,
             });
         }
         for (idx, chan) in $buf.iter().enumerate() {
             if chan.len() < $frames {
-                return Err(SizeError::Channel {
+                return Err(SizeError::ChannelBuffer {
                     index: idx,
                     actual: chan.len(),
                     required: $frames,
@@ -74,15 +73,14 @@ macro_rules! check_slice_and_vec_length {
             });
         }
         if $buf.len() < $channels {
-            return Err(SizeError::Frame {
-                index: 0,
+            return Err(SizeError::ChannelsContainer {
                 actual: $buf.len(),
                 required: $channels,
             });
         }
         for (idx, (chan, active)) in $buf.iter().zip($mask).enumerate() {
             if *active && chan.len() < $frames {
-                return Err(SizeError::Channel {
+                return Err(SizeError::ChannelBuffer {
                     index: idx,
                     actual: chan.len(),
                     required: $frames,
@@ -92,15 +90,14 @@ macro_rules! check_slice_and_vec_length {
     };
     ($buf:expr, $channels:expr, $frames:expr, interleaved) => {
         if $buf.len() < $frames {
-            return Err(SizeError::Channel {
-                index: 0,
+            return Err(SizeError::FramesContainer {
                 actual: $buf.len(),
                 required: $frames,
             });
         }
         for (idx, frame) in $buf.iter().enumerate() {
             if frame.len() < $channels {
-                return Err(SizeError::Frame {
+                return Err(SizeError::FrameBuffer {
                     index: idx,
                     actual: frame.len(),
                     required: $channels,
@@ -1835,5 +1832,147 @@ mod tests {
         let mask = [true, true];
         let mut buffer = SparseSequentialSliceOfSlices::new_mut(&mut data, 2, 4, &mask).unwrap();
         test_adapter_mut_methods(&mut buffer);
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn size_error_kind_for_too_few_channels_in_sequential_vecs() {
+        // Sequential layout expects one Vec per channel.
+        // Here we provide only 1 channel Vec, but request 2 channels.
+        // Frame length is valid (3), so the only wrong dimension is channel count.
+        let data = vec![vec![0_i32; 3]];
+        let err = match SequentialSliceOfVecs::new(&data, 2, 3) {
+            Ok(_) => panic!("expected Err for too few channels"),
+            Err(err) => err,
+        };
+        assert!(
+            matches!(err, SizeError::ChannelsContainer { .. }),
+            "expected SizeError::ChannelsContainer for too few channels, got {err:?}"
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn size_error_kind_for_too_few_channels_in_sparse_sequential_vecs() {
+        // Sparse sequential layout still expects the outer slice length to match channels.
+        // Here we provide only 1 channel Vec, but request 2 channels.
+        // The mask also has length 2, and the active channel's frame length is valid,
+        // so the failing dimension is again the number of channels in `data`.
+        let data = vec![vec![0_i32; 3]];
+        let mask = [true, true];
+        let err = match SparseSequentialSliceOfVecs::new(&data, 2, 3, &mask) {
+            Ok(_) => panic!("expected Err for too few channels"),
+            Err(err) => err,
+        };
+        assert!(
+            matches!(err, SizeError::ChannelsContainer { .. }),
+            "expected SizeError::ChannelsContainer for too few channels, got {err:?}"
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn size_error_kind_for_too_few_frames_in_interleaved_vecs() {
+        // Interleaved layout expects one Vec per frame.
+        // Here we provide only 1 frame Vec, but request 2 frames.
+        // Each frame Vec has valid channel length (2), so the only wrong dimension is frame count.
+        let data = vec![vec![0_i32; 2]];
+        let err = match InterleavedSliceOfVecs::new(&data, 2, 2) {
+            Ok(_) => panic!("expected Err for too few frames"),
+            Err(err) => err,
+        };
+        assert!(
+            matches!(err, SizeError::FramesContainer { .. }),
+            "expected SizeError::FramesContainer for too few frames in interleaved input, got {err:?}"
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn size_error_kind_for_short_inner_channel_buffer_in_sequential_vecs() {
+        // Two channel buffers are present, so outer channel count is valid.
+        // Channel index 1 is too short for the requested frame count.
+        let data = vec![vec![0_i32; 3], vec![0_i32; 2]];
+        let err = match SequentialSliceOfVecs::new(&data, 2, 3) {
+            Ok(_) => panic!("expected Err for short inner channel buffer"),
+            Err(err) => err,
+        };
+        assert!(
+            matches!(
+                err,
+                SizeError::ChannelBuffer {
+                    index: 1,
+                    actual: 2,
+                    required: 3
+                }
+            ),
+            "expected SizeError::ChannelBuffer at index 1, got {err:?}"
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn size_error_kind_for_short_inner_frame_buffer_in_interleaved_vecs() {
+        // Two frame buffers are present, so outer frame count is valid.
+        // Frame index 1 is too short for the requested channel count.
+        let data = vec![vec![0_i32; 2], vec![0_i32; 1]];
+        let err = match InterleavedSliceOfVecs::new(&data, 2, 2) {
+            Ok(_) => panic!("expected Err for short inner frame buffer"),
+            Err(err) => err,
+        };
+        assert!(
+            matches!(
+                err,
+                SizeError::FrameBuffer {
+                    index: 1,
+                    actual: 1,
+                    required: 2
+                }
+            ),
+            "expected SizeError::FrameBuffer at index 1, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn size_error_kind_for_short_flat_buffer_in_interleaved_slice() {
+        // Flat interleaved data requires channels * frames samples.
+        // Here we provide 3 samples but request 2 * 2 = 4.
+        let data = [0_i32; 3];
+        let err = match InterleavedSlice::new(&data, 2, 2) {
+            Ok(_) => panic!("expected Err for short flat buffer"),
+            Err(err) => err,
+        };
+        assert!(
+            matches!(
+                err,
+                SizeError::Total {
+                    actual: 3,
+                    required: 4
+                }
+            ),
+            "expected SizeError::Total with required flat length 4, got {err:?}"
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn size_error_kind_for_wrong_mask_length_in_sparse_sequential_vecs() {
+        // Data dimensions are valid, but mask length must match channels.
+        let data = vec![vec![0_i32; 3], vec![0_i32; 3]];
+        let mask = [true];
+        let err = match SparseSequentialSliceOfVecs::new(&data, 2, 3, &mask) {
+            Ok(_) => panic!("expected Err for wrong mask length"),
+            Err(err) => err,
+        };
+        assert!(
+            matches!(
+                err,
+                SizeError::Mask {
+                    actual: 1,
+                    required: 2
+                }
+            ),
+            "expected SizeError::Mask with required length 2, got {err:?}"
+        );
     }
 }
