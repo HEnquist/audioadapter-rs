@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use num_traits::{Float, PrimInt};
+use num_traits::{PrimInt, ToPrimitive, float::FloatCore};
 
 #[cfg(feature = "audio")]
 use audio_core::Sample;
@@ -144,7 +144,10 @@ pub struct F64_LE([u8; 8]);
 pub struct F64_BE([u8; 8]);
 
 /// Convert a float to an integer, clamp at the min and max limits of the integer.
-fn to_clamped_int<T: Float, U: PrimInt>(value: T, converted: Option<U>) -> ConversionResult<U> {
+fn to_clamped_int<T: FloatCore + ToPrimitive, U: PrimInt>(
+    value: T,
+    converted: Option<U>,
+) -> ConversionResult<U> {
     if let Some(val) = converted {
         return ConversionResult {
             clipped: false,
@@ -190,11 +193,11 @@ where
     Self: Sized,
 {
     /// Convert the sample value to a float in the range -1.0 .. +1.0.
-    fn to_scaled_float<T: Float>(&self) -> T;
+    fn to_scaled_float<T: FloatCore + ToPrimitive>(&self) -> T;
 
     /// Convert a float in the range -1.0 .. +1.0 to a sample value.
     /// Values outside the allowed range are clipped to the nearest limit.
-    fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self>;
+    fn from_scaled_float<T: FloatCore + ToPrimitive>(value: T) -> ConversionResult<Self>;
 }
 
 /// A trait for converting samples stored as raw bytes into a numerical type.
@@ -236,11 +239,11 @@ pub trait BytesSample {
 macro_rules! rawsample_for_int {
     ($type:ident, $to:ident) => {
         impl RawSample for $type {
-            fn to_scaled_float<T: Float>(&self) -> T {
+            fn to_scaled_float<T: FloatCore + ToPrimitive>(&self) -> T {
                 T::from(*self).unwrap() / (T::from($type::MAX).unwrap() + T::one())
             }
 
-            fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self> {
+            fn from_scaled_float<T: FloatCore + ToPrimitive>(value: T) -> ConversionResult<Self> {
                 let scaled = value * (T::from($type::MAX).unwrap() + T::one());
                 let converted = scaled.$to();
                 to_clamped_int(scaled, converted)
@@ -257,12 +260,12 @@ rawsample_for_int!(i64, to_i64);
 macro_rules! rawsample_for_uint {
     ($type:ident, $to:ident) => {
         impl RawSample for $type {
-            fn to_scaled_float<T: Float>(&self) -> T {
+            fn to_scaled_float<T: FloatCore + ToPrimitive>(&self) -> T {
                 let max_ampl = (T::from($type::MAX).unwrap() + T::one()) / T::from(2).unwrap();
                 (T::from(*self).unwrap() - max_ampl) / max_ampl
             }
 
-            fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self> {
+            fn from_scaled_float<T: FloatCore + ToPrimitive>(value: T) -> ConversionResult<Self> {
                 let max_ampl = (T::from($type::MAX).unwrap() + T::one()) / T::from(2).unwrap();
                 let scaled = value * max_ampl + max_ampl;
                 let converted = scaled.$to();
@@ -280,11 +283,11 @@ rawsample_for_uint!(u64, to_u64);
 macro_rules! rawsample_for_float {
     ($type:ident, $to:ident) => {
         impl RawSample for $type {
-            fn to_scaled_float<T: Float>(&self) -> T {
+            fn to_scaled_float<T: FloatCore + ToPrimitive>(&self) -> T {
                 T::from(*self).unwrap_or(T::zero())
             }
 
-            fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self> {
+            fn from_scaled_float<T: FloatCore + ToPrimitive>(value: T) -> ConversionResult<Self> {
                 // TODO clip here
                 ConversionResult {
                     clipped: false,
@@ -699,12 +702,12 @@ where
     V: BytesSample,
     <V as BytesSample>::NumericType: RawSample,
 {
-    fn to_scaled_float<T: Float>(&self) -> T {
+    fn to_scaled_float<T: FloatCore + ToPrimitive>(&self) -> T {
         let value = self.to_number();
         value.to_scaled_float()
     }
 
-    fn from_scaled_float<T: Float>(value: T) -> ConversionResult<Self> {
+    fn from_scaled_float<T: FloatCore + ToPrimitive>(value: T) -> ConversionResult<Self> {
         let value = <V as BytesSample>::NumericType::from_scaled_float(value);
         ConversionResult {
             clipped: value.clipped,

@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -16,23 +16,75 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run cargo check
-        run: cargo check
-
-      - name: Run cargo check no features
-        run: cargo check --no-default-features
+        run: cargo check --workspace --all-targets
 
       - name: Run cargo test
-        run: cargo test
+        run: cargo test --workspace --all-targets
 
-      - name: Run audioadapter no-default-features tests
-        run: cargo test -p audioadapter --no-default-features
+      - name: Run rustdoc checks
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
+
+      - name: Compile benches
+        run: cargo bench --workspace --no-run
+
+      - name: Run cargo check no features
+        run: cargo check --workspace --no-default-features
+
+      - name: Run cargo check no features all targets
+        run: cargo check --workspace --all-targets --no-default-features
+
+      - name: Run cargo test no features
+        run: cargo test --workspace --no-default-features
+
+  publish_dry_run:
+    name: Publish dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v5
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Dry-run publish audioadapter crate
+        run: |
+          set +e
+          output=$(cargo publish --dry-run -p audioadapter 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -ne 0 ]; then
+            echo "::warning title=Dry-run failed (audioadapter)::cargo publish --dry-run exited with code $status. See log above."
+          fi
+          exit 0
+
+      - name: Dry-run publish sample crate
+        run: |
+          set +e
+          output=$(cargo publish --dry-run -p audioadapter-sample 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -ne 0 ]; then
+            echo "::warning title=Dry-run failed (audioadapter-sample)::cargo publish --dry-run exited with code $status. See log above."
+          fi
+          exit 0
+
+      - name: Dry-run publish buffers crate
+        run: |
+          set +e
+          output=$(cargo publish --dry-run -p audioadapter-buffers 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -ne 0 ]; then
+            echo "::warning title=Dry-run failed (audioadapter-buffers)::cargo publish --dry-run exited with code $status. See log above."
+          fi
+          exit 0
 
   lints:
     name: Lints
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -43,4 +95,4 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings

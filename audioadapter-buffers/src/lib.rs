@@ -1,5 +1,8 @@
 #![doc = include_str!("../README.md")]
-#![cfg_attr(all(not(feature = "std"), not(test)), no_std)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 /// Wrappers providing direct access to samples in buffers.
 pub mod direct;
@@ -7,7 +10,7 @@ pub mod direct;
 /// stored both directly and as raw bytes.
 pub mod number_to_float;
 /// Wrappers that store their data in an owned vector.
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 pub mod owned;
 
 /// Dummy Adapter
@@ -15,10 +18,8 @@ pub mod dummy;
 
 mod slicetools;
 
-#[cfg(feature = "std")]
-use std::error::Error;
-#[cfg(feature = "std")]
-use std::fmt;
+use core::error::Error;
+use core::fmt;
 
 pub mod adapter_to_float;
 
@@ -26,59 +27,94 @@ pub mod adapter_to_float;
 /// typically that it is too short.
 #[derive(Debug)]
 pub enum SizeError {
-    Channel {
+    /// The outer container in a sequential nested layout has too few channel buffers.
+    ///
+    /// This applies to structures like `&[Vec<T>]` or `&[&[T]]` used as
+    /// channel-major data, where each outer element represents one channel.
+    ChannelsContainer { actual: usize, required: usize },
+    /// The outer container in an interleaved nested layout has too few frame buffers.
+    ///
+    /// This applies to structures like `&[Vec<T>]` or `&[&[T]]` used as
+    /// frame-major data, where each outer element represents one frame.
+    FramesContainer { actual: usize, required: usize },
+    /// An inner channel buffer is too short for the requested frame count.
+    ///
+    /// `index` identifies which channel buffer failed the length check.
+    ChannelBuffer {
         index: usize,
         actual: usize,
         required: usize,
     },
-    Frame {
+    /// An inner frame buffer is too short for the requested channel count.
+    ///
+    /// `index` identifies which frame buffer failed the length check.
+    FrameBuffer {
         index: usize,
         actual: usize,
         required: usize,
     },
-    Total {
-        actual: usize,
-        required: usize,
-    },
-    Mask {
-        actual: usize,
-        required: usize,
-    },
+    /// A flat (non-nested) sample buffer is too short for the requested dimensions.
+    ///
+    /// This is used for adapters backed by a single contiguous slice/vector where
+    /// the required length is computed from `channels * frames` (and possibly an
+    /// additional per-sample element factor for raw byte/sample representations).
+    ///
+    /// `actual` is the provided flat buffer length and `required` is the minimum
+    /// length needed for the requested adapter shape.
+    Total { actual: usize, required: usize },
+    /// A channel-activity mask has an invalid length.
+    ///
+    /// This applies to sparse sequential adapters where the mask must contain one
+    /// boolean entry per channel.
+    ///
+    /// `actual` is the provided mask length and `required` is the channel count.
+    Mask { actual: usize, required: usize },
 }
 
-#[cfg(feature = "std")]
 impl Error for SizeError {}
 
-#[cfg(feature = "std")]
 impl fmt::Display for SizeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let desc = match self {
-            SizeError::Channel {
+        match self {
+            SizeError::ChannelsContainer { actual, required } => write!(
+                f,
+                "Channels container is too short, got: {}, required: {}",
+                actual, required
+            ),
+            SizeError::FramesContainer { actual, required } => write!(
+                f,
+                "Frames container is too short, got: {}, required: {}",
+                actual, required
+            ),
+            SizeError::ChannelBuffer {
                 index,
                 actual,
                 required,
-            } => format!(
-                "Buffer for channel {} is too short, got: {}, required: {}",
+            } => write!(
+                f,
+                "Channel buffer {} is too short for requested frame count, got: {}, required: {}",
                 index, actual, required
             ),
-            SizeError::Frame {
+            SizeError::FrameBuffer {
                 index,
                 actual,
                 required,
-            } => format!(
-                "Buffer for frame {} is too short, got: {}, required: {}",
+            } => write!(
+                f,
+                "Frame buffer {} is too short for requested channel count, got: {}, required: {}",
                 index, actual, required
             ),
-            SizeError::Total { actual, required } => format!(
-                "Buffer is too short, got: {}, required: {}",
+            SizeError::Total { actual, required } => write!(
+                f,
+                "Flat buffer is too short for requested dimensions, got: {}, required: {}",
                 actual, required
             ),
-            SizeError::Mask { actual, required } => format!(
-                "Mask is wrong length, got: {}, required: {}",
+            SizeError::Mask { actual, required } => write!(
+                f,
+                "Mask length is invalid for channel count, got: {}, required: {}",
                 actual, required
             ),
-        };
-        write!(f, "{}", &desc)
+        }
     }
 }
 
@@ -129,7 +165,7 @@ mod tests {
     }
 
     pub(crate) fn check_copy_within(buffer: &mut dyn AdapterMut<u32>) {
-        assert!(buffer.channels() > 1, "Too few chanels to run tests");
+        assert!(buffer.channels() > 1, "Too few channels to run tests");
         assert!(buffer.frames() > 8, "Too few frames to run test");
         // copy forward, no overlap
         prepare_test_data(buffer);

@@ -37,9 +37,9 @@
 //!
 
 use crate::SizeError;
-
 use crate::slicetools::copy_within_slice;
 use crate::{check_slice_length, implement_size_getters};
+use alloc::{vec, vec::Vec};
 use audioadapter::{Adapter, AdapterMut};
 
 //
@@ -97,13 +97,13 @@ where
     }
 }
 
-impl<'a, T> Adapter<'a, T> for InterleavedOwned<T>
+unsafe impl<'a, T> Adapter<'a, T> for InterleavedOwned<T>
 where
     T: Clone + 'a,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index).clone()
+        unsafe { self.buf.get_unchecked(index).clone() }
     }
 
     implement_size_getters!();
@@ -124,13 +124,15 @@ where
     }
 }
 
-impl<'a, T> AdapterMut<'a, T> for InterleavedOwned<T>
+unsafe impl<'a, T> AdapterMut<'a, T> for InterleavedOwned<T>
 where
     T: Clone + 'a,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);
-        *self.buf.get_unchecked_mut(index) = value.clone();
+        unsafe {
+            *self.buf.get_unchecked_mut(index) = value.clone();
+        }
         false
     }
 
@@ -265,13 +267,13 @@ where
     }
 }
 
-impl<'a, T> Adapter<'a, T> for SequentialOwned<T>
+unsafe impl<'a, T> Adapter<'a, T> for SequentialOwned<T>
 where
     T: Clone + 'a,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
-        self.buf.get_unchecked(index).clone()
+        unsafe { self.buf.get_unchecked(index).clone() }
     }
 
     implement_size_getters!();
@@ -292,13 +294,15 @@ where
     }
 }
 
-impl<'a, T> AdapterMut<'a, T> for SequentialOwned<T>
+unsafe impl<'a, T> AdapterMut<'a, T> for SequentialOwned<T>
 where
     T: Clone + 'a,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);
-        *self.buf.get_unchecked_mut(index) = value.clone();
+        unsafe {
+            *self.buf.get_unchecked_mut(index) = value.clone();
+        }
         false
     }
 
@@ -386,6 +390,9 @@ where
 mod tests {
     use super::*;
     use audioadapter::tests::test_adapter_mut_methods;
+
+    #[cfg(feature = "alloc")]
+    use alloc::vec;
 
     fn insert_data(buffer: &mut dyn AdapterMut<i32>) {
         buffer.write_sample(0, 0, &1);
@@ -498,7 +505,7 @@ mod tests {
     // meaning it can be sent between threads.
     // This test is not designed to be run, only to compile.
     #[allow(dead_code)]
-    fn test_adapter_send_and_sync<T: Sync + Send + Clone>() {
+    fn test_adapter_send_and_sync() {
         fn is_send<T: Send>() {}
         fn is_sync<T: Sync>() {}
         is_send::<InterleavedOwned<f32>>();

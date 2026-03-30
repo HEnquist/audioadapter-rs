@@ -29,7 +29,7 @@ For all formats, both little-endian and big-endian representations are supported
 When converting between integers and floating point, the value range of the integer
 is mapped to the floating point range of -1.0 to +1.0.
 If a floating point value outside this range is converted to integer,
-the value will be clamped at the miminum or maximum value of the integer.
+the value will be clamped at the minimum or maximum value of the integer.
 
 ## This crate
 The main functionality of this crate is provided by two main traits:
@@ -146,7 +146,7 @@ The [std::io::Read] and [std::io::Write] traits are useful for reading
 and writing raw bytes to and from for example files.
 The [readwrite] module extends these traits by providing methods for reading and writing samples,
 with on-the-fly conversion between bytes and the numerical values.
-This functionality depends on the standard library ans is gated by the `std` Cargo feature.
+This functionality depends on the standard library and is gated by the `std` Cargo feature.
 
 Example
 ```rust
@@ -170,9 +170,17 @@ This is controlled by the `audio` feature which is enabled by default.
 
 ## Cargo features
 This crate has the following features:
- - `std` enables the standard library.
- - `audio` enables `audio` crate compatibility.
+ - `std` - enables the standard library (Enabled by default)
+ - `audio` - enables `audio` crate compatibility (Enabled by default)
 
-Both features are enabled by default.
+## Use without the standard library
+This crate can be used in `no_std` environments if the `std` Cargo feature is disabled.
 
-## License: MIT
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.

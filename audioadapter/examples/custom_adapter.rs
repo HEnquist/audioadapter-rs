@@ -2,6 +2,9 @@
 // `Adapter` trait for a custom struct.
 // The data here is a vector of strings,
 // that get converted to numbers on reading.
+// `Adapter` is an unsafe trait, so implementations must guarantee
+// that `channels()` and `frames()` always describe valid bounds
+// for unchecked sample access while the adapter is in use.
 
 use audioadapter::Adapter;
 use num_traits::Zero;
@@ -13,7 +16,7 @@ struct MyStruct<'a, T> {
     channels: usize,
 }
 
-impl<'a, T> Adapter<'a, T> for MyStruct<'a, T>
+unsafe impl<'a, T> Adapter<'a, T> for MyStruct<'a, T>
 where
     T: Clone + FromStr + Zero + 'a,
 {
@@ -26,7 +29,7 @@ where
     }
 
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
-        let raw = self.data.get_unchecked(self.channels * frame + channel);
+        let raw = unsafe { self.data.get_unchecked(self.channels * frame + channel) };
         raw.parse::<T>().unwrap_or(T::zero())
     }
 }

@@ -23,7 +23,7 @@ pub mod tests {
     use crate::{Adapter, AdapterMut};
     use alloc::vec;
     use alloc::vec::Vec;
-    use num_traits::{float::FloatCore, NumCast};
+    use num_traits::{NumCast, float::FloatCore};
 
     /// Minimal implementation of an Adapter based on a vec
     /// intended for testing purposes.
@@ -46,13 +46,13 @@ pub mod tests {
         }
     }
 
-    impl<'a, T> Adapter<'a, T> for MinimalAdapter<T>
+    unsafe impl<'a, T> Adapter<'a, T> for MinimalAdapter<T>
     where
         T: Clone + 'a,
     {
         unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
             let index = frame * self.channels + channel;
-            self.buf.get_unchecked(index).clone()
+            unsafe { self.buf.get_unchecked(index).clone() }
         }
 
         fn channels(&self) -> usize {
@@ -64,7 +64,7 @@ pub mod tests {
         }
     }
 
-    impl<'a, T> AdapterMut<'a, T> for MinimalAdapter<T>
+    unsafe impl<'a, T> AdapterMut<'a, T> for MinimalAdapter<T>
     where
         T: Clone + 'a,
     {
@@ -75,7 +75,9 @@ pub mod tests {
             value: &T,
         ) -> bool {
             let index = frame * self.channels + channel;
-            *self.buf.get_unchecked_mut(index) = value.clone();
+            unsafe {
+                *self.buf.get_unchecked_mut(index) = value.clone();
+            }
             false
         }
     }
@@ -342,7 +344,7 @@ pub mod tests {
         assert_eq!(copied, 2);
         assert_slice_approx_eq(
             &slice_ch,
-            &vec![
+            &[
                 NumCast::from(0.11f64).unwrap(),
                 NumCast::from(0.12f64).unwrap(),
             ],
@@ -355,7 +357,7 @@ pub mod tests {
         assert_eq!(copied, 2);
         assert_slice_approx_eq(
             &slice_fr,
-            &vec![
+            &[
                 NumCast::from(0.02f64).unwrap(),
                 NumCast::from(0.12f64).unwrap(),
             ],

@@ -7,7 +7,7 @@ use crate::{Adapter, AdapterMut};
 
 use audio_core::{Buf, BufMut, Channel, ChannelMut, ExactSizeBuf, Sample};
 
-impl<'a, T, U> Adapter<'a, T> for U
+unsafe impl<'a, T, U> Adapter<'a, T> for U
 where
     T: Clone + Sample + 'a,
     U: Buf<Sample = T> + ExactSizeBuf<Sample = T>,
@@ -43,7 +43,7 @@ where
     }
 }
 
-impl<'a, T, U> AdapterMut<'a, T> for U
+unsafe impl<'a, T, U> AdapterMut<'a, T> for U
 where
     T: Clone + Sample + 'a,
     U: BufMut<Sample = T> + ExactSizeBuf<Sample = T>,

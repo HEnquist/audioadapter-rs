@@ -28,7 +28,7 @@ where
     }
 }
 
-impl<'a, T> Adapter<'a, T> for Dummy<T>
+unsafe impl<'a, T> Adapter<'a, T> for Dummy<T>
 where
     T: Clone + 'a,
 {
@@ -39,7 +39,7 @@ where
     implement_size_getters!();
 }
 
-impl<'a, T> AdapterMut<'a, T> for Dummy<T>
+unsafe impl<'a, T> AdapterMut<'a, T> for Dummy<T>
 where
     T: Clone + 'a,
 {

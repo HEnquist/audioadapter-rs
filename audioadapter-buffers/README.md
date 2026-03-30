@@ -18,7 +18,7 @@ that implement the `audioadapter` traits.
 ## Direct wrappers
 The [owned] and [direct] modules
 contain implementations that pass the sample values on unchanged.
-These are used when the sample data is already in a useable format,
+These are used when the sample data is already in a usable format,
 and only the data layout needs to be handled.
 
 ### Example, wrap a vector of i16 as an interleaved stereo buffer
@@ -46,7 +46,7 @@ for channel in 0..adapter.channels() {
 ## Converting wrappers
 Audio is often exchanged as buffers of raw bytes, and it is up to each application
 to treat those bytes as samples of the correct format.
-The [number_to_float] module is desgined to help with this.
+The [number_to_float] module is designed to help with this.
 
 ### Example, wrap a buffer of bytes containing interleaved raw samples
 This shows how to read 24-bit integer format from raw bytes
@@ -90,8 +90,13 @@ This is handled by selecting `I24_4RJ_LE` or `I24_4LJ_LE` as the format.
 
 ## Use without the standard library
 This crate can be used in `no_std` environments if the `std` Cargo feature is disabled.
-This feature is enabled by default.
-Disabling it also disables all functionality that depends on the standard library,
-such as the buffers in the [owned] module since they are based on [std::vec::Vec].
+You can also enable the `alloc` feature to get the buffer types in the [owned] module.
 
-## License: MIT
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.

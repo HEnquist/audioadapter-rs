@@ -61,10 +61,10 @@
 //! }
 use core::mem::size_of;
 
-use num_traits::Float;
+use num_traits::{ToPrimitive, float::FloatCore};
 
-use crate::slicetools::copy_within_slice;
 use crate::SizeError;
+use crate::slicetools::copy_within_slice;
 use crate::{check_slice_length, implement_size_getters};
 use audioadapter::{Adapter, AdapterMut};
 use audioadapter_sample::sample::RawSample;
@@ -331,9 +331,9 @@ where
 
 macro_rules! impl_traits_newtype {
     ($structname:ident) => {
-        impl<'a, T, U> Adapter<'a, T> for $structname<&'a [U], T>
+        unsafe impl<'a, T, U> Adapter<'a, T> for $structname<&'a [U], T>
         where
-            T: Float + 'a,
+            T: FloatCore + ToPrimitive + 'a,
             U: RawSample,
         {
             unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
@@ -344,9 +344,9 @@ macro_rules! impl_traits_newtype {
             implement_size_getters!();
         }
 
-        impl<'a, T, U> Adapter<'a, T> for $structname<&'a mut [U], T>
+        unsafe impl<'a, T, U> Adapter<'a, T> for $structname<&'a mut [U], T>
         where
-            T: Float + 'a,
+            T: FloatCore + ToPrimitive + 'a,
             U: RawSample,
         {
             unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
@@ -357,9 +357,9 @@ macro_rules! impl_traits_newtype {
             implement_size_getters!();
         }
 
-        impl<'a, T, U> AdapterMut<'a, T> for $structname<&'a mut [U], T>
+        unsafe impl<'a, T, U> AdapterMut<'a, T> for $structname<&'a mut [U], T>
         where
-            T: Float + 'a,
+            T: FloatCore + ToPrimitive + 'a,
             U: RawSample + Clone,
         {
             unsafe fn write_sample_unchecked(
@@ -557,7 +557,7 @@ mod tests {
     // meaning it can be sent between threads.
     // This test is not designed to be run, only to compile.
     #[allow(dead_code)]
-    fn test_adapter_send_and_sync<T: Sync + Send + Clone>() {
+    fn test_adapter_send_and_sync() {
         fn is_send<T: Send>() {}
         fn is_sync<T: Sync>() {}
         is_send::<InterleavedNumbers<&[i32], f32>>();

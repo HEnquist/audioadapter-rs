@@ -2,6 +2,45 @@ use num_traits::{Num, ToPrimitive};
 
 use crate::Adapter;
 
+/// A simple implementation of Newton's method for calculating the square root of a number.
+/// This is used to avoid depending on `std`, until math support in core is stable.
+/// See: <https://doc.rust-lang.org/core/f64/math/fn.sqrt.html>
+///
+/// This is not a fully standards-equivalent replacement for `f64::sqrt`.
+/// It is intentionally simplified for this crate's RMS/statistics use case,
+/// where inputs are expected to be finite and non-negative in normal operation.
+///
+/// Behavior:
+/// - `NaN` is propagated.
+/// - `+inf` returns `+inf`.
+/// - `-inf` returns `0.0`.
+/// - Negative finite values return `0.0`.
+fn sqrt_newton(value: f64) -> f64 {
+    if value.is_nan() {
+        return value;
+    }
+    if value.is_infinite() {
+        return if value.is_sign_positive() {
+            f64::INFINITY
+        } else {
+            0.0
+        };
+    }
+    if value <= 0.0 {
+        return 0.0;
+    }
+
+    // Get an initial guess using the exponent of the floating point representation.
+    let mut estimate = f64::from_bits((value.to_bits() + (1023_u64 << 52)) >> 1);
+
+    // Perform 5 iterations of Newton's method to refine the estimate.
+    for _ in 0..5 {
+        estimate = 0.5 * (estimate + value / estimate);
+    }
+
+    estimate
+}
+
 /// A trait providing methods to calculate the RMS and peak-to-peak values of a channel or frame.
 /// This requires that the samples are of a numerical type, that implement the
 /// [num_traits::ToPrimitive], [num_traits::Num] and [core::cmp::PartialOrd] traits.
@@ -25,7 +64,7 @@ where
                 .unwrap_or_default();
             square_sum += sample * sample;
         }
-        libm::sqrt(square_sum / self.frames() as f64)
+        sqrt_newton(square_sum / self.frames() as f64)
     }
 
     /// Calculate the RMS value of the given channel.
@@ -43,7 +82,7 @@ where
                 .unwrap_or_default();
             square_sum += sample * sample;
         }
-        libm::sqrt(square_sum / self.channels() as f64)
+        sqrt_newton(square_sum / self.channels() as f64)
     }
 
     /// Calculate the peak-to-peak value of the given channel.
@@ -156,5 +195,57 @@ mod tests {
         assert_eq!(buffer.frame_rms(0), 1.0);
         assert_eq!(buffer.frame_min_and_max(0), (-1.0, 1.0));
         assert_eq!(buffer.frame_peak_to_peak(0), 2.0);
+    }
+
+    #[test]
+    fn sqrt_newton_accuracy() {
+        let test_values: [f64; 12] = [
+            1.0e-12_f64,
+            1.0e-9_f64,
+            1.0e-6_f64,
+            1.0e-3_f64,
+            0.1_f64,
+            0.5_f64,
+            1.0_f64,
+            2.0_f64,
+            10.0_f64,
+            100.0_f64,
+            1.0e6_f64,
+            1.0e12_f64,
+        ];
+
+        for value in test_values {
+            let expected = value.sqrt();
+            let actual = super::sqrt_newton(value);
+            let rel_err = (actual - expected).abs() / expected.max(1.0);
+            assert!(
+                rel_err < 1.0e-12,
+                "value={value}, expected={expected}, actual={actual}, rel_err={rel_err}"
+            );
+        }
+    }
+
+    #[test]
+    fn sqrt_newton_special_values() {
+        assert!(super::sqrt_newton(f64::NAN).is_nan());
+        assert_eq!(super::sqrt_newton(f64::INFINITY), f64::INFINITY);
+        assert_eq!(super::sqrt_newton(f64::NEG_INFINITY), 0.0);
+    }
+
+    #[test]
+    fn sqrt_newton_subnormal_value() {
+        let values = [
+            f64::from_bits(1),
+            f64::from_bits(f64::MIN_POSITIVE.to_bits() - 1),
+        ];
+        for value in values {
+            let expected = value.sqrt();
+            let actual = super::sqrt_newton(value);
+            let rel_err = (actual - expected).abs() / expected.max(1.0);
+            assert!(
+                rel_err < 1.0e-12,
+                "value={value:e}, expected={expected:e}, actual={actual:e}, rel_err={rel_err:e}"
+            );
+        }
     }
 }

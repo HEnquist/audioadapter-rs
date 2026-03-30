@@ -8,16 +8,30 @@
 /// Samples are accessed indirectly by a `read_sample` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before returning it.
-pub trait Adapter<'a, T: 'a> {
+///
+/// # Safety
+///
+/// This trait is `unsafe` because it relies on correct implementations of the
+/// `frames` and `channels` methods.
+/// Users of an `Adapter` trait object must be able to rely on these values
+/// being constant while the buffer is in use.
+/// The values returned by these methods are not allowed to change spontaneously,
+/// for example due to some internal logic or because of some action in another thread.
+///
+/// The provided safe helper methods (such as `read_sample` and the copy methods)
+/// use these bounds before calling `read_sample_unchecked` internally.
+/// If the reported bounds are wrong, those internal unchecked accesses can become
+/// out of bounds and cause undefined behavior.
+pub unsafe trait Adapter<'a, T: 'a> {
     /// Read the sample at
     /// a given combination of frame and channel.
     ///
     /// # Safety
     ///
     /// This method performs no bounds checking.
-    /// Calling it with an out-of-bound value for frame or channel
-    /// results in undefined behavior,
-    /// for example returning an invalid value or panicking.
+    /// The caller must ensure that `channel < self.channels()` and
+    /// `frame < self.frames()`.
+    /// Violating these preconditions causes undefined behavior.
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T;
 
     /// Read the sample at
@@ -92,7 +106,19 @@ pub trait Adapter<'a, T: 'a> {
 /// Samples are accessed indirectly by a `write_sample` method.
 /// Implementations may perform any needed transformation
 /// of the sample value before writing to the underlying buffer.
-pub trait AdapterMut<'a, T>: Adapter<'a, T>
+///
+/// # Safety
+///
+/// This trait is `unsafe` because it relies on correct implementations of the
+/// `channels` and `frames` methods.
+/// The values returned by these methods are not allowed to change spontaneously,
+/// for example due to some internal logic or because of some action in another thread.
+///
+/// The provided safe helper methods (such as `write_sample` and the copy/fill methods)
+/// use these bounds before calling `write_sample_unchecked` internally.
+/// If the reported bounds are wrong, those internal unchecked accesses can become
+/// out of bounds and cause undefined behavior.
+pub unsafe trait AdapterMut<'a, T>: Adapter<'a, T>
 where
     T: Clone + 'a,
 {
@@ -106,9 +132,9 @@ where
     /// # Safety
     ///
     /// This method performs no bounds checking.
-    /// Calling it with an out-of-bound value for frame or channel
-    /// results in undefined behavior,
-    /// for example returning an invalid value or panicking.
+    /// The caller must ensure that `channel < self.channels()` and
+    /// `frame < self.frames()`.
+    /// Violating these preconditions causes undefined behavior.
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool;
 
     /// Write a sample to the

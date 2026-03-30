@@ -1,7 +1,7 @@
 use audioadapter::*;
 use audioadapter_buffers::{direct, number_to_float};
 use audioadapter_sample::sample::*;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 
 // plain nested loops with unsafe read calls
@@ -111,8 +111,7 @@ pub fn bench_with_i24le_float_conversion(c: &mut Criterion) {
 
 // standard iteration of slices, for comparison
 fn iter_slice(buf: &[Vec<i32>]) -> i32 {
-    let sum = buf.iter().map(|v| v.iter().sum::<i32>()).sum();
-    sum
+    buf.iter().map(|v| v.iter().sum::<i32>()).sum()
 }
 
 pub fn bench_slice_iter(c: &mut Criterion) {

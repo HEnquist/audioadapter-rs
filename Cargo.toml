@@ -1,3 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["audioadapter", "audioadapter-buffers", "audioadapter-sample"]
+
+[workspace.dependencies]
+num-traits = { version = "0.2.15", default-features = false }
+audio-core = { version = "0.2.0", default-features = false }
