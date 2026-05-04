@@ -82,6 +82,63 @@ pub mod tests {
         }
     }
 
+    /// Minimal planar implementation of an Adapter based on a vec
+    /// intended for testing purposes.
+    pub struct MinimalPlanarAdapter<U> {
+        buf: Vec<U>,
+        frames: usize,
+        channels: usize,
+    }
+
+    impl<T> MinimalPlanarAdapter<T>
+    where
+        T: Clone,
+    {
+        pub fn new_from_vec(buf: Vec<T>, channels: usize, frames: usize) -> Self {
+            Self {
+                buf,
+                frames,
+                channels,
+            }
+        }
+    }
+
+    unsafe impl<'a, T> Adapter<'a, T> for MinimalPlanarAdapter<T>
+    where
+        T: Clone + 'a,
+    {
+        unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
+            let index = channel * self.frames + frame;
+            unsafe { self.buf.get_unchecked(index).clone() }
+        }
+
+        fn channels(&self) -> usize {
+            self.channels
+        }
+
+        fn frames(&self) -> usize {
+            self.frames
+        }
+    }
+
+    unsafe impl<'a, T> AdapterMut<'a, T> for MinimalPlanarAdapter<T>
+    where
+        T: Clone + 'a,
+    {
+        unsafe fn write_sample_unchecked(
+            &mut self,
+            channel: usize,
+            frame: usize,
+            value: &T,
+        ) -> bool {
+            let index = channel * self.frames + frame;
+            unsafe {
+                *self.buf.get_unchecked_mut(index) = value.clone();
+            }
+            false
+        }
+    }
+
     /// A generic test function to verify the implementation of `Adapter` and `AdapterMut` traits.
     ///
     /// It takes a mutable reference to an adapter and runs a series of tests.

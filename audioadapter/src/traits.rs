@@ -100,6 +100,60 @@ pub unsafe trait Adapter<'a, T: 'a> {
         }
         channels_to_write
     }
+
+    /// Copy values from self to a interleaved output buffer.
+    ///
+    /// Interleaved layout is:
+    /// `[L1, R1, L2, R2, L3, R3, L4, R4]`.
+    ///
+    /// Returns the number of samples copied.
+    fn to_interleaved(&self, output_buffer: &mut [T]) -> usize {
+        let channels = self.channels();
+        let frames = self.frames();
+
+        if channels == 0 || frames == 0 {
+            return 0;
+        }
+
+        let max_frames = output_buffer.len() / channels;
+        let frames_to_write = frames.min(max_frames);
+
+        for frame in 0..frames_to_write {
+            let start = frame * channels;
+            let end = start + channels;
+
+            self.copy_from_frame_to_slice(frame, 0, &mut output_buffer[start..end]);
+        }
+
+        frames_to_write * channels
+    }
+
+    /// Copy values from self to a planar output buffer.
+    ///
+    /// Planar layout is:
+    /// `[L1, L2, L3, L4, R1, R2, R3, R4]`.
+    ///
+    /// Returns the number of samples copied.
+    fn to_planar(&self, output_buffer: &mut [T]) -> usize {
+        let channels = self.channels();
+        let frames = self.frames();
+
+        if channels == 0 || frames == 0 {
+            return 0;
+        }
+
+        let max_channels = output_buffer.len() / frames;
+        let channels_to_write = channels.min(max_channels);
+
+        for channel in 0..channels_to_write {
+            let start = channel * frames;
+            let end = start + frames;
+
+            self.copy_from_channel_to_slice(channel, 0, &mut output_buffer[start..end]);
+        }
+
+        channels_to_write * frames
+    }
 }
 
 /// A trait for writing samples to a buffer.
@@ -414,13 +468,18 @@ where
 mod tests {
     extern crate alloc;
 
-    use crate::tests::MinimalAdapter;
+    use crate::tests::{MinimalAdapter, MinimalPlanarAdapter};
     use crate::{Adapter, AdapterMut};
     use alloc::vec;
 
     fn dummy_adapter() -> MinimalAdapter<i32> {
         let data = vec![1_i32, 1, 2, 3, 4, 5, 6, 7];
         MinimalAdapter::new_from_vec(data, 2, 4)
+    }
+
+    fn dummy_planar_adapter() -> MinimalPlanarAdapter<i32> {
+        let data = vec![1_i32, 2, 4, 6, 1, 3, 5, 7];
+        MinimalPlanarAdapter::new_from_vec(data, 2, 4)
     }
 
     #[test]
@@ -482,6 +541,32 @@ mod tests {
         let copied = buffer.copy_from_frame_to_slice(1, 0, &mut slice3);
         assert_eq!(copied, 2);
         assert_eq!(slice3, [2, 3, 0]);
+    }
+
+    #[test]
+    fn to_interleaved() {
+        let interleaved = dummy_adapter();
+        let mut out_interleaved = [0; 8];
+        assert_eq!(interleaved.to_interleaved(&mut out_interleaved), 8);
+        assert_eq!(out_interleaved, [1, 1, 2, 3, 4, 5, 6, 7]);
+
+        let planar = dummy_planar_adapter();
+        let mut out_from_planar = [0; 8];
+        assert_eq!(planar.to_interleaved(&mut out_from_planar), 8);
+        assert_eq!(out_from_planar, [1, 1, 2, 3, 4, 5, 6, 7]);
+    }
+
+    #[test]
+    fn to_planar() {
+        let interleaved = dummy_adapter();
+        let mut out_from_interleaved = [0; 8];
+        assert_eq!(interleaved.to_planar(&mut out_from_interleaved), 8);
+        assert_eq!(out_from_interleaved, [1, 2, 4, 6, 1, 3, 5, 7]);
+
+        let planar = dummy_planar_adapter();
+        let mut out_planar = [0; 8];
+        assert_eq!(planar.to_planar(&mut out_planar), 8);
+        assert_eq!(out_planar, [1, 2, 4, 6, 1, 3, 5, 7]);
     }
 
     #[test]
