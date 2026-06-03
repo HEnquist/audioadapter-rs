@@ -72,13 +72,20 @@ use audioadapter_sample::sample::{BytesSample, RawSample};
 /// A macro for creating a view of an immutable slice of bytes
 /// as a different type.
 ///
-/// This is **not** exported: it transmutes `&[u8]` into `&[$type]` with no
-/// trait bounds, so it is only sound for types with alignment 1 and no
-/// validity invariants. The internal call sites guarantee this by requiring
-/// `$type: BytesSample`, which is only implemented for such byte-wrapper types.
+/// This is **not** exported: it transmutes `&[u8]` into `&[$type]`, which is
+/// only sound for types with alignment 1 and no validity invariants. Alignment
+/// is verified at compile time by the `const` assert below, and the internal
+/// call sites only ever use the library's `BytesSample` byte-wrapper types,
+/// which are `[u8; N]` newtypes where every bit pattern is valid.
 macro_rules! byte_slice_as_type {
     ($slice:ident, $type:ty) => {
         unsafe {
+            const {
+                assert!(
+                    core::mem::align_of::<$type>() == 1,
+                    "type must have alignment 1"
+                )
+            };
             let ptr = $slice.as_ptr() as *const $type;
             let len = $slice.len();
             core::slice::from_raw_parts(ptr, len / core::mem::size_of::<$type>())
@@ -89,13 +96,20 @@ macro_rules! byte_slice_as_type {
 /// A macro for creating a view of a mutable slice of bytes
 /// as a different type.
 ///
-/// This is **not** exported: it transmutes `&mut [u8]` into `&mut [$type]`
-/// with no trait bounds, so it is only sound for types with alignment 1 and
-/// no validity invariants. The internal call sites guarantee this by requiring
-/// `$type: BytesSample`, which is only implemented for such byte-wrapper types.
+/// This is **not** exported: it transmutes `&mut [u8]` into `&mut [$type]`,
+/// which is only sound for types with alignment 1 and no validity invariants.
+/// Alignment is verified at compile time by the `const` assert below, and the
+/// internal call sites only ever use the library's `BytesSample` byte-wrapper
+/// types, which are `[u8; N]` newtypes where every bit pattern is valid.
 macro_rules! byte_slice_as_type_mut {
     ($slice:ident, $type:ty) => {
         unsafe {
+            const {
+                assert!(
+                    core::mem::align_of::<$type>() == 1,
+                    "type must have alignment 1"
+                )
+            };
             let ptr = $slice.as_mut_ptr() as *mut $type;
             let len = $slice.len();
             core::slice::from_raw_parts_mut(ptr, len / core::mem::size_of::<$type>())
