@@ -173,11 +173,7 @@ where
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Adapter` trait methods.
-    pub fn new_from_bytes(
-        buf: &'a [u8],
-        channels: usize,
-        frames: usize,
-    ) -> Result<Self, SizeError>
+    pub fn new_from_bytes(buf: &'a [u8], channels: usize, frames: usize) -> Result<Self, SizeError>
     where
         U: BytesSample,
     {
@@ -283,11 +279,7 @@ where
     /// It is allowed to be longer than needed,
     /// but these extra values cannot
     /// be accessed via the `Adapter` trait methods.
-    pub fn new_from_bytes(
-        buf: &'a [u8],
-        channels: usize,
-        frames: usize,
-    ) -> Result<Self, SizeError>
+    pub fn new_from_bytes(buf: &'a [u8], channels: usize, frames: usize) -> Result<Self, SizeError>
     where
         U: BytesSample,
     {
