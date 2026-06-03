@@ -16,6 +16,14 @@ pub mod owned;
 /// Dummy Adapter
 pub mod dummy;
 
+/// Sample format types re-exported from [`audioadapter_sample`].
+///
+/// These are the byte-wrapper types (`I16_LE`, `I24_LE`, `F32_LE`, …) used with
+/// the byte-based constructors and converters in [`number_to_float`] and
+/// [`adapter_to_float`]. They are re-exported here so that you do not need to add
+/// a separate dependency on `audioadapter-sample` just to name a format.
+pub use audioadapter_sample::sample;
+
 mod slicetools;
 
 use core::error::Error;

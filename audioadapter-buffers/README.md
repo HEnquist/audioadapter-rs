@@ -88,6 +88,62 @@ stored as 3 bytes in little-endian order without padding.
 24-bit samples are also commonly stored with a padding byte, so that each sample takes up four bytes.
 This is handled by selecting `I24_4RJ_LE` or `I24_4LJ_LE` as the format.
 
+The sample format types such as `I24_LE` are re-exported from `audioadapter-sample`,
+so you can also reach them as `audioadapter_buffers::sample::I24_LE`
+without adding a separate dependency.
+
+### Example, write float values into a byte buffer
+The mutable constructors let you go the other way and write `f32` values
+into a buffer of raw bytes, converting on the fly.
+This writes interleaved 16-bit little-endian samples:
+
+```rust
+use audioadapter_buffers::number_to_float::InterleavedNumbers;
+use audioadapter_buffers::sample::I16_LE;
+use audioadapter::{Adapter, AdapterMut};
+
+// space for 2 channels * 3 frames * 2 bytes per sample => 12 bytes
+let mut data: Vec<u8> = vec![0; 12];
+
+// wrap the byte buffer for mutable access
+let mut buffer =
+    InterleavedNumbers::<&mut [I16_LE], f32>::new_from_bytes_mut(&mut data, 2, 3).unwrap();
+
+// write a value to every sample
+for channel in 0..buffer.channels() {
+    for frame in 0..buffer.frames() {
+        buffer.write_sample(channel, frame, &0.5).unwrap();
+    }
+}
+```
+
+## Wrapping existing buffers
+The [adapter_to_float] module wraps a buffer that already implements the
+`audioadapter` traits, adding on-the-fly conversion to and from float.
+Use `ConvertNumbers` for buffers of numeric samples,
+and `ConvertBytes` for buffers of raw byte arrays.
+
+### Example, read an existing i16 buffer as floats
+```rust
+use audioadapter::Adapter;
+use audioadapter_buffers::adapter_to_float::ConvertNumbers;
+use audioadapter_buffers::direct::InterleavedSlice;
+
+// Make a vector with some dummy data and wrap it as an interleaved i16 buffer.
+let data: Vec<i16> = vec![1, 2, 3, 4, 5, 6];
+let int_buffer = InterleavedSlice::new(&data, 2, 3).unwrap();
+
+// Wrap the buffer again with a converter to read the values as floats.
+let converter = ConvertNumbers::<_, f32>::new(&int_buffer as &dyn Adapter<i16>);
+
+for channel in 0..converter.channels() {
+    for frame in 0..converter.frames() {
+        let value = converter.read_sample(channel, frame).unwrap();
+        println!("Channel: {}, frame: {}, value: {}", channel, frame, value);
+    }
+}
+```
+
 ## Use without the standard library
 This crate can be used in `no_std` environments if the `std` Cargo feature is disabled.
 You can also enable the `alloc` feature to get the buffer types in the [owned] module.

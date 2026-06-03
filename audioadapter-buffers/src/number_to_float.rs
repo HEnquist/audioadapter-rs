@@ -67,11 +67,15 @@ use crate::SizeError;
 use crate::slicetools::copy_within_slice;
 use crate::{check_slice_length, implement_size_getters};
 use audioadapter::{Adapter, AdapterMut};
-use audioadapter_sample::sample::RawSample;
+use audioadapter_sample::sample::{BytesSample, RawSample};
 
 /// A macro for creating a view of an immutable slice of bytes
 /// as a different type.
-#[macro_export]
+///
+/// This is **not** exported: it transmutes `&[u8]` into `&[$type]` with no
+/// trait bounds, so it is only sound for types with alignment 1 and no
+/// validity invariants. The internal call sites guarantee this by requiring
+/// `$type: BytesSample`, which is only implemented for such byte-wrapper types.
 macro_rules! byte_slice_as_type {
     ($slice:ident, $type:ty) => {
         unsafe {
@@ -84,7 +88,11 @@ macro_rules! byte_slice_as_type {
 
 /// A macro for creating a view of a mutable slice of bytes
 /// as a different type.
-#[macro_export]
+///
+/// This is **not** exported: it transmutes `&mut [u8]` into `&mut [$type]`
+/// with no trait bounds, so it is only sound for types with alignment 1 and
+/// no validity invariants. The internal call sites guarantee this by requiring
+/// `$type: BytesSample`, which is only implemented for such byte-wrapper types.
 macro_rules! byte_slice_as_type_mut {
     ($slice:ident, $type:ty) => {
         unsafe {
@@ -96,6 +104,13 @@ macro_rules! byte_slice_as_type_mut {
 }
 
 /// A wrapper for a slice containing interleaved numerical samples.
+///
+/// # Type parameters
+/// - `U`: the wrapped slice type holding the samples, for example `&[i16]`,
+///   `&mut [i16]`, or `&[I16_LE]` for the byte-based constructors. The element
+///   type implements [RawSample] (and [BytesSample] when constructing from bytes).
+/// - `V`: the floating point type that samples are converted to and from when
+///   reading and writing, for example `f32` or `f64`.
 pub struct InterleavedNumbers<U, V> {
     _phantom: core::marker::PhantomData<V>,
     buf: U,
@@ -103,7 +118,14 @@ pub struct InterleavedNumbers<U, V> {
     channels: usize,
 }
 
-/// A wrapper for a slice containing interleaved numerical samples.
+/// A wrapper for a slice containing sequential numerical samples.
+///
+/// # Type parameters
+/// - `U`: the wrapped slice type holding the samples, for example `&[i16]`,
+///   `&mut [i16]`, or `&[I16_LE]` for the byte-based constructors. The element
+///   type implements [RawSample] (and [BytesSample] when constructing from bytes).
+/// - `V`: the floating point type that samples are converted to and from when
+///   reading and writing, for example `f32` or `f64`.
 pub struct SequentialNumbers<U, V> {
     _phantom: core::marker::PhantomData<V>,
     buf: U,
@@ -144,8 +166,8 @@ where
         })
     }
 
-    /// Create a new wrapper for a mutable slice
-    /// of numerical samples implementing [RawSample],
+    /// Create a new wrapper for an immutable slice
+    /// of numerical samples implementing [BytesSample],
     /// stored as raw bytes in _interleaved_ order.
     /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
     /// It is allowed to be longer than needed,
@@ -155,7 +177,10 @@ where
         buf: &'a [u8],
         channels: usize,
         frames: usize,
-    ) -> Result<Self, SizeError> {
+    ) -> Result<Self, SizeError>
+    where
+        U: BytesSample,
+    {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
         let buf_view = byte_slice_as_type!(buf, U);
         Ok(Self {
@@ -190,7 +215,7 @@ where
     }
 
     /// Create a new wrapper for a mutable slice
-    /// of numerical samples implementing [RawSample],
+    /// of numerical samples implementing [BytesSample],
     /// stored as raw bytes in _interleaved_ order.
     /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
     /// It is allowed to be longer than needed,
@@ -200,7 +225,10 @@ where
         buf: &'a mut [u8],
         channels: usize,
         frames: usize,
-    ) -> Result<Self, SizeError> {
+    ) -> Result<Self, SizeError>
+    where
+        U: BytesSample,
+    {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
         let buf_view = byte_slice_as_type_mut!(buf, U);
         Ok(Self {
@@ -248,8 +276,8 @@ where
         })
     }
 
-    /// Create a new wrapper for a mutable slice
-    /// of numerical samples implementing [RawSample],
+    /// Create a new wrapper for an immutable slice
+    /// of numerical samples implementing [BytesSample],
     /// stored as raw bytes in _sequential_ order.
     /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
     /// It is allowed to be longer than needed,
@@ -259,7 +287,10 @@ where
         buf: &'a [u8],
         channels: usize,
         frames: usize,
-    ) -> Result<Self, SizeError> {
+    ) -> Result<Self, SizeError>
+    where
+        U: BytesSample,
+    {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
         let buf_view = byte_slice_as_type!(buf, U);
         Ok(Self {
@@ -294,7 +325,7 @@ where
     }
 
     /// Create a new wrapper for a mutable slice
-    /// of numerical samples implementing [RawSample],
+    /// of numerical samples implementing [BytesSample],
     /// stored as raw bytes in _sequential_ order.
     /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
     /// It is allowed to be longer than needed,
@@ -304,7 +335,10 @@ where
         buf: &'a mut [u8],
         channels: usize,
         frames: usize,
-    ) -> Result<Self, SizeError> {
+    ) -> Result<Self, SizeError>
+    where
+        U: BytesSample,
+    {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
         let buf_view = byte_slice_as_type_mut!(buf, U);
         Ok(Self {
