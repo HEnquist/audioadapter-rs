@@ -141,18 +141,24 @@ pub(crate) use implement_size_getters;
 
 macro_rules! check_slice_length {
     ($channels:expr , $frames:expr, $length:expr ) => {
-        if $length < $frames * $channels {
+        // Saturating, so an overflowing product becomes `usize::MAX` and the
+        // check fails instead of wrapping to a small value and passing.
+        let required = $frames.saturating_mul($channels);
+        if $length < required {
             return Err(SizeError::Total {
                 actual: $length,
-                required: $frames * $channels,
+                required,
             });
         }
     };
     ($channels:expr , $frames:expr, $length:expr, $elements_per_sample:expr) => {
-        if $length < $frames * $channels * $elements_per_sample {
+        let required = $frames
+            .saturating_mul($channels)
+            .saturating_mul($elements_per_sample);
+        if $length < required {
             return Err(SizeError::Total {
                 actual: $length,
-                required: $frames * $channels * $elements_per_sample,
+                required,
             });
         }
     };

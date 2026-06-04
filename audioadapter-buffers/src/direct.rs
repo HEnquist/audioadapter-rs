@@ -240,7 +240,7 @@ where
     }
 
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         for ch in self.buf.iter_mut() {
@@ -449,7 +449,7 @@ where
     }
 
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         for (ch, active) in self.buf.iter_mut().zip(self.mask.iter()) {
@@ -633,7 +633,7 @@ where
     }
 
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         for ch in self.buf.iter_mut() {
@@ -836,7 +836,7 @@ where
     }
 
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         for (ch, active) in self.buf.iter_mut().zip(self.mask.iter()) {
@@ -1207,7 +1207,7 @@ where
     }
 
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         unsafe {
@@ -1404,7 +1404,7 @@ where
     }
 
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         for ch in 0..self.channels {
@@ -1974,5 +1974,40 @@ mod tests {
             ),
             "expected SizeError::Mask with required length 2, got {err:?}"
         );
+    }
+
+    #[test]
+    fn overflowing_dimensions_are_rejected() {
+        // channels * frames overflows usize and must not wrap to a small
+        // value that passes the length check. See the soundness fix in
+        // `check_slice_length!`.
+        let data = [0_i32; 4];
+        // big * big wraps to exactly 0 (2^usize::BITS), which the unfixed check
+        // would treat as "required 0" and accept. Portable across 32/64-bit.
+        let big = 1_usize << (usize::BITS / 2);
+        assert!(
+            matches!(
+                InterleavedSlice::new(&data, big, big),
+                Err(SizeError::Total { .. })
+            ),
+            "overflowing channels * frames must be rejected"
+        );
+        assert!(
+            matches!(
+                SequentialSlice::new(&data, big, big),
+                Err(SizeError::Total { .. })
+            ),
+            "overflowing channels * frames must be rejected"
+        );
+    }
+
+    #[test]
+    fn copy_frames_within_rejects_overflowing_range() {
+        // src + count overflows usize. The guard must not wrap and allow an
+        // out-of-bounds copy.
+        let mut data = [0_i32; 6];
+        let mut buf = InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
+        assert_eq!(buf.copy_frames_within(usize::MAX, 0, 2), None);
+        assert_eq!(buf.copy_frames_within(0, usize::MAX, 2), None);
     }
 }

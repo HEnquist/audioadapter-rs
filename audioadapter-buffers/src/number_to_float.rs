@@ -278,7 +278,7 @@ where
     }
 
     fn copy_frames_within_impl(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         unsafe {
@@ -384,7 +384,7 @@ where
     }
 
     fn copy_frames_within_impl(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         for ch in 0..self.channels {
