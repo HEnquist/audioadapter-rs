@@ -67,25 +67,23 @@ use crate::SizeError;
 use crate::slicetools::copy_within_slice;
 use crate::{check_slice_length, implement_size_getters};
 use audioadapter::{Adapter, AdapterMut};
-use audioadapter_sample::sample::{BytesSample, RawSample};
+use audioadapter_sample::sample::{
+    BytesSample, F32_BE, F32_LE, F64_BE, F64_LE, I16_BE, I16_LE, I24_4LJ_BE, I24_4LJ_LE,
+    I24_4RJ_BE, I24_4RJ_LE, I24_BE, I24_LE, I32_BE, I32_LE, I64_BE, I64_LE, RawSample, U16_BE,
+    U16_LE, U24_4LJ_BE, U24_4LJ_LE, U24_4RJ_BE, U24_4RJ_LE, U24_BE, U24_LE, U32_BE, U32_LE, U64_BE,
+    U64_LE,
+};
 
 /// A macro for creating a view of an immutable slice of bytes
 /// as a different type.
 ///
 /// This is **not** exported: it transmutes `&[u8]` into `&[$type]`, which is
-/// only sound for types with alignment 1 and no validity invariants. Alignment
-/// is verified at compile time by the `const` assert below, and the internal
-/// call sites only ever use the library's `BytesSample` byte-wrapper types,
-/// which are `[u8; N]` newtypes where every bit pattern is valid.
+/// only sound for types with alignment 1 and no validity invariants. Callers
+/// must therefore require `$type: PlainBytes`, whose unsafe contract guarantees
+/// exactly those properties.
 macro_rules! byte_slice_as_type {
     ($slice:ident, $type:ty) => {
         unsafe {
-            const {
-                assert!(
-                    core::mem::align_of::<$type>() == 1,
-                    "type must have alignment 1"
-                )
-            };
             let ptr = $slice.as_ptr() as *const $type;
             let len = $slice.len();
             core::slice::from_raw_parts(ptr, len / core::mem::size_of::<$type>())
@@ -98,18 +96,11 @@ macro_rules! byte_slice_as_type {
 ///
 /// This is **not** exported: it transmutes `&mut [u8]` into `&mut [$type]`,
 /// which is only sound for types with alignment 1 and no validity invariants.
-/// Alignment is verified at compile time by the `const` assert below, and the
-/// internal call sites only ever use the library's `BytesSample` byte-wrapper
-/// types, which are `[u8; N]` newtypes where every bit pattern is valid.
+/// Callers must therefore require `$type: PlainBytes`, whose unsafe contract
+/// guarantees exactly those properties.
 macro_rules! byte_slice_as_type_mut {
     ($slice:ident, $type:ty) => {
         unsafe {
-            const {
-                assert!(
-                    core::mem::align_of::<$type>() == 1,
-                    "type must have alignment 1"
-                )
-            };
             let ptr = $slice.as_mut_ptr() as *mut $type;
             let len = $slice.len();
             core::slice::from_raw_parts_mut(ptr, len / core::mem::size_of::<$type>())
@@ -117,12 +108,49 @@ macro_rules! byte_slice_as_type_mut {
     };
 }
 
+/// Marker trait for sample types whose raw byte representation can be viewed
+/// directly as the type, enabling the byte-based constructors.
+///
+/// # Safety
+/// The byte-based constructors
+/// ([`InterleavedNumbers::new_from_bytes`], [`InterleavedNumbers::new_from_bytes_mut`],
+/// [`SequentialNumbers::new_from_bytes`], [`SequentialNumbers::new_from_bytes_mut`])
+/// reinterpret a `&[u8]` as a `&[Self]` without copying. For that to be sound,
+/// every implementor must guarantee that:
+///
+/// - `Self` has an alignment of 1, and
+/// - every bit pattern of the matching size is a valid value of `Self`, i.e. it
+///   is a plain "bag of bytes" with no validity invariants and no padding.
+///
+/// All the byte-wrapper sample types in [`audioadapter_sample`] are
+/// `[u8; N]` newtypes that satisfy both requirements, and this trait is
+/// implemented for all of them. If you implement [BytesSample] for your own
+/// type and want to use it with those constructors, implement this trait too,
+/// upholding the requirements above.
+pub unsafe trait PlainBytes: BytesSample {}
+
+macro_rules! impl_plainbytes {
+    ($($t:ty),* $(,)?) => {
+        $(
+            // SAFETY: each type is a `#[derive(..)]` newtype around `[u8; N]`,
+            // which has alignment 1 and is valid for every bit pattern.
+            unsafe impl PlainBytes for $t {}
+        )*
+    };
+}
+
+impl_plainbytes!(
+    I16_LE, I16_BE, U16_LE, U16_BE, I24_LE, I24_BE, U24_LE, U24_BE, I24_4LJ_LE, I24_4LJ_BE,
+    I24_4RJ_LE, I24_4RJ_BE, U24_4LJ_LE, U24_4LJ_BE, U24_4RJ_LE, U24_4RJ_BE, I32_LE, I32_BE, U32_LE,
+    U32_BE, I64_LE, I64_BE, U64_LE, U64_BE, F32_LE, F32_BE, F64_LE, F64_BE,
+);
+
 /// A wrapper for a slice containing interleaved numerical samples.
 ///
 /// # Type parameters
 /// - `U`: the wrapped slice type holding the samples, for example `&[i16]`,
 ///   `&mut [i16]`, or `&[I16_LE]` for the byte-based constructors. The element
-///   type implements [RawSample] (and [BytesSample] when constructing from bytes).
+///   type implements [RawSample] (and [PlainBytes] when constructing from bytes).
 /// - `V`: the floating point type that samples are converted to and from when
 ///   reading and writing, for example `f32` or `f64`.
 pub struct InterleavedNumbers<U, V> {
@@ -137,7 +165,7 @@ pub struct InterleavedNumbers<U, V> {
 /// # Type parameters
 /// - `U`: the wrapped slice type holding the samples, for example `&[i16]`,
 ///   `&mut [i16]`, or `&[I16_LE]` for the byte-based constructors. The element
-///   type implements [RawSample] (and [BytesSample] when constructing from bytes).
+///   type implements [RawSample] (and [PlainBytes] when constructing from bytes).
 /// - `V`: the floating point type that samples are converted to and from when
 ///   reading and writing, for example `f32` or `f64`.
 pub struct SequentialNumbers<U, V> {
@@ -181,7 +209,7 @@ where
     }
 
     /// Create a new wrapper for an immutable slice
-    /// of numerical samples implementing [BytesSample],
+    /// of numerical samples implementing [PlainBytes],
     /// stored as raw bytes in _interleaved_ order.
     /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
     /// It is allowed to be longer than needed,
@@ -189,7 +217,7 @@ where
     /// be accessed via the `Adapter` trait methods.
     pub fn new_from_bytes(buf: &'a [u8], channels: usize, frames: usize) -> Result<Self, SizeError>
     where
-        U: BytesSample,
+        U: PlainBytes,
     {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
         let buf_view = byte_slice_as_type!(buf, U);
@@ -225,7 +253,7 @@ where
     }
 
     /// Create a new wrapper for a mutable slice
-    /// of numerical samples implementing [BytesSample],
+    /// of numerical samples implementing [PlainBytes],
     /// stored as raw bytes in _interleaved_ order.
     /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
     /// It is allowed to be longer than needed,
@@ -237,7 +265,7 @@ where
         frames: usize,
     ) -> Result<Self, SizeError>
     where
-        U: BytesSample,
+        U: PlainBytes,
     {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
         let buf_view = byte_slice_as_type_mut!(buf, U);
@@ -287,7 +315,7 @@ where
     }
 
     /// Create a new wrapper for an immutable slice
-    /// of numerical samples implementing [BytesSample],
+    /// of numerical samples implementing [PlainBytes],
     /// stored as raw bytes in _sequential_ order.
     /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
     /// It is allowed to be longer than needed,
@@ -295,7 +323,7 @@ where
     /// be accessed via the `Adapter` trait methods.
     pub fn new_from_bytes(buf: &'a [u8], channels: usize, frames: usize) -> Result<Self, SizeError>
     where
-        U: BytesSample,
+        U: PlainBytes,
     {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
         let buf_view = byte_slice_as_type!(buf, U);
@@ -331,7 +359,7 @@ where
     }
 
     /// Create a new wrapper for a mutable slice
-    /// of numerical samples implementing [BytesSample],
+    /// of numerical samples implementing [PlainBytes],
     /// stored as raw bytes in _sequential_ order.
     /// The slice length must be at least `core::mem::size_of::<U>() * frames * channels`.
     /// It is allowed to be longer than needed,
@@ -343,7 +371,7 @@ where
         frames: usize,
     ) -> Result<Self, SizeError>
     where
-        U: BytesSample,
+        U: PlainBytes,
     {
         check_slice_length!(channels, frames, buf.len(), size_of::<U>());
         let buf_view = byte_slice_as_type_mut!(buf, U);
