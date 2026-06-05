@@ -69,8 +69,13 @@ where
     T: Clone,
 {
     /// Create a new `InterleavedOwned` by allocaing a new vector filled with `value`.
+    ///
+    /// Panics if `channels * frames` overflows `usize`.
     pub fn new(value: T, channels: usize, frames: usize) -> Self {
-        let buf = vec![value; channels * frames];
+        let len = channels
+            .checked_mul(frames)
+            .expect("channels * frames overflows usize");
+        let buf = vec![value; len];
         Self {
             buf,
             frames,
@@ -157,7 +162,7 @@ where
     }
 
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         unsafe {
@@ -239,8 +244,13 @@ where
     T: Clone,
 {
     /// Create a new `SequentialOwned` by allocaing a new vector filled with `value`.
+    ///
+    /// Panics if `channels * frames` overflows `usize`.
     pub fn new(value: T, channels: usize, frames: usize) -> Self {
-        let buf = vec![value; channels * frames];
+        let len = channels
+            .checked_mul(frames)
+            .expect("channels * frames overflows usize");
+        let buf = vec![value; len];
         Self {
             buf,
             frames,
@@ -327,7 +337,7 @@ where
     }
 
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames || dest + count > self.frames {
+        if count > self.frames || src > self.frames - count || dest > self.frames - count {
             return None;
         }
         for ch in 0..self.channels {
@@ -568,5 +578,21 @@ mod tests {
     fn test_sequential_owned_with_generic_tester() {
         let mut buffer = SequentialOwned::new(0usize, 2, 4);
         test_adapter_mut_methods(&mut buffer);
+    }
+
+    #[test]
+    #[should_panic(expected = "overflows usize")]
+    fn interleaved_owned_new_panics_on_overflow() {
+        // channels * frames overflows usize: must panic, not wrap to a small
+        // allocation while claiming the large dimensions.
+        let big = 1_usize << (usize::BITS / 2);
+        let _ = InterleavedOwned::new(0_i32, big, big);
+    }
+
+    #[test]
+    #[should_panic(expected = "overflows usize")]
+    fn sequential_owned_new_panics_on_overflow() {
+        let big = 1_usize << (usize::BITS / 2);
+        let _ = SequentialOwned::new(0_i32, big, big);
     }
 }

@@ -55,6 +55,15 @@ macro_rules! implement_wrapped_size_getters {
 /// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
 /// stored as byte arrays.
 /// The wrapper enables reading and writing the samples as floats.
+///
+/// # Type parameters
+/// - `T`: the floating point type that samples are converted to and from when
+///   reading and writing, for example `f32` or `f64`.
+/// - `U`: the byte-wrapper sample format type, for example [`I16_LE`] or
+///   [`F32_LE`]. It implements [BytesSample] and [RawSample], and determines the
+///   sample size as `[u8; U::BYTES_PER_SAMPLE]`.
+/// - `V`: the wrapped buffer type, an [Adapter] or [AdapterMut] over byte arrays
+///   of length `U::BYTES_PER_SAMPLE`.
 pub struct ConvertBytes<T, U, V>
 where
     T: FloatCore + ToPrimitive,
@@ -71,8 +80,11 @@ macro_rules! byte_convert_traits_newtype {
             where
                 T: FloatCore + ToPrimitive + 'a,
             {
-                #[doc = "Create a new wrapper for an [Adapter] buffer of byte arrays, `[u8;  U::BYTES_PER_SAMPLE ]`,"]
-                #[doc = "containing samples of type ` $typename `."]
+                #[doc = concat!(
+                    "Create a new wrapper for an [Adapter] buffer of byte arrays, `[u8; ",
+                    stringify!($typename), "::BYTES_PER_SAMPLE]`, containing samples of type [`",
+                    stringify!($typename), "`]."
+                )]
                 pub fn new(
                     buf: &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>,
                 ) -> Self {
@@ -88,8 +100,11 @@ macro_rules! byte_convert_traits_newtype {
             where
                 T: FloatCore + ToPrimitive + 'a,
             {
-                #[doc = "Create a new wrapper for an mutable [AdapterMut] buffer of byte arrays, `[u8;  $bytes ]`,"]
-                #[doc = "containing samples of type ` $typename `."]
+                #[doc = concat!(
+                    "Create a new wrapper for a mutable [AdapterMut] buffer of byte arrays, `[u8; ",
+                    stringify!($typename), "::BYTES_PER_SAMPLE]`, containing samples of type [`",
+                    stringify!($typename), "`]."
+                )]
                 pub fn new_mut(
                     buf: &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>,
                 ) -> Self {
@@ -195,6 +210,13 @@ byte_convert_traits_newtype!(F64_BE);
 /// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
 /// stored as numeric types.
 /// The wrapper enables reading and writing the samples as floats.
+///
+/// # Type parameters
+/// - `U`: the wrapped buffer type, an [Adapter] or [AdapterMut] over a numeric
+///   sample type, for example `&dyn Adapter<i16>`. The sample type implements
+///   [RawSample].
+/// - `V`: the floating point type that samples are converted to and from when
+///   reading and writing, for example `f32` or `f64`.
 pub struct ConvertNumbers<U, V> {
     _phantom: core::marker::PhantomData<V>,
     buf: U,
