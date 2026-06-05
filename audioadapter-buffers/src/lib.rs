@@ -16,6 +16,10 @@ pub mod owned;
 /// Dummy Adapter
 pub mod dummy;
 
+/// Utility helpers for working with adapters, currently for copying samples
+/// between an adapter and a plain interleaved or sequential slice.
+pub mod utils;
+
 /// Sample format types re-exported from [`audioadapter_sample`].
 ///
 /// These are the byte-wrapper types (`I16_LE`, `I24_LE`, `F32_LE`, …) used with
