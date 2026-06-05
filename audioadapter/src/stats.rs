@@ -45,9 +45,9 @@ fn sqrt_newton(value: f64) -> f64 {
 /// This requires that the samples are of a numerical type, that implement the
 /// [num_traits::ToPrimitive], [num_traits::Num] and [core::cmp::PartialOrd] traits.
 /// This includes all the built in numerical types such as `i16`, `i32`, `f32` etc.
-pub trait AdapterStats<'a, T>: Adapter<'a, T>
+pub trait AdapterStats<T>: Adapter<T>
 where
-    T: Clone + ToPrimitive + Num + PartialOrd + 'a,
+    T: Clone + ToPrimitive + Num + PartialOrd,
 {
     /// Calculate the RMS value of the given channel.
     /// The result is returned as `f64`.
@@ -140,10 +140,10 @@ where
     }
 }
 
-impl<'a, T, U> AdapterStats<'a, T> for U
+impl<T, U> AdapterStats<T> for U
 where
-    T: Clone + ToPrimitive + Num + PartialOrd + 'a,
-    U: Adapter<'a, T>,
+    T: Clone + ToPrimitive + Num + PartialOrd,
+    U: Adapter<T>,
 {
 }
 

@@ -102,9 +102,9 @@ where
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for InterleavedOwned<T>
+unsafe impl<T> Adapter<T> for InterleavedOwned<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
@@ -129,9 +129,9 @@ where
     }
 }
 
-unsafe impl<'a, T> AdapterMut<'a, T> for InterleavedOwned<T>
+unsafe impl<T> AdapterMut<T> for InterleavedOwned<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);
@@ -277,9 +277,9 @@ where
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for SequentialOwned<T>
+unsafe impl<T> Adapter<T> for SequentialOwned<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         let index = self.calc_index(channel, frame);
@@ -304,9 +304,9 @@ where
     }
 }
 
-unsafe impl<'a, T> AdapterMut<'a, T> for SequentialOwned<T>
+unsafe impl<T> AdapterMut<T> for SequentialOwned<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let index = self.calc_index(channel, frame);

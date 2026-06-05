@@ -28,9 +28,9 @@ where
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for Dummy<T>
+unsafe impl<T> Adapter<T> for Dummy<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     unsafe fn read_sample_unchecked(&self, _channel: usize, _frame: usize) -> T {
         self.default.clone()
@@ -39,9 +39,9 @@ where
     implement_size_getters!();
 }
 
-unsafe impl<'a, T> AdapterMut<'a, T> for Dummy<T>
+unsafe impl<T> AdapterMut<T> for Dummy<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     unsafe fn write_sample_unchecked(
         &mut self,

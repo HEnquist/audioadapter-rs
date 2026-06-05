@@ -18,13 +18,13 @@ alloc = []
 
 [dependencies]
 num-traits.workspace = true
-audioadapter = { version = "3.0.0", path = "../audioadapter" }
+audioadapter = { version = "4.0.0", path = "../audioadapter" }
 audioadapter-sample = { version = "4.0.0", path = "../audioadapter-sample", default-features = false, features = ["audio"] }
 
 
 [dev-dependencies]
 criterion = "0.6"
-audioadapter = { version = "3.0.0", path = "../audioadapter", features = ["test-utils"]}
+audioadapter = { version = "4.0.0", path = "../audioadapter", features = ["test-utils"]}
 
 [[bench]]
 name = "iteration"

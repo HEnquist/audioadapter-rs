@@ -10,15 +10,15 @@ use audioadapter::Adapter;
 use num_traits::Zero;
 use std::str::FromStr;
 
-struct MyStruct<'a, T> {
-    _phantom: core::marker::PhantomData<&'a T>,
+struct MyStruct<T> {
+    _phantom: core::marker::PhantomData<T>,
     data: Vec<String>,
     channels: usize,
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for MyStruct<'a, T>
+unsafe impl<T> Adapter<T> for MyStruct<T>
 where
-    T: Clone + FromStr + Zero + 'a,
+    T: Clone + FromStr + Zero,
 {
     fn channels(&self) -> usize {
         self.channels
@@ -43,7 +43,7 @@ fn main() {
         "5".to_owned(),
         "6".to_owned(),
     ];
-    let adapter: MyStruct<'_, f32> = MyStruct {
+    let adapter: MyStruct<f32> = MyStruct {
         _phantom: core::marker::PhantomData,
         data,
         channels: 2,

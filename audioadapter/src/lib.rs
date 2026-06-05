@@ -46,9 +46,9 @@ pub mod tests {
         }
     }
 
-    unsafe impl<'a, T> Adapter<'a, T> for MinimalAdapter<T>
+    unsafe impl<T> Adapter<T> for MinimalAdapter<T>
     where
-        T: Clone + 'a,
+        T: Clone,
     {
         unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
             let index = frame * self.channels + channel;
@@ -64,9 +64,9 @@ pub mod tests {
         }
     }
 
-    unsafe impl<'a, T> AdapterMut<'a, T> for MinimalAdapter<T>
+    unsafe impl<T> AdapterMut<T> for MinimalAdapter<T>
     where
-        T: Clone + 'a,
+        T: Clone,
     {
         unsafe fn write_sample_unchecked(
             &mut self,
@@ -87,9 +87,9 @@ pub mod tests {
     /// It takes a mutable reference to an adapter and runs a series of tests.
     /// The adapter is expected to have at least 2 channels and 4 frames.
     /// The sample type `T` must support `Default`, `Clone`, `PartialEq`, `Debug`, and be convertible to and from `usize`.
-    pub fn test_adapter_mut_methods<'a, T>(buffer: &mut dyn AdapterMut<'a, T>)
+    pub fn test_adapter_mut_methods<T>(buffer: &mut dyn AdapterMut<T>)
     where
-        T: Default + Clone + PartialEq + core::fmt::Debug + From<usize> + Into<usize> + 'a,
+        T: Default + Clone + PartialEq + core::fmt::Debug + From<usize> + Into<usize>,
     {
         // Ensure buffer is large enough for tests
         assert!(
@@ -200,9 +200,9 @@ pub mod tests {
     /// It takes a mutable reference to an adapter and runs a series of tests.
     /// The adapter is expected to have at least 2 channels and 4 frames.
     /// The sample type `T` must be a floating-point type implementing `FloatCore`, `NumCast`, `Default`, `Clone`, `PartialEq`, and `Debug`.
-    pub fn test_float_adapter_mut_methods<'a, T>(buffer: &mut dyn AdapterMut<'a, T>)
+    pub fn test_float_adapter_mut_methods<T>(buffer: &mut dyn AdapterMut<T>)
     where
-        T: FloatCore + NumCast + Default + Clone + PartialEq + core::fmt::Debug + 'a,
+        T: FloatCore + NumCast + Default + Clone + PartialEq + core::fmt::Debug,
     {
         // Helper for approximate float comparison
         let assert_approx_eq = |a: T, b: T, message: &str| {
