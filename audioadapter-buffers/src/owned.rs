@@ -68,7 +68,7 @@ impl<T> InterleavedOwned<T>
 where
     T: Clone,
 {
-    /// Create a new `InterleavedOwned` by allocaing a new vector filled with `value`.
+    /// Create a new `InterleavedOwned` by allocating a new vector filled with `value`.
     ///
     /// Panics if `channels * frames` overflows `usize`.
     pub fn new(value: T, channels: usize, frames: usize) -> Self {
@@ -243,7 +243,7 @@ impl<T> SequentialOwned<T>
 where
     T: Clone,
 {
-    /// Create a new `SequentialOwned` by allocaing a new vector filled with `value`.
+    /// Create a new `SequentialOwned` by allocating a new vector filled with `value`.
     ///
     /// Panics if `channels * frames` overflows `usize`.
     pub fn new(value: T, channels: usize, frames: usize) -> Self {

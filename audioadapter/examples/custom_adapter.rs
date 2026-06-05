@@ -11,7 +11,9 @@ use num_traits::Zero;
 use std::str::FromStr;
 
 struct MyStruct<T> {
-    _phantom: core::marker::PhantomData<T>,
+    // `MyStruct` produces `T` from strings on read but never stores one, so use
+    // a `fn() -> T` marker rather than `PhantomData<T>` to avoid implying ownership.
+    _phantom: core::marker::PhantomData<fn() -> T>,
     data: Vec<String>,
     channels: usize,
 }
