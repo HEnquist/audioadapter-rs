@@ -218,6 +218,13 @@ pub trait BytesSample {
     /// The number of bytes making up each sample value.
     const BYTES_PER_SAMPLE: usize;
 
+    /// Create a sample with all bytes set to zero.
+    ///
+    /// This gives a correctly sized, valid value whose bytes can then be
+    /// overwritten, for example via [`as_mut_slice`](Self::as_mut_slice) when
+    /// reading from a stream.
+    fn zero() -> Self;
+
     /// Create a new ByteSample from a slice of raw bytes.
     /// The slice length must be at least the number of bytes
     /// for a sample value.
@@ -310,6 +317,10 @@ impl BytesSample for I24_4RJ_LE {
     type NumericType = i32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
+    fn zero() -> Self {
+        Self(Default::default())
+    }
+
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
     }
@@ -339,6 +350,10 @@ impl BytesSample for I24_4LJ_LE {
     type NumericType = i32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
+    fn zero() -> Self {
+        Self(Default::default())
+    }
+
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
     }
@@ -366,6 +381,10 @@ impl BytesSample for I24_4LJ_LE {
 impl BytesSample for I24_LE {
     type NumericType = i32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
+
+    fn zero() -> Self {
+        Self(Default::default())
+    }
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -396,6 +415,10 @@ impl BytesSample for I24_4RJ_BE {
     type NumericType = i32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
+    fn zero() -> Self {
+        Self(Default::default())
+    }
+
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
     }
@@ -425,6 +448,10 @@ impl BytesSample for I24_4LJ_BE {
     type NumericType = i32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
+    fn zero() -> Self {
+        Self(Default::default())
+    }
+
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
     }
@@ -452,6 +479,10 @@ impl BytesSample for I24_4LJ_BE {
 impl BytesSample for I24_BE {
     type NumericType = i32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
+
+    fn zero() -> Self {
+        Self(Default::default())
+    }
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -482,6 +513,10 @@ impl BytesSample for U24_4RJ_LE {
     type NumericType = u32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
+    fn zero() -> Self {
+        Self(Default::default())
+    }
+
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
     }
@@ -511,6 +546,10 @@ impl BytesSample for U24_4LJ_LE {
     type NumericType = u32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
+    fn zero() -> Self {
+        Self(Default::default())
+    }
+
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
     }
@@ -538,6 +577,10 @@ impl BytesSample for U24_4LJ_LE {
 impl BytesSample for U24_LE {
     type NumericType = u32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
+
+    fn zero() -> Self {
+        Self(Default::default())
+    }
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -568,6 +611,10 @@ impl BytesSample for U24_4RJ_BE {
     type NumericType = u32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
+    fn zero() -> Self {
+        Self(Default::default())
+    }
+
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
     }
@@ -597,6 +644,10 @@ impl BytesSample for U24_4LJ_BE {
     type NumericType = u32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
 
+    fn zero() -> Self {
+        Self(Default::default())
+    }
+
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..4].try_into().unwrap())
     }
@@ -624,6 +675,10 @@ impl BytesSample for U24_4LJ_BE {
 impl BytesSample for U24_BE {
     type NumericType = u32;
     const BYTES_PER_SAMPLE: usize = core::mem::size_of::<Self>();
+
+    fn zero() -> Self {
+        Self(Default::default())
+    }
 
     fn from_slice(bytes: &[u8]) -> Self {
         Self(bytes[0..3].try_into().unwrap())
@@ -653,6 +708,10 @@ macro_rules! bytessample_for_newtype {
         impl BytesSample for $newtype {
             type NumericType = $type;
             const BYTES_PER_SAMPLE: usize = core::mem::size_of::<$type>();
+
+            fn zero() -> Self {
+                Self(Default::default())
+            }
 
             fn from_slice(bytes: &[u8]) -> Self {
                 Self(bytes.try_into().unwrap())

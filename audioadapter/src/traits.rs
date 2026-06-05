@@ -243,10 +243,13 @@ where
         self_skip: usize,
         take: usize,
     ) -> Option<usize> {
+        // Overflow-safe form of `take + self_skip > self.frames()` etc.
         if self_channel >= self.channels()
-            || take + self_skip > self.frames()
+            || take > self.frames()
+            || self_skip > self.frames() - take
             || other_channel >= other.channels()
-            || take + other_skip > other.frames()
+            || take > other.frames()
+            || other_skip > other.frames() - take
         {
             return None;
         }
@@ -294,7 +297,9 @@ where
     /// or to initialize each sample to a certain value.
     /// Returns `None` if called with a too large range.
     fn fill_frames_with(&mut self, start: usize, count: usize, value: &T) -> Option<usize> {
-        if start + count >= self.frames() {
+        // Overflow-safe form of `start + count > frames`. Previously used `>=`,
+        // which wrongly rejected a fill whose range ends exactly at `frames`.
+        if count > self.frames() || start > self.frames() - count {
             return None;
         }
         for channel in 0..self.channels() {
@@ -322,7 +327,8 @@ where
     /// The default implementation copies by calling the read and write methods,
     /// while type specific implementations can use more efficient methods.
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames() || dest + count > self.frames() {
+        // Overflow-safe form of `src + count > frames || dest + count > frames`.
+        if count > self.frames() || src > self.frames() - count || dest > self.frames() - count {
             return None;
         }
         if count == 0 || src == dest {
@@ -638,5 +644,44 @@ mod tests {
 
         // OOB
         assert!(!buffer.swap_samples(0, 0, 2, 0));
+    }
+
+    #[test]
+    fn copy_frames_within_rejects_overflowing_range() {
+        let mut buffer = dummy_adapter(); // 2 channels, 4 frames
+        // src + count and dest + count would wrap; must return None, not UB.
+        assert_eq!(buffer.copy_frames_within(usize::MAX, 0, 2), None);
+        assert_eq!(buffer.copy_frames_within(0, usize::MAX, 2), None);
+        assert_eq!(buffer.copy_frames_within(0, 0, usize::MAX), None);
+    }
+
+    #[test]
+    fn copy_from_other_rejects_overflowing_range() {
+        let mut buffer = dummy_adapter();
+        let other = dummy_adapter();
+        // take + skip would wrap; must return None, not index out of bounds.
+        assert_eq!(
+            buffer.copy_from_other_to_channel(&other, 0, 0, usize::MAX, 0, 2),
+            None
+        );
+        assert_eq!(
+            buffer.copy_from_other_to_channel(&other, 0, 0, 0, usize::MAX, 2),
+            None
+        );
+    }
+
+    #[test]
+    fn fill_frames_with_allows_full_range() {
+        // Filling the whole frame range (start + count == frames) is valid and
+        // must succeed. The old `>=` guard wrongly rejected this.
+        let mut buffer = dummy_adapter(); // 4 frames
+        assert_eq!(buffer.fill_frames_with(0, 4, &9), Some(4));
+        for f in 0..4 {
+            assert_eq!(buffer.read_sample(0, f), Some(9));
+            assert_eq!(buffer.read_sample(1, f), Some(9));
+        }
+        // Past the end is still rejected, including the overflowing case.
+        assert_eq!(buffer.fill_frames_with(0, 5, &9), None);
+        assert_eq!(buffer.fill_frames_with(usize::MAX, 2, &9), None);
     }
 }
