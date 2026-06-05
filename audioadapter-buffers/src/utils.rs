@@ -50,7 +50,8 @@ use crate::direct::{InterleavedSlice, SequentialSlice};
 /// Number of whole frames a flat slice of `len` samples holds for `channels`
 /// channels. Zero channels yields zero frames rather than dividing by zero.
 fn slice_frames(len: usize, channels: usize) -> usize {
-    if channels == 0 { 0 } else { len / channels }
+    // `checked_div` yields `None` for zero channels, which we treat as zero frames.
+    len.checked_div(channels).unwrap_or(0)
 }
 
 /// Copy `take` frames from `src` into `out`, laid out interleaved.
