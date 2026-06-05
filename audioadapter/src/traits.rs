@@ -22,7 +22,7 @@
 /// use these bounds before calling `read_sample_unchecked` internally.
 /// If the reported bounds are wrong, those internal unchecked accesses can become
 /// out of bounds and cause undefined behavior.
-pub unsafe trait Adapter<'a, T: 'a> {
+pub unsafe trait Adapter<T> {
     /// Read the sample at
     /// a given combination of frame and channel.
     ///
@@ -118,9 +118,9 @@ pub unsafe trait Adapter<'a, T: 'a> {
 /// use these bounds before calling `write_sample_unchecked` internally.
 /// If the reported bounds are wrong, those internal unchecked accesses can become
 /// out of bounds and cause undefined behavior.
-pub unsafe trait AdapterMut<'a, T>: Adapter<'a, T>
+pub unsafe trait AdapterMut<T>: Adapter<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     /// Write a sample to the
     /// given combination of frame and channel.
@@ -236,7 +236,7 @@ where
     /// no values will be copied and `None` is returned.
     fn copy_from_other_to_channel(
         &mut self,
-        other: &dyn Adapter<'a, T>,
+        other: &dyn Adapter<T>,
         other_channel: usize,
         self_channel: usize,
         other_skip: usize,

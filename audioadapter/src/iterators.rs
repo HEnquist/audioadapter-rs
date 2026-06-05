@@ -4,64 +4,61 @@ use crate::Adapter;
 
 /// A trait providing convenient iteration through frames and/or channels
 /// of an [Adapter].
-pub trait AdapterIterators<'a, T: 'a> {
+pub trait AdapterIterators<T> {
     /// Get an iterator that yields the sample value of the specified channel.
-    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>>;
+    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'_, T>>;
 
     /// Get an iterator that yields iterators for the channels.
-    fn iter_channels(&self) -> Channels<'a, '_, T>;
+    fn iter_channels(&self) -> Channels<'_, T>;
 
     /// Get an iterator that yields the sample values of the specified frame.
-    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T>>;
+    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'_, T>>;
 
     /// Get an iterator that yields iterators for the frames.
-    fn iter_frames(&self) -> Frames<'a, '_, T>;
+    fn iter_frames(&self) -> Frames<'_, T>;
 }
 
-impl<'a, T, U> AdapterIterators<'a, T> for U
+impl<T, U> AdapterIterators<T> for U
 where
-    T: Clone + 'a,
-    U: Adapter<'a, T>,
+    T: Clone,
+    U: Adapter<T>,
 {
-    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'a, '_, T>> {
+    fn iter_channel(&self, channel: usize) -> Option<ChannelSamples<'_, T>> {
         ChannelSamples::new(self, channel)
     }
 
-    fn iter_channels(&self) -> Channels<'a, '_, T> {
+    fn iter_channels(&self) -> Channels<'_, T> {
         Channels::new(self)
     }
 
-    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'a, '_, T>> {
+    fn iter_frame(&self, frame: usize) -> Option<FrameSamples<'_, T>> {
         FrameSamples::new(self, frame)
     }
 
-    fn iter_frames(&self) -> Frames<'a, '_, T> {
+    fn iter_frames(&self) -> Frames<'_, T> {
         Frames::new(self)
     }
 }
 
 /// An iterator that yields the sample values of a channel.
-pub struct ChannelSamples<'a, 'b, T> {
-    buf: &'b dyn Adapter<'a, T>,
+pub struct ChannelSamples<'b, T> {
+    buf: &'b dyn Adapter<T>,
     frame: usize,
     nbr_frames: usize,
     channel: usize,
 }
 
-impl<'a, 'b, T> ChannelSamples<'a, 'b, T>
+impl<'b, T> ChannelSamples<'b, T>
 where
     T: Clone,
 {
-    pub fn new(
-        buffer: &'b dyn Adapter<'a, T>,
-        channel: usize,
-    ) -> Option<ChannelSamples<'a, 'b, T>> {
+    pub fn new(buffer: &'b dyn Adapter<T>, channel: usize) -> Option<ChannelSamples<'b, T>> {
         if channel >= buffer.channels() {
             return None;
         }
         let nbr_frames = buffer.frames();
         Some(ChannelSamples {
-            buf: buffer as &'b dyn Adapter<'a, T>,
+            buf: buffer as &'b dyn Adapter<T>,
             frame: 0,
             nbr_frames,
             channel,
@@ -69,7 +66,7 @@ where
     }
 }
 
-impl<T> Iterator for ChannelSamples<'_, '_, T>
+impl<T> Iterator for ChannelSamples<'_, T>
 where
     T: Clone,
 {
@@ -86,24 +83,24 @@ where
 }
 
 /// An iterator that yields the samples values of a frame.
-pub struct FrameSamples<'a, 'b, T> {
-    buf: &'b dyn Adapter<'a, T>,
+pub struct FrameSamples<'b, T> {
+    buf: &'b dyn Adapter<T>,
     frame: usize,
     nbr_channels: usize,
     channel: usize,
 }
 
-impl<'a, 'b, T> FrameSamples<'a, 'b, T>
+impl<'b, T> FrameSamples<'b, T>
 where
     T: Clone,
 {
-    pub fn new(buffer: &'b dyn Adapter<'a, T>, frame: usize) -> Option<FrameSamples<'a, 'b, T>> {
+    pub fn new(buffer: &'b dyn Adapter<T>, frame: usize) -> Option<FrameSamples<'b, T>> {
         if frame >= buffer.frames() {
             return None;
         }
         let nbr_channels = buffer.channels();
         Some(FrameSamples {
-            buf: buffer as &'b dyn Adapter<'a, T>,
+            buf: buffer as &'b dyn Adapter<T>,
             channel: 0,
             nbr_channels,
             frame,
@@ -111,7 +108,7 @@ where
     }
 }
 
-impl<T> Iterator for FrameSamples<'_, '_, T>
+impl<T> Iterator for FrameSamples<'_, T>
 where
     T: Clone,
 {
@@ -130,31 +127,31 @@ where
 // -------------------- Iterators returning immutable iterators --------------------
 
 /// An iterator that yields a [ChannelSamples] iterator for each channel of an [Adapter].
-pub struct Channels<'a, 'b, T> {
-    buf: &'b dyn Adapter<'a, T>,
+pub struct Channels<'b, T> {
+    buf: &'b dyn Adapter<T>,
     nbr_channels: usize,
     channel: usize,
 }
 
-impl<'a, 'b, T> Channels<'a, 'b, T>
+impl<'b, T> Channels<'b, T>
 where
     T: Clone,
 {
-    pub fn new(buffer: &'b dyn Adapter<'a, T>) -> Channels<'a, 'b, T> {
+    pub fn new(buffer: &'b dyn Adapter<T>) -> Channels<'b, T> {
         let nbr_channels = buffer.channels();
         Channels {
-            buf: buffer as &'b dyn Adapter<'a, T>,
+            buf: buffer as &'b dyn Adapter<T>,
             channel: 0,
             nbr_channels,
         }
     }
 }
 
-impl<'a, 'b, T> Iterator for Channels<'a, 'b, T>
+impl<'b, T> Iterator for Channels<'b, T>
 where
     T: Clone,
 {
-    type Item = ChannelSamples<'a, 'b, T>;
+    type Item = ChannelSamples<'b, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.channel >= self.nbr_channels {
@@ -167,31 +164,31 @@ where
 }
 
 /// An iterator that yields a [FrameSamples] iterator for each frame of an [Adapter].
-pub struct Frames<'a, 'b, T> {
-    buf: &'b dyn Adapter<'a, T>,
+pub struct Frames<'b, T> {
+    buf: &'b dyn Adapter<T>,
     nbr_frames: usize,
     frame: usize,
 }
 
-impl<'a, 'b, T> Frames<'a, 'b, T>
+impl<'b, T> Frames<'b, T>
 where
     T: Clone,
 {
-    pub fn new(buffer: &'b dyn Adapter<'a, T>) -> Frames<'a, 'b, T> {
+    pub fn new(buffer: &'b dyn Adapter<T>) -> Frames<'b, T> {
         let nbr_frames = buffer.frames();
         Frames {
-            buf: buffer as &'b dyn Adapter<'a, T>,
+            buf: buffer as &'b dyn Adapter<T>,
             frame: 0,
             nbr_frames,
         }
     }
 }
 
-impl<'a, 'b, T> Iterator for Frames<'a, 'b, T>
+impl<'b, T> Iterator for Frames<'b, T>
 where
     T: Clone,
 {
-    type Item = FrameSamples<'a, 'b, T>;
+    type Item = FrameSamples<'b, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.frame >= self.nbr_frames {

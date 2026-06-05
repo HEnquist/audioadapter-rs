@@ -76,7 +76,7 @@ where
 
 macro_rules! byte_convert_traits_newtype {
     ($typename:ident) => {
-        impl<'a, T> ConvertBytes<T, $typename, &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+        impl<'a, T> ConvertBytes<T, $typename, &'a dyn Adapter<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
                 T: FloatCore + ToPrimitive + 'a,
             {
@@ -86,7 +86,7 @@ macro_rules! byte_convert_traits_newtype {
                     stringify!($typename), "`]."
                 )]
                 pub fn new(
-                    buf: &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>,
+                    buf: &'a dyn Adapter<[u8; $typename::BYTES_PER_SAMPLE]>,
                 ) -> Self {
                     Self {
                         _phantom: core::marker::PhantomData,
@@ -96,7 +96,7 @@ macro_rules! byte_convert_traits_newtype {
                 }
             }
 
-            impl<'a, T> ConvertBytes<T, $typename, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+            impl<'a, T> ConvertBytes<T, $typename, &'a mut dyn AdapterMut<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
                 T: FloatCore + ToPrimitive + 'a,
             {
@@ -106,7 +106,7 @@ macro_rules! byte_convert_traits_newtype {
                     stringify!($typename), "`]."
                 )]
                 pub fn new_mut(
-                    buf: &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>,
+                    buf: &'a mut dyn AdapterMut<[u8; $typename::BYTES_PER_SAMPLE]>,
                 ) -> Self {
                     Self {
                         _phantom: core::marker::PhantomData,
@@ -116,7 +116,7 @@ macro_rules! byte_convert_traits_newtype {
                 }
             }
 
-            unsafe impl<'a, T> Adapter<'a, T> for ConvertBytes<T, $typename, &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+            unsafe impl<'a, T> Adapter<T> for ConvertBytes<T, $typename, &'a dyn Adapter<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
             T: FloatCore + ToPrimitive + 'a,
             {
@@ -129,7 +129,7 @@ macro_rules! byte_convert_traits_newtype {
                 implement_wrapped_size_getters!();
             }
 
-            unsafe impl<'a, T> Adapter<'a, T> for ConvertBytes<T, $typename, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+            unsafe impl<'a, T> Adapter<T> for ConvertBytes<T, $typename, &'a mut dyn AdapterMut<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
             T: FloatCore + ToPrimitive + 'a,
             {
@@ -142,7 +142,7 @@ macro_rules! byte_convert_traits_newtype {
                 implement_wrapped_size_getters!();
             }
 
-            unsafe impl<'a, T> AdapterMut<'a, T> for ConvertBytes<T, $typename, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+            unsafe impl<'a, T> AdapterMut<T> for ConvertBytes<T, $typename, &'a mut dyn AdapterMut<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
             T: FloatCore + ToPrimitive + 'a,
             {
@@ -222,14 +222,14 @@ pub struct ConvertNumbers<U, V> {
     buf: U,
 }
 
-impl<'a, T, U> ConvertNumbers<&'a dyn Adapter<'a, U>, T>
+impl<'a, T, U> ConvertNumbers<&'a dyn Adapter<U>, T>
 where
     T: FloatCore + ToPrimitive + 'a,
     U: RawSample + 'a,
 {
     /// Create a new wrapper for a buffer implementing the [Adapter] trait,
     /// containing numerical samples.
-    pub fn new(buf: &'a dyn Adapter<'a, U>) -> Self {
+    pub fn new(buf: &'a dyn Adapter<U>) -> Self {
         Self {
             _phantom: core::marker::PhantomData,
             buf,
@@ -237,14 +237,14 @@ where
     }
 }
 
-impl<'a, T, U> ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
+impl<'a, T, U> ConvertNumbers<&'a mut dyn AdapterMut<U>, T>
 where
     T: FloatCore + ToPrimitive + 'a,
     U: RawSample + 'a,
 {
     /// Create a new wrapper for a mutable buffer implementing the [AdapterMut] trait,
     /// containing numerical samples.
-    pub fn new_mut(buf: &'a mut dyn AdapterMut<'a, U>) -> Self {
+    pub fn new_mut(buf: &'a mut dyn AdapterMut<U>) -> Self {
         Self {
             _phantom: core::marker::PhantomData,
             buf,
@@ -252,7 +252,7 @@ where
     }
 }
 
-unsafe impl<'a, T, U> Adapter<'a, T> for ConvertNumbers<&'a dyn Adapter<'a, U>, T>
+unsafe impl<'a, T, U> Adapter<T> for ConvertNumbers<&'a dyn Adapter<U>, T>
 where
     T: FloatCore + ToPrimitive + 'a,
     U: RawSample + 'a,
@@ -268,7 +268,7 @@ where
     implement_wrapped_size_getters!();
 }
 
-unsafe impl<'a, T, U> Adapter<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
+unsafe impl<'a, T, U> Adapter<T> for ConvertNumbers<&'a mut dyn AdapterMut<U>, T>
 where
     T: FloatCore + ToPrimitive + 'a,
     U: RawSample + 'a,
@@ -284,7 +284,7 @@ where
     implement_wrapped_size_getters!();
 }
 
-unsafe impl<'a, T, U> AdapterMut<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
+unsafe impl<'a, T, U> AdapterMut<T> for ConvertNumbers<&'a mut dyn AdapterMut<U>, T>
 where
     T: FloatCore + ToPrimitive + 'a,
     U: RawSample + Clone + 'a,

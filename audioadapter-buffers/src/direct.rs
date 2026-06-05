@@ -160,7 +160,7 @@ impl<'a, T> SequentialSliceOfVecs<&'a mut [Vec<T>]> {
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> Adapter<'a, T> for SequentialSliceOfVecs<&'a [Vec<T>]>
+unsafe impl<T> Adapter<T> for SequentialSliceOfVecs<&[Vec<T>]>
 where
     T: Clone,
 {
@@ -185,7 +185,7 @@ where
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> Adapter<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
+unsafe impl<T> Adapter<T> for SequentialSliceOfVecs<&mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -210,7 +210,7 @@ where
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> AdapterMut<'a, T> for SequentialSliceOfVecs<&'a mut [Vec<T>]>
+unsafe impl<T> AdapterMut<T> for SequentialSliceOfVecs<&mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -361,7 +361,7 @@ impl<'a, T> SparseSequentialSliceOfVecs<'a, &'a mut [Vec<T>]> {
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<'a, &'a [Vec<T>]>
+unsafe impl<'a, T> Adapter<T> for SparseSequentialSliceOfVecs<'a, &'a [Vec<T>]>
 where
     T: Clone + Default,
 {
@@ -389,7 +389,7 @@ where
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfVecs<'a, &'a mut [Vec<T>]>
+unsafe impl<'a, T> Adapter<T> for SparseSequentialSliceOfVecs<'a, &'a mut [Vec<T>]>
 where
     T: Clone + Default,
 {
@@ -417,7 +417,7 @@ where
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> AdapterMut<'a, T> for SparseSequentialSliceOfVecs<'a, &'a mut [Vec<T>]>
+unsafe impl<'a, T> AdapterMut<T> for SparseSequentialSliceOfVecs<'a, &'a mut [Vec<T>]>
 where
     T: Clone + Default,
 {
@@ -555,7 +555,7 @@ impl<'a, T> SequentialSliceOfSlices<&'a mut [&'a mut [T]]> {
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for SequentialSliceOfSlices<&'a [&'a [T]]>
+unsafe impl<'a, T> Adapter<T> for SequentialSliceOfSlices<&'a [&'a [T]]>
 where
     T: Clone,
 {
@@ -579,7 +579,7 @@ where
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for SequentialSliceOfSlices<&'a mut [&'a mut [T]]>
+unsafe impl<'a, T> Adapter<T> for SequentialSliceOfSlices<&'a mut [&'a mut [T]]>
 where
     T: Clone,
 {
@@ -603,7 +603,7 @@ where
     }
 }
 
-unsafe impl<'a, T> AdapterMut<'a, T> for SequentialSliceOfSlices<&'a mut [&'a mut [T]]>
+unsafe impl<'a, T> AdapterMut<T> for SequentialSliceOfSlices<&'a mut [&'a mut [T]]>
 where
     T: Clone,
 {
@@ -750,7 +750,7 @@ impl<'a, T> SparseSequentialSliceOfSlices<'a, &'a mut [&'a mut [T]]> {
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfSlices<'a, &'a [&'a [T]]>
+unsafe impl<'a, T> Adapter<T> for SparseSequentialSliceOfSlices<'a, &'a [&'a [T]]>
 where
     T: Clone + Default,
 {
@@ -777,7 +777,7 @@ where
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for SparseSequentialSliceOfSlices<'a, &'a mut [&'a mut [T]]>
+unsafe impl<'a, T> Adapter<T> for SparseSequentialSliceOfSlices<'a, &'a mut [&'a mut [T]]>
 where
     T: Clone + Default,
 {
@@ -804,7 +804,7 @@ where
     }
 }
 
-unsafe impl<'a, T> AdapterMut<'a, T> for SparseSequentialSliceOfSlices<'a, &'a mut [&'a mut [T]]>
+unsafe impl<'a, T> AdapterMut<T> for SparseSequentialSliceOfSlices<'a, &'a mut [&'a mut [T]]>
 where
     T: Clone + Default,
 {
@@ -946,7 +946,7 @@ impl<'a, T> InterleavedSliceOfVecs<&'a mut [Vec<T>]> {
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> Adapter<'a, T> for InterleavedSliceOfVecs<&'a [Vec<T>]>
+unsafe impl<T> Adapter<T> for InterleavedSliceOfVecs<&[Vec<T>]>
 where
     T: Clone,
 {
@@ -972,7 +972,7 @@ where
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> Adapter<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
+unsafe impl<T> Adapter<T> for InterleavedSliceOfVecs<&mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -998,7 +998,7 @@ where
 }
 
 #[cfg(feature = "alloc")]
-unsafe impl<'a, T> AdapterMut<'a, T> for InterleavedSliceOfVecs<&'a mut [Vec<T>]>
+unsafe impl<T> AdapterMut<T> for InterleavedSliceOfVecs<&mut [Vec<T>]>
 where
     T: Clone,
 {
@@ -1120,7 +1120,7 @@ impl<'a, T> InterleavedSlice<&'a mut [T]> {
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for InterleavedSlice<&'a [T]>
+unsafe impl<T> Adapter<T> for InterleavedSlice<&[T]>
 where
     T: Clone,
 {
@@ -1147,7 +1147,7 @@ where
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for InterleavedSlice<&'a mut [T]>
+unsafe impl<T> Adapter<T> for InterleavedSlice<&mut [T]>
 where
     T: Clone,
 {
@@ -1174,7 +1174,7 @@ where
     }
 }
 
-unsafe impl<'a, T> AdapterMut<'a, T> for InterleavedSlice<&'a mut [T]>
+unsafe impl<T> AdapterMut<T> for InterleavedSlice<&mut [T]>
 where
     T: Clone,
 {
@@ -1316,7 +1316,7 @@ impl<'a, T> SequentialSlice<&'a mut [T]> {
     }
 }
 
-unsafe impl<'a, T> Adapter<'a, T> for SequentialSlice<&'a [T]>
+unsafe impl<T> Adapter<T> for SequentialSlice<&[T]>
 where
     T: Clone,
 {
@@ -1344,7 +1344,7 @@ where
 }
 
 // Implement also for mutable version, identical to the immutable impl.
-unsafe impl<'a, T> Adapter<'a, T> for SequentialSlice<&'a mut [T]>
+unsafe impl<T> Adapter<T> for SequentialSlice<&mut [T]>
 where
     T: Clone,
 {
@@ -1371,7 +1371,7 @@ where
     }
 }
 
-unsafe impl<'a, T> AdapterMut<'a, T> for SequentialSlice<&'a mut [T]>
+unsafe impl<T> AdapterMut<T> for SequentialSlice<&mut [T]>
 where
     T: Clone,
 {
