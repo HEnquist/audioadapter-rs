@@ -24,7 +24,10 @@ pub trait ReadSamples: io::Read {
     /// * The underlying reader returns an error.
     /// * The number of bytes read is not sufficient to represent a complete sample.
     fn read_sample<T: BytesSample>(&mut self) -> io::Result<T> {
-        let mut sample: T = unsafe { std::mem::zeroed() };
+        // Start from a valid, correctly sized sample and read straight into its
+        // bytes. Using `T::zero()` rather than `mem::zeroed` keeps this sound
+        // for any `T`, since `zero` is a safe, implementor-provided constructor.
+        let mut sample = T::zero();
         self.read_exact(sample.as_mut_slice())?;
         Ok(sample)
     }

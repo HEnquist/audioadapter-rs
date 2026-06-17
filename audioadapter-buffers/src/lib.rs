@@ -16,6 +16,18 @@ pub mod owned;
 /// Dummy Adapter
 pub mod dummy;
 
+/// Utility helpers for working with adapters, currently for copying samples
+/// between an adapter and a plain interleaved or sequential slice.
+pub mod utils;
+
+/// Sample format types re-exported from [`audioadapter_sample`].
+///
+/// These are the byte-wrapper types (`I16_LE`, `I24_LE`, `F32_LE`, …) used with
+/// the byte-based constructors and converters in [`number_to_float`] and
+/// [`adapter_to_float`]. They are re-exported here so that you do not need to add
+/// a separate dependency on `audioadapter-sample` just to name a format.
+pub use audioadapter_sample::sample;
+
 mod slicetools;
 
 use core::error::Error;
@@ -133,18 +145,24 @@ pub(crate) use implement_size_getters;
 
 macro_rules! check_slice_length {
     ($channels:expr , $frames:expr, $length:expr ) => {
-        if $length < $frames * $channels {
+        // Saturating, so an overflowing product becomes `usize::MAX` and the
+        // check fails instead of wrapping to a small value and passing.
+        let required = $frames.saturating_mul($channels);
+        if $length < required {
             return Err(SizeError::Total {
                 actual: $length,
-                required: $frames * $channels,
+                required,
             });
         }
     };
     ($channels:expr , $frames:expr, $length:expr, $elements_per_sample:expr) => {
-        if $length < $frames * $channels * $elements_per_sample {
+        let required = $frames
+            .saturating_mul($channels)
+            .saturating_mul($elements_per_sample);
+        if $length < required {
             return Err(SizeError::Total {
                 actual: $length,
-                required: $frames * $channels * $elements_per_sample,
+                required,
             });
         }
     };

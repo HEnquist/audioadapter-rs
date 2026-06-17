@@ -22,7 +22,7 @@
 /// use these bounds before calling `read_sample_unchecked` internally.
 /// If the reported bounds are wrong, those internal unchecked accesses can become
 /// out of bounds and cause undefined behavior.
-pub unsafe trait Adapter<'a, T: 'a> {
+pub unsafe trait Adapter<T> {
     /// Read the sample at
     /// a given combination of frame and channel.
     ///
@@ -118,9 +118,9 @@ pub unsafe trait Adapter<'a, T: 'a> {
 /// use these bounds before calling `write_sample_unchecked` internally.
 /// If the reported bounds are wrong, those internal unchecked accesses can become
 /// out of bounds and cause undefined behavior.
-pub unsafe trait AdapterMut<'a, T>: Adapter<'a, T>
+pub unsafe trait AdapterMut<T>: Adapter<T>
 where
-    T: Clone + 'a,
+    T: Clone,
 {
     /// Write a sample to the
     /// given combination of frame and channel.
@@ -236,17 +236,20 @@ where
     /// no values will be copied and `None` is returned.
     fn copy_from_other_to_channel(
         &mut self,
-        other: &dyn Adapter<'a, T>,
+        other: &dyn Adapter<T>,
         other_channel: usize,
         self_channel: usize,
         other_skip: usize,
         self_skip: usize,
         take: usize,
     ) -> Option<usize> {
+        // Overflow-safe form of `take + self_skip > self.frames()` etc.
         if self_channel >= self.channels()
-            || take + self_skip > self.frames()
+            || take > self.frames()
+            || self_skip > self.frames() - take
             || other_channel >= other.channels()
-            || take + other_skip > other.frames()
+            || take > other.frames()
+            || other_skip > other.frames() - take
         {
             return None;
         }
@@ -257,6 +260,45 @@ where
                 nbr_clipped +=
                     self.write_sample_unchecked(self_channel, n + self_skip, &value) as usize
             };
+        }
+        Some(nbr_clipped)
+    }
+
+    /// Copy values from another Adapter into self.
+    /// The `self_skip` and `other_skip` arguments are the offsets
+    /// in frames for where copying starts in the two buffers.
+    /// The method copies `take` frames for all channels in `other`.
+    ///
+    /// The source buffer must have no more channels than self.
+    /// Any extra channels in self are left unchanged.
+    ///
+    /// Returns the number of values that were clipped during conversion.
+    /// Implementations that do not perform any conversion
+    /// always return zero clipped samples.
+    ///
+    /// If the source buffer has more channels than self,
+    /// or if either buffer is too short to copy `take` frames,
+    /// no values will be copied and `None` is returned.
+    fn copy_from_other(
+        &mut self,
+        other: &dyn Adapter<T>,
+        other_skip: usize,
+        self_skip: usize,
+        take: usize,
+    ) -> Option<usize> {
+        // Overflow-safe form of `take + self_skip > self.frames()` etc.
+        if other.channels() > self.channels()
+            || take > self.frames()
+            || self_skip > self.frames() - take
+            || take > other.frames()
+            || other_skip > other.frames() - take
+        {
+            return None;
+        }
+        let mut nbr_clipped = 0;
+        for channel in 0..other.channels() {
+            nbr_clipped += self
+                .copy_from_other_to_channel(other, channel, channel, other_skip, self_skip, take)?;
         }
         Some(nbr_clipped)
     }
@@ -294,7 +336,9 @@ where
     /// or to initialize each sample to a certain value.
     /// Returns `None` if called with a too large range.
     fn fill_frames_with(&mut self, start: usize, count: usize, value: &T) -> Option<usize> {
-        if start + count >= self.frames() {
+        // Overflow-safe form of `start + count > frames`. Previously used `>=`,
+        // which wrongly rejected a fill whose range ends exactly at `frames`.
+        if count > self.frames() || start > self.frames() - count {
             return None;
         }
         for channel in 0..self.channels() {
@@ -322,7 +366,8 @@ where
     /// The default implementation copies by calling the read and write methods,
     /// while type specific implementations can use more efficient methods.
     fn copy_frames_within(&mut self, src: usize, dest: usize, count: usize) -> Option<usize> {
-        if src + count > self.frames() || dest + count > self.frames() {
+        // Overflow-safe form of `src + count > frames || dest + count > frames`.
+        if count > self.frames() || src > self.frames() - count || dest > self.frames() - count {
             return None;
         }
         if count == 0 || src == dest {
@@ -534,6 +579,74 @@ mod tests {
     }
 
     #[test]
+    fn copy_from_other() {
+        let mut buffer = dummy_adapter();
+        let other = dummy_adapter();
+        // Copy 2 frames of all channels, starting at frame 1 in other.
+        // other ch0: [1, 2, 4, 6], ch1: [1, 3, 5, 7]
+        // taking frames 1..3 gives ch0: [2, 4], ch1: [3, 5]
+        let clipped = buffer.copy_from_other(&other, 1, 0, 2);
+        assert_eq!(clipped, Some(0));
+        // ch0 was [1, 2, 4, 6], now [2, 4, 4, 6]
+        assert_eq!(buffer.read_sample(0, 0), Some(2));
+        assert_eq!(buffer.read_sample(0, 1), Some(4));
+        assert_eq!(buffer.read_sample(0, 2), Some(4));
+        assert_eq!(buffer.read_sample(0, 3), Some(6));
+        // ch1 was [1, 3, 5, 7], now [3, 5, 5, 7]
+        assert_eq!(buffer.read_sample(1, 0), Some(3));
+        assert_eq!(buffer.read_sample(1, 1), Some(5));
+        assert_eq!(buffer.read_sample(1, 2), Some(5));
+        assert_eq!(buffer.read_sample(1, 3), Some(7));
+    }
+
+    #[test]
+    fn copy_from_other_fewer_channels_leaves_extra_unchanged() {
+        let mut buffer = dummy_adapter(); // 2 channels, 4 frames
+        // A single-channel source: ch0 is [10, 20, 30, 40].
+        let narrow = MinimalAdapter::new_from_vec(vec![10_i32, 20, 30, 40], 1, 4);
+        let clipped = buffer.copy_from_other(&narrow, 0, 0, 4);
+        assert_eq!(clipped, Some(0));
+        // ch0 is overwritten
+        assert_eq!(buffer.read_sample(0, 0), Some(10));
+        assert_eq!(buffer.read_sample(0, 3), Some(40));
+        // ch1 is left as it was: [1, 3, 5, 7]
+        assert_eq!(buffer.read_sample(1, 0), Some(1));
+        assert_eq!(buffer.read_sample(1, 3), Some(7));
+    }
+
+    #[test]
+    fn copy_from_other_rejects_too_many_channels() {
+        let mut buffer = dummy_adapter(); // 2 channels
+        // Source has 3 channels, more than self: must refuse.
+        let wide = MinimalAdapter::new_from_vec(vec![0_i32; 12], 3, 4);
+        assert_eq!(buffer.copy_from_other(&wide, 0, 0, 1), None);
+    }
+
+    #[test]
+    fn copy_from_other_rejects_invalid_range() {
+        let mut buffer = dummy_adapter(); // 2 channels, 4 frames
+        let other = dummy_adapter();
+        // take longer than the buffers.
+        assert_eq!(buffer.copy_from_other(&other, 0, 0, 5), None);
+        // take + skip would wrap; must return None, not index out of bounds.
+        assert_eq!(buffer.copy_from_other(&other, 0, usize::MAX, 2), None);
+        assert_eq!(buffer.copy_from_other(&other, usize::MAX, 0, 2), None);
+    }
+
+    #[test]
+    fn copy_from_other_skip_boundary() {
+        let mut buffer = dummy_adapter(); // 2 channels, 4 frames
+        let other = dummy_adapter();
+        // skip == frames - take is the largest valid offset and must be accepted.
+        assert!(buffer.copy_from_other(&other, 2, 2, 2).is_some());
+        // one past that on either side is rejected, not accepted via a `>=` slip.
+        assert_eq!(buffer.copy_from_other(&other, 0, 3, 2), None);
+        assert_eq!(buffer.copy_from_other(&other, 3, 0, 2), None);
+        // take == 0 is a valid no-op even at the very end of the buffer.
+        assert_eq!(buffer.copy_from_other(&other, 4, 4, 0), Some(0));
+    }
+
+    #[test]
     fn fill_channel_with() {
         let mut buffer = dummy_adapter();
         buffer.fill_channel_with(0, &9).unwrap();
@@ -638,5 +751,44 @@ mod tests {
 
         // OOB
         assert!(!buffer.swap_samples(0, 0, 2, 0));
+    }
+
+    #[test]
+    fn copy_frames_within_rejects_overflowing_range() {
+        let mut buffer = dummy_adapter(); // 2 channels, 4 frames
+        // src + count and dest + count would wrap; must return None, not UB.
+        assert_eq!(buffer.copy_frames_within(usize::MAX, 0, 2), None);
+        assert_eq!(buffer.copy_frames_within(0, usize::MAX, 2), None);
+        assert_eq!(buffer.copy_frames_within(0, 0, usize::MAX), None);
+    }
+
+    #[test]
+    fn copy_from_other_rejects_overflowing_range() {
+        let mut buffer = dummy_adapter();
+        let other = dummy_adapter();
+        // take + skip would wrap; must return None, not index out of bounds.
+        assert_eq!(
+            buffer.copy_from_other_to_channel(&other, 0, 0, usize::MAX, 0, 2),
+            None
+        );
+        assert_eq!(
+            buffer.copy_from_other_to_channel(&other, 0, 0, 0, usize::MAX, 2),
+            None
+        );
+    }
+
+    #[test]
+    fn fill_frames_with_allows_full_range() {
+        // Filling the whole frame range (start + count == frames) is valid and
+        // must succeed. The old `>=` guard wrongly rejected this.
+        let mut buffer = dummy_adapter(); // 4 frames
+        assert_eq!(buffer.fill_frames_with(0, 4, &9), Some(4));
+        for f in 0..4 {
+            assert_eq!(buffer.read_sample(0, f), Some(9));
+            assert_eq!(buffer.read_sample(1, f), Some(9));
+        }
+        // Past the end is still rejected, including the overflowing case.
+        assert_eq!(buffer.fill_frames_with(0, 5, &9), None);
+        assert_eq!(buffer.fill_frames_with(usize::MAX, 2, &9), None);
     }
 }

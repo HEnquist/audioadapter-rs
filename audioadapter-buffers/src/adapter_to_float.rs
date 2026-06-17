@@ -55,6 +55,15 @@ macro_rules! implement_wrapped_size_getters {
 /// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
 /// stored as byte arrays.
 /// The wrapper enables reading and writing the samples as floats.
+///
+/// # Type parameters
+/// - `T`: the floating point type that samples are converted to and from when
+///   reading and writing, for example `f32` or `f64`.
+/// - `U`: the byte-wrapper sample format type, for example [`I16_LE`] or
+///   [`F32_LE`]. It implements [BytesSample] and [RawSample], and determines the
+///   sample size as `[u8; U::BYTES_PER_SAMPLE]`.
+/// - `V`: the wrapped buffer type, an [Adapter] or [AdapterMut] over byte arrays
+///   of length `U::BYTES_PER_SAMPLE`.
 pub struct ConvertBytes<T, U, V>
 where
     T: FloatCore + ToPrimitive,
@@ -67,14 +76,17 @@ where
 
 macro_rules! byte_convert_traits_newtype {
     ($typename:ident) => {
-        impl<'a, T> ConvertBytes<T, $typename, &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+        impl<'a, T> ConvertBytes<T, $typename, &'a dyn Adapter<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
-                T: FloatCore + ToPrimitive + 'a,
+                T: FloatCore + ToPrimitive,
             {
-                #[doc = "Create a new wrapper for an [Adapter] buffer of byte arrays, `[u8;  U::BYTES_PER_SAMPLE ]`,"]
-                #[doc = "containing samples of type ` $typename `."]
+                #[doc = concat!(
+                    "Create a new wrapper for an [Adapter] buffer of byte arrays, `[u8; ",
+                    stringify!($typename), "::BYTES_PER_SAMPLE]`, containing samples of type [`",
+                    stringify!($typename), "`]."
+                )]
                 pub fn new(
-                    buf: &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>,
+                    buf: &'a dyn Adapter<[u8; $typename::BYTES_PER_SAMPLE]>,
                 ) -> Self {
                     Self {
                         _phantom: core::marker::PhantomData,
@@ -84,14 +96,17 @@ macro_rules! byte_convert_traits_newtype {
                 }
             }
 
-            impl<'a, T> ConvertBytes<T, $typename, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+            impl<'a, T> ConvertBytes<T, $typename, &'a mut dyn AdapterMut<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
-                T: FloatCore + ToPrimitive + 'a,
+                T: FloatCore + ToPrimitive,
             {
-                #[doc = "Create a new wrapper for an mutable [AdapterMut] buffer of byte arrays, `[u8;  $bytes ]`,"]
-                #[doc = "containing samples of type ` $typename `."]
+                #[doc = concat!(
+                    "Create a new wrapper for a mutable [AdapterMut] buffer of byte arrays, `[u8; ",
+                    stringify!($typename), "::BYTES_PER_SAMPLE]`, containing samples of type [`",
+                    stringify!($typename), "`]."
+                )]
                 pub fn new_mut(
-                    buf: &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>,
+                    buf: &'a mut dyn AdapterMut<[u8; $typename::BYTES_PER_SAMPLE]>,
                 ) -> Self {
                     Self {
                         _phantom: core::marker::PhantomData,
@@ -101,9 +116,9 @@ macro_rules! byte_convert_traits_newtype {
                 }
             }
 
-            unsafe impl<'a, T> Adapter<'a, T> for ConvertBytes<T, $typename, &'a dyn Adapter<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+            unsafe impl<'a, T> Adapter<T> for ConvertBytes<T, $typename, &'a dyn Adapter<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
-            T: FloatCore + ToPrimitive + 'a,
+            T: FloatCore + ToPrimitive,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let raw = unsafe { self.buf.read_sample_unchecked(channel, frame) };
@@ -114,9 +129,9 @@ macro_rules! byte_convert_traits_newtype {
                 implement_wrapped_size_getters!();
             }
 
-            unsafe impl<'a, T> Adapter<'a, T> for ConvertBytes<T, $typename, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+            unsafe impl<'a, T> Adapter<T> for ConvertBytes<T, $typename, &'a mut dyn AdapterMut<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
-            T: FloatCore + ToPrimitive + 'a,
+            T: FloatCore + ToPrimitive,
             {
                 unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
                     let raw = unsafe { self.buf.read_sample_unchecked(channel, frame) };
@@ -127,9 +142,9 @@ macro_rules! byte_convert_traits_newtype {
                 implement_wrapped_size_getters!();
             }
 
-            unsafe impl<'a, T> AdapterMut<'a, T> for ConvertBytes<T, $typename, &'a mut dyn AdapterMut<'a, [u8; $typename::BYTES_PER_SAMPLE]>>
+            unsafe impl<'a, T> AdapterMut<T> for ConvertBytes<T, $typename, &'a mut dyn AdapterMut<[u8; $typename::BYTES_PER_SAMPLE]>>
             where
-            T: FloatCore + ToPrimitive + 'a,
+            T: FloatCore + ToPrimitive,
             {
                 unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
                     let converted = $typename::from_scaled_float(*value);
@@ -195,19 +210,26 @@ byte_convert_traits_newtype!(F64_BE);
 /// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
 /// stored as numeric types.
 /// The wrapper enables reading and writing the samples as floats.
+///
+/// # Type parameters
+/// - `U`: the wrapped buffer type, an [Adapter] or [AdapterMut] over a numeric
+///   sample type, for example `&dyn Adapter<i16>`. The sample type implements
+///   [RawSample].
+/// - `V`: the floating point type that samples are converted to and from when
+///   reading and writing, for example `f32` or `f64`.
 pub struct ConvertNumbers<U, V> {
     _phantom: core::marker::PhantomData<V>,
     buf: U,
 }
 
-impl<'a, T, U> ConvertNumbers<&'a dyn Adapter<'a, U>, T>
+impl<'a, T, U> ConvertNumbers<&'a dyn Adapter<U>, T>
 where
-    T: FloatCore + ToPrimitive + 'a,
-    U: RawSample + 'a,
+    T: FloatCore + ToPrimitive,
+    U: RawSample,
 {
     /// Create a new wrapper for a buffer implementing the [Adapter] trait,
     /// containing numerical samples.
-    pub fn new(buf: &'a dyn Adapter<'a, U>) -> Self {
+    pub fn new(buf: &'a dyn Adapter<U>) -> Self {
         Self {
             _phantom: core::marker::PhantomData,
             buf,
@@ -215,14 +237,14 @@ where
     }
 }
 
-impl<'a, T, U> ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
+impl<'a, T, U> ConvertNumbers<&'a mut dyn AdapterMut<U>, T>
 where
-    T: FloatCore + ToPrimitive + 'a,
-    U: RawSample + 'a,
+    T: FloatCore + ToPrimitive,
+    U: RawSample,
 {
     /// Create a new wrapper for a mutable buffer implementing the [AdapterMut] trait,
     /// containing numerical samples.
-    pub fn new_mut(buf: &'a mut dyn AdapterMut<'a, U>) -> Self {
+    pub fn new_mut(buf: &'a mut dyn AdapterMut<U>) -> Self {
         Self {
             _phantom: core::marker::PhantomData,
             buf,
@@ -230,10 +252,10 @@ where
     }
 }
 
-unsafe impl<'a, T, U> Adapter<'a, T> for ConvertNumbers<&'a dyn Adapter<'a, U>, T>
+unsafe impl<T, U> Adapter<T> for ConvertNumbers<&dyn Adapter<U>, T>
 where
-    T: FloatCore + ToPrimitive + 'a,
-    U: RawSample + 'a,
+    T: FloatCore + ToPrimitive,
+    U: RawSample,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         unsafe {
@@ -246,10 +268,10 @@ where
     implement_wrapped_size_getters!();
 }
 
-unsafe impl<'a, T, U> Adapter<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
+unsafe impl<T, U> Adapter<T> for ConvertNumbers<&mut dyn AdapterMut<U>, T>
 where
-    T: FloatCore + ToPrimitive + 'a,
-    U: RawSample + 'a,
+    T: FloatCore + ToPrimitive,
+    U: RawSample,
 {
     unsafe fn read_sample_unchecked(&self, channel: usize, frame: usize) -> T {
         unsafe {
@@ -262,10 +284,10 @@ where
     implement_wrapped_size_getters!();
 }
 
-unsafe impl<'a, T, U> AdapterMut<'a, T> for ConvertNumbers<&'a mut dyn AdapterMut<'a, U>, T>
+unsafe impl<T, U> AdapterMut<T> for ConvertNumbers<&mut dyn AdapterMut<U>, T>
 where
-    T: FloatCore + ToPrimitive + 'a,
-    U: RawSample + Clone + 'a,
+    T: FloatCore + ToPrimitive,
+    U: RawSample + Clone,
 {
     unsafe fn write_sample_unchecked(&mut self, channel: usize, frame: usize, value: &T) -> bool {
         let converted = U::from_scaled_float(*value);
