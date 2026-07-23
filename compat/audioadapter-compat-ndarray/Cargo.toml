@@ -1,0 +1,16 @@
+[package]
+name = "audioadapter-compat-ndarray"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["HEnquist <henrik.enquist@gmail.com>"]
+description = "audioadapter trait implementations for 2D ndarray arrays"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/HEnquist/audioadapter-rs"
+keywords = ["audio", "buffer", "dsp", "ndarray", "pcm"]
+categories = ["multimedia::audio"]
+readme = "README.md"
+
+[dependencies]
+audioadapter.workspace = true
+ndarray.workspace = true

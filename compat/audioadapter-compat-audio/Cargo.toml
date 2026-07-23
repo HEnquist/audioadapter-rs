@@ -1,28 +1,19 @@
 [package]
-name = "audioadapter"
-version = "5.0.0"
+name = "audioadapter-compat-audio"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.85"
 authors = ["HEnquist <henrik.enquist@gmail.com>"]
-description = "A library for making it easier to work with buffers of audio data"
+description = "audioadapter trait implementations for buffers from the `audio` crate"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/HEnquist/audioadapter-rs"
 keywords = ["audio", "buffer", "dsp", "sample", "pcm"]
 categories = ["multimedia::audio"]
 readme = "README.md"
 
-[features]
-default = []
-
-test-utils = []
-
 [dependencies]
-num-traits.workspace = true
+audioadapter.workspace = true
+audio-core.workspace = true
 
 [dev-dependencies]
-criterion = "0.6"
-num-traits = { workspace = true, features = ["std"] }
-
-[[bench]]
-name = "sqrt"
-harness = false
+audio = "0.2.0"

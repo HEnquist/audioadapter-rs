@@ -164,14 +164,9 @@ let float_value = slice.read_converted::<I16_LE, f32>();
 # }
 ```
 
-## Compatibility with the [audio](https://crates.io/crates/audio) crate
-The wrappers for bytes implement the [audio_core::Sample] trait from the [audio](https://crates.io/crates/audio) crate.
-This is controlled by the `audio` feature which is enabled by default.
-
 ## Cargo features
 This crate has the following features:
  - `std` - enables the standard library (Enabled by default)
- - `audio` - enables `audio` crate compatibility (Enabled by default)
 
 ## Use without the standard library
 This crate can be used in `no_std` environments if the `std` Cargo feature is disabled.

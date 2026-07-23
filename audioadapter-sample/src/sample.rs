@@ -2,9 +2,6 @@
 
 use num_traits::{PrimInt, ToPrimitive, float::FloatCore};
 
-#[cfg(feature = "audio")]
-use audio_core::Sample;
-
 // ------ 16-bit integer formats ------
 
 /// 16 bit signed integer, little endian. Stored as 2 bytes.
@@ -774,73 +771,6 @@ where
         }
     }
 }
-
-// Implement Sample for the audioadapter types
-#[cfg(feature = "audio")]
-macro_rules! impl_sample_for_newtype {
-    ($newtype:ident, $bytes:expr) => {
-        unsafe impl Sample for $newtype {
-            const ZERO: $newtype = $newtype([0; $bytes]);
-        }
-    };
-}
-
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I16_LE, 2);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U16_LE, 2);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I16_BE, 2);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U16_BE, 2);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_LE, 3);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_4LJ_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_4RJ_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_LE, 3);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_4LJ_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_4RJ_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_BE, 3);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_4LJ_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_4RJ_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_BE, 3);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_4LJ_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_4RJ_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I32_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U32_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I32_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U32_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I64_LE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U64_LE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I64_BE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U64_BE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(F32_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(F32_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(F64_LE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(F64_BE, 8);
 
 #[cfg(test)]
 mod tests {

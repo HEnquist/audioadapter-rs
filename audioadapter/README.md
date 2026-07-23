@@ -117,21 +117,31 @@ with optional conversion to and from floating point values.
 The format conversions are performed using the
 [audioadapter-sample](https://crates.io/crates/audioadapter-sample) crate.
 
-## Compatibility with the [audio](https://crates.io/crates/audio) crate
-The [Adapter] and [AdapterMut] traits are implemented for
-buffers implementing the [audio_core::Buf], [audio_core::BufMut] and [audio_core::ExactSizeBuf]
-traits from the [audio](https://crates.io/crates/audio) crate.
-This is enabled via the `audio` Cargo feature, which is enabled by default.
+## Compatibility with other audio buffer crates
+The [Adapter] and [AdapterMut] traits are implemented for buffer types from
+several other crates in the Rust audio ecosystem. To keep the core crate free of
+those dependencies, each integration lives in its own companion crate that wraps
+the foreign buffer in a small adapter type.
 
-Example: Create a buffer and access it using [Adapter] methods.
-```
-use audioadapter::Adapter;
-use audio;
+The companion crates that exist today are:
 
-let buf: audio::buf::Interleaved<i32> = audio::buf::Interleaved::with_topology(2, 4);
-# #[cfg(feature = "audio")]
-buf.read_sample(0,0);
-```
+| Crate | Companion crate |
+|-------|-----------------|
+| [audio](https://crates.io/crates/audio) | [audioadapter-compat-audio](https://crates.io/crates/audioadapter-compat-audio) |
+| [symphonia](https://crates.io/crates/symphonia) | [audioadapter-compat-symphonia](https://crates.io/crates/audioadapter-compat-symphonia) |
+| [dasp](https://crates.io/crates/dasp) | [audioadapter-compat-dasp](https://crates.io/crates/audioadapter-compat-dasp) |
+| [ndarray](https://crates.io/crates/ndarray) | [audioadapter-compat-ndarray](https://crates.io/crates/audioadapter-compat-ndarray) |
+| [nice-plug](https://codeberg.org/RustAudio/nice-plug) / [nih-plug](https://github.com/robbert-vdh/nih-plug) | [audioadapter-compat-nice-plug](https://crates.io/crates/audioadapter-compat-nice-plug) |
+
+This list is only a snapshot, not the definitive set. Because a companion crate
+depends on the core crate rather than the other way around, new integrations can
+be published without any change to `audioadapter` itself, so more may exist than
+are listed here. If a crate you use is missing, please open an issue or pull
+request to add an integration for it.
+
+Because these companion crates expose the foreign buffer types in their public
+API, they are versioned independently and track their respective upstream crates
+on their own release cadence.
 
 ## Supporting new data structures
 The required trait methods are simple, in order to make it easy

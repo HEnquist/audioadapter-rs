@@ -79,6 +79,24 @@ jobs:
           fi
           exit 0
 
+      - name: Dry-run publish compat crates
+        run: |
+          set +e
+          for crate in \
+            audioadapter-compat-audio \
+            audioadapter-compat-symphonia \
+            audioadapter-compat-dasp \
+            audioadapter-compat-ndarray \
+            audioadapter-compat-nice-plug; do
+            output=$(cargo publish --dry-run -p "$crate" 2>&1)
+            status=$?
+            echo "$output"
+            if [ $status -ne 0 ]; then
+              echo "::warning title=Dry-run failed ($crate)::cargo publish --dry-run exited with code $status. See log above."
+            fi
+          done
+          exit 0
+
   lints:
     name: Lints
     runs-on: ubuntu-latest
