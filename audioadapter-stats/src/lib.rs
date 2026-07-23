@@ -1,6 +1,8 @@
-use num_traits::{Num, ToPrimitive};
+#![doc = include_str!("../README.md")]
+#![no_std]
 
-use crate::Adapter;
+use audioadapter::Adapter;
+use num_traits::{Num, ToPrimitive};
 
 /// A simple implementation of Newton's method for calculating the square root of a number.
 /// This is used to avoid depending on `std`, until math support in core is stable.
@@ -157,9 +159,9 @@ where
 mod tests {
     extern crate alloc;
 
-    use crate::stats::AdapterStats;
-    use crate::tests::MinimalAdapter;
+    use super::AdapterStats;
     use alloc::vec;
+    use audioadapter::tests::MinimalAdapter;
 
     #[test]
     fn stats_integer() {

@@ -1,0 +1,19 @@
+[package]
+name = "audioadapter-stats"
+version = "5.0.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["HEnquist <henrik.enquist@gmail.com>"]
+description = "Statistics helpers (RMS, peak, ...) for audioadapter buffers"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/HEnquist/audioadapter-rs"
+keywords = ["audio", "buffer", "dsp", "statistics", "rms"]
+categories = ["multimedia::audio"]
+readme = "README.md"
+
+[dependencies]
+audioadapter.workspace = true
+num-traits.workspace = true
+
+[dev-dependencies]
+audioadapter = { workspace = true, features = ["test-utils"] }

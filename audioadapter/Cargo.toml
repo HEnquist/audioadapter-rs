@@ -14,10 +14,13 @@ readme = "README.md"
 [features]
 default = []
 
-test-utils = []
+# Exposes the generic trait-testing helpers used by the companion crates.
+# This is the only thing in the core crate that needs `num-traits`; a normal
+# build pulls in no dependencies at all.
+test-utils = ["dep:num-traits"]
 
 [dependencies]
-num-traits.workspace = true
+num-traits = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = "0.6"

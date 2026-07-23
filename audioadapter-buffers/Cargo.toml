@@ -25,6 +25,7 @@ audioadapter-sample = { version = "5.0.0", path = "../audioadapter-sample", defa
 [dev-dependencies]
 criterion = "0.6"
 audioadapter = { version = "5.0.0", path = "../audioadapter", features = ["test-utils"]}
+audioadapter-stats.workspace = true
 
 [[bench]]
 name = "iteration"

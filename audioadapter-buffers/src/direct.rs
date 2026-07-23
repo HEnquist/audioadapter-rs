@@ -1680,7 +1680,7 @@ mod tests {
     #[cfg(feature = "alloc")]
     #[test]
     fn sparse_sequential_vecs() {
-        use audioadapter::stats::AdapterStats;
+        use audioadapter_stats::AdapterStats;
 
         let mut data = vec![vec![1, 2, 3], Vec::new()];
         let mask = vec![true, false];
@@ -1706,7 +1706,7 @@ mod tests {
 
     #[test]
     fn sparse_sequential_slices() {
-        use audioadapter::stats::AdapterStats;
+        use audioadapter_stats::AdapterStats;
 
         let mut data_ch_0 = vec![1, 2, 3];
 

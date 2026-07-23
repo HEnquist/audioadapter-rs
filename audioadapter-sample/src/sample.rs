@@ -193,7 +193,11 @@ where
     fn to_scaled_float<T: FloatCore + ToPrimitive>(&self) -> T;
 
     /// Convert a float in the range -1.0 .. +1.0 to a sample value.
-    /// Values outside the allowed range are clipped to the nearest limit.
+    ///
+    /// For integer formats, values outside the allowed range are clipped to the
+    /// nearest limit and the returned `clipped` flag is set.
+    /// Floating point formats are not range-limited: values outside -1.0 .. +1.0
+    /// are valid headroom, are passed through unchanged, and never set `clipped`.
     fn from_scaled_float<T: FloatCore + ToPrimitive>(value: T) -> ConversionResult<Self>;
 }
 
@@ -292,7 +296,9 @@ macro_rules! rawsample_for_float {
             }
 
             fn from_scaled_float<T: FloatCore + ToPrimitive>(value: T) -> ConversionResult<Self> {
-                // TODO clip here
+                // Floating point formats are not range-limited. Values outside
+                // -1.0..1.0 are valid headroom and pass through unchanged, so no
+                // clipping is applied and `clipped` is always false.
                 ConversionResult {
                     clipped: false,
                     value: value.$to().unwrap_or(0.0),
