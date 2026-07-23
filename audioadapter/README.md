@@ -166,6 +166,10 @@ for a vector of strings.
 The `audioadapter` traits do not require the standard library,
 and can therefore be used in `no_std` environments.
 
+## Changelog
+
+See the [changelog](https://github.com/HEnquist/audioadapter-rs/blob/master/CHANGELOG.md).
+
 ## License
 
 Licensed under either of

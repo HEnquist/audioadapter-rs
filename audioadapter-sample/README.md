@@ -171,6 +171,10 @@ This crate has the following features:
 ## Use without the standard library
 This crate can be used in `no_std` environments if the `std` Cargo feature is disabled.
 
+## Changelog
+
+See the [changelog](https://github.com/HEnquist/audioadapter-rs/blob/master/CHANGELOG.md).
+
 ## License
 
 Licensed under either of

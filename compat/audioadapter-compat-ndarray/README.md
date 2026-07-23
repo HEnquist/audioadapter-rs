@@ -28,6 +28,10 @@ version of this crate. Pick the version that matches what you use:
 |------------|--------------|---------|
 | `1.x`      | `5.x`        | `0.17.x` |
 
+## Changelog
+
+See the [changelog](https://github.com/HEnquist/audioadapter-rs/blob/master/CHANGELOG.md).
+
 ## License
 
 Licensed under either of Apache-2.0 or MIT at your option.

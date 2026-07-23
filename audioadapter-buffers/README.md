@@ -148,6 +148,10 @@ for channel in 0..converter.channels() {
 This crate can be used in `no_std` environments if the `std` Cargo feature is disabled.
 You can also enable the `alloc` feature to get the buffer types in the [owned] module.
 
+## Changelog
+
+See the [changelog](https://github.com/HEnquist/audioadapter-rs/blob/master/CHANGELOG.md).
+
 ## License
 
 Licensed under either of

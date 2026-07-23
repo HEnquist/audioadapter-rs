@@ -27,6 +27,10 @@ This crate keeps the numeric dependency (`num-traits`) out of the core
 This crate is released together with the core `audioadapter` crate and shares
 its major version.
 
+## Changelog
+
+See the [changelog](https://github.com/HEnquist/audioadapter-rs/blob/master/CHANGELOG.md).
+
 ## License
 
 Licensed under either of Apache-2.0 or MIT at your option.
