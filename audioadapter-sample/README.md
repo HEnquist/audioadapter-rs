@@ -4,14 +4,18 @@ A crate that helps with handling audio samples in various formats.
 
 This crate is part of the `audioadapter` family.
 
-The `audioadapter` family consists of three crates:
+The `audioadapter` family has three core crates:
 - [audioadapter](https://crates.io/crates/audioadapter):
   The core `audioadapter` traits.
 - [audioadapter-sample](https://crates.io/crates/audioadapter-sample):
-  A companion crate that provides sample format conversions
+  This crate, a companion crate that provides sample format conversions
   as well as extensions to the standard `Read` and `Write` traits.
 - [audioadapter-buffers](https://crates.io/crates/audioadapter-buffers):
-  This crate, a companion crate that provides wrappers for various common data structures.
+  A companion crate that provides wrappers for various common data structures.
+
+In addition to these, the `audioadapter-compat-*` crates implement the traits for
+buffer types from other audio crates. See the
+[core crate documentation](https://docs.rs/audioadapter) for the current list.
 
 ## Introduction
 Audio data is stored and exchanged in various numerical formats,

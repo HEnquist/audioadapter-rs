@@ -5,13 +5,18 @@ The `audioadapter` library simplifies working with audio data buffers.
 Audio data can vary in layout and numerical representation.
 This crate bridges these differences, handling both layout and data types effectively.
 
-The `audioadapter` family consists of three crates:
+The `audioadapter` family has three core crates:
 - [audioadapter](https://crates.io/crates/audioadapter):
-  This crate provides the traits such as [Adapter] and [AdapterMut].
+  This crate provides the traits such as [Adapter] and [AdapterMut],
+  as well as the statistics helpers in the [stats] module.
 - [audioadapter-sample](https://crates.io/crates/audioadapter-sample): A companion crate
   that provides sample format conversions as well as extensions to the standard `Read` and `Write` traits.
 - [audioadapter-buffers](https://crates.io/crates/audioadapter-buffers): A companion crate
   that provides wrappers for various common data structures.
+
+In addition to these, the `audioadapter-compat-*` crates implement the traits for
+buffer types from other audio crates, see
+[Compatibility with other audio buffer crates](#compatibility-with-other-audio-buffer-crates).
 
 
 ## Background
@@ -87,6 +92,27 @@ These enable basic reading and writing, with methods that access the sample valu
 indirectly.
 This makes it possible to do implementations where the samples are converted
 from one format to another when reading and writing from/to the underlying data.
+
+## Statistics
+The [stats] module provides the [AdapterStats](stats::AdapterStats) extension trait.
+It is implemented for every adapter with a numerical sample type,
+and adds methods for calculating RMS, mean, peak and peak-to-peak values,
+per channel or per frame.
+Bring the trait into scope and call the methods on any adapter:
+```ignore
+use audioadapter::stats::AdapterStats;
+
+// `buffer` is any audioadapter `Adapter<f32>`
+let rms = buffer.channel_rms(0);
+let peak = buffer.channel_peak(0);
+```
+
+The raw sums the values are derived from,
+[channel_sum](stats::AdapterStats::channel_sum) and
+[channel_sum_of_squares](stats::AdapterStats::channel_sum_of_squares),
+are also available.
+These make it possible to accumulate statistics over a series of buffers,
+which cannot be done by averaging the per-buffer values.
 
 ## Safety and `unsafe trait`
 

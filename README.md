@@ -5,13 +5,18 @@ The `audioadapter` family of crates simplifies working with audio data buffers.
 Audio data can vary in layout and numerical representation.
 This crate bridges these differences, handling both layout and data types effectively.
 
-The `audioadapter` family consists of three crates:
+The `audioadapter` family has three core crates:
 - [audioadapter](https://crates.io/crates/audioadapter):
-  that provides the traits for reading and writing audio data.
+  that provides the traits for reading and writing audio data,
+  and helpers for calculating statistics such as RMS and peak values.
 - [audioadapter-sample](https://crates.io/crates/audioadapter-sample): A companion crate
   that provides sample format conversions as well as extensions to the standard `Read` and `Write` traits.
 - [audioadapter-buffers](https://crates.io/crates/audioadapter-buffers): A companion crate
   that provides wrappers for various common data structures.
+
+In addition to these, the `audioadapter-compat-*` crates implement the traits for
+buffer types from other audio crates. See the
+[core crate documentation](https://docs.rs/audioadapter) for the current list.
 
 
 ## Purpose of audioadapter
@@ -68,6 +73,7 @@ Publish dry-runs (warning-level checks):
 - `cargo publish --dry-run -p audioadapter` - Validates that the base crate can be packaged and published.
 - `cargo publish --dry-run -p audioadapter-sample` - Validates packaging/publishability of the sample companion crate.
 - `cargo publish --dry-run -p audioadapter-buffers` - Validates packaging/publishability of the buffers companion crate.
+- `cargo publish --dry-run -p audioadapter-compat-<name>` - Validates packaging/publishability of each compat crate.
 
 Dry-run publish checks are a useful signal, but they may fail in valid situations
 (for example, due to crates.io dependency/version timing). Treat failures here as

@@ -2,7 +2,7 @@
 
 This crate is part of the `audioadapter` family.
 
-The `audioadapter` family consists of three crates:
+The `audioadapter` family has three core crates:
 - [audioadapter](https://crates.io/crates/audioadapter):
   The core `audioadapter` traits.
 - [audioadapter-sample](https://crates.io/crates/audioadapter-sample):
@@ -10,6 +10,10 @@ The `audioadapter` family consists of three crates:
   as well as extensions to the standard `Read` and `Write` traits.
 - [audioadapter-buffers](https://crates.io/crates/audioadapter-buffers):
   This crate, a companion crate that provides wrappers for various common data structures.
+
+In addition to these, the `audioadapter-compat-*` crates implement the traits for
+buffer types from other audio crates. See the
+[core crate documentation](https://docs.rs/audioadapter) for the current list.
 
 ## This crate
 This crate provides a selection of wrappers and buffers

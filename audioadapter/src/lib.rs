@@ -5,6 +5,9 @@
 mod traits;
 pub use traits::{Adapter, AdapterMut};
 
+/// Calculate statistics for adapters with numerical sample types
+pub mod stats;
+
 /// Read-only iterators
 mod iterators;
 

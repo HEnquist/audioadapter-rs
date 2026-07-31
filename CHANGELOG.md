@@ -6,12 +6,15 @@ the crates that were published, with only the changed crates shown.
 ## Unreleased
 
 `audioadapter` 5.0.0, `audioadapter-sample` 5.0.0, `audioadapter-buffers` 5.0.0,
-`audioadapter-stats` 5.0.0 (new), `audioadapter-compat-*` 1.0.0 (new)
+`audioadapter-compat-*` 1.0.0 (new)
 
 - Move buffer-crate integrations to separate `audioadapter-compat-*` crates
 - `audio` support moved out of core, no longer a default feature
-- Split stats into companion crate `audioadapter-stats`
 - Core `audioadapter` now has no dependencies
+- `stats` no longer uses `num-traits`, sample types now need the new `StatsSample` trait
+- Add `channel_peak`, `frame_peak`, `channel_mean`, `frame_mean` and the raw `_sum` and
+  `_sum_of_squares` methods to `AdapterStats`
+- Fix min/max and peak-to-peak for signals that never cross zero, such as unsigned samples
 - Drop unused `audio` feature from `audioadapter-sample`
 
 ## 2026-06-17

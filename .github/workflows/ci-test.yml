@@ -79,17 +79,6 @@ jobs:
           fi
           exit 0
 
-      - name: Dry-run publish stats crate
-        run: |
-          set +e
-          output=$(cargo publish --dry-run -p audioadapter-stats 2>&1)
-          status=$?
-          echo "$output"
-          if [ $status -ne 0 ]; then
-            echo "::warning title=Dry-run failed (audioadapter-stats)::cargo publish --dry-run exited with code $status. See log above."
-          fi
-          exit 0
-
       - name: Dry-run publish compat crates
         run: |
           set +e

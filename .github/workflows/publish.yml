@@ -57,19 +57,6 @@ jobs:
           fi
           exit 0
 
-      - name: Publish stats crate
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          set +e
-          output=$(cargo publish -p audioadapter-stats --token ${CARGO_REGISTRY_TOKEN} 2>&1)
-          status=$?
-          echo "$output"
-          if [ $status -ne 0 ]; then
-            echo "::warning title=Publish failed (audioadapter-stats)::cargo publish exited with code $status. See log above."
-          fi
-          exit 0
-
       # The compat crates depend on `audioadapter`, which is published above, so
       # they must come after it. They do not depend on each other.
       - name: Publish compat crates
