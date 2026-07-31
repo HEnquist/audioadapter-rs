@@ -16,6 +16,8 @@ the crates that were published, with only the changed crates shown.
   `_sum_of_squares` methods to `AdapterStats`
 - Fix min/max and peak-to-peak for signals that never cross zero, such as unsigned samples
 - Drop unused `audio` feature from `audioadapter-sample`
+- Target `nice-plug-core` 0.2 in `audioadapter-compat-nice-plug`
+- Bump MSRV to 1.87, required by `nice-plug-core` 0.2
 
 ## 2026-06-17
 

@@ -17,14 +17,14 @@ This crate exposes types from both [audioadapter](https://crates.io/crates/audio
 and [nice-plug-core](https://crates.io/crates/nice-plug-core) in its public API,
 so its version is tied to one major version of each.
 
-**This `1.x` release targets audioadapter `5.x` and nice-plug-core `0.1.x`.**
+**This `1.x` release targets audioadapter `5.x` and nice-plug-core `0.2.x`.**
 
 A new incompatible release of either dependency is supported by a new major
 version of this crate. Pick the version that matches what you use:
 
 | this crate | audioadapter | nice-plug-core |
 |------------|--------------|----------------|
-| `1.x`      | `5.x`        | `0.1.x`        |
+| `1.x`      | `5.x`        | `0.2.x`        |
 
 ## Changelog
 

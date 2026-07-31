@@ -67,6 +67,8 @@ Required checks (must pass):
 - `cargo test --workspace --no-default-features` - Runs tests with default features disabled.
 - `cargo fmt --all -- --check` - Verifies formatting matches `rustfmt` output.
 - `cargo clippy --workspace --all-targets --all-features -- -D warnings` - Runs Clippy and treats all lints as errors.
+- `cargo +1.87 check --workspace --all-targets --all-features` - Verifies that everything builds with the
+  oldest supported Rust version, the `rust-version` declared in the manifests.
 
 Publish dry-runs (warning-level checks):
 

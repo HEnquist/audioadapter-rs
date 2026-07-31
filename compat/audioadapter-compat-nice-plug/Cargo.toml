@@ -2,7 +2,7 @@
 name = "audioadapter-compat-nice-plug"
 version = "1.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.87"
 authors = ["HEnquist <henrik.enquist@gmail.com>"]
 description = "audioadapter trait implementations for nice-plug / nih-plug audio buffers"
 license = "MIT OR Apache-2.0"
@@ -13,4 +13,4 @@ readme = "README.md"
 
 [dependencies]
 audioadapter.workspace = true
-nice-plug-core = "0.1.5"
+nice-plug-core = "0.2.0"

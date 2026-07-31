@@ -2,7 +2,7 @@
 name = "audioadapter-sample"
 version = "5.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.87"
 authors = ["HEnquist <henrik.enquist@gmail.com>"]
 description = "A library for making it easier to work with audio data"
 license = "MIT OR Apache-2.0"

@@ -2,7 +2,7 @@
 name = "audioadapter-compat-dasp"
 version = "1.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.87"
 authors = ["HEnquist <henrik.enquist@gmail.com>"]
 description = "audioadapter trait implementations for dasp frame slices"
 license = "MIT OR Apache-2.0"
