@@ -13,9 +13,6 @@ mod iterators;
 
 pub use iterators::AdapterIterators;
 
-#[cfg(feature = "audio")]
-pub mod audio;
-
 #[cfg(any(test, feature = "test-utils"))]
 pub mod tests {
     extern crate alloc;

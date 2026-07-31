@@ -1,8 +1,8 @@
 [package]
 name = "audioadapter-sample"
-version = "4.0.0"
+version = "5.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.87"
 authors = ["HEnquist <henrik.enquist@gmail.com>"]
 description = "A library for making it easier to work with audio data"
 license = "MIT OR Apache-2.0"
@@ -12,11 +12,9 @@ categories = ["multimedia::audio"]
 readme = "README.md"
 
 [features]
-default = ["std", "audio"]
-std = ["num-traits/std", "audio-core?/std"]
-audio = ["dep:audio-core"]
+default = ["std"]
+std = ["num-traits/std"]
 
 [dependencies]
 num-traits.workspace = true
-audio-core = { workspace = true, optional = true }
 

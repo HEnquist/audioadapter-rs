@@ -1,7 +1,16 @@
 [workspace]
 resolver = "3"
-members = ["audioadapter", "audioadapter-buffers", "audioadapter-sample"]
+members = [
+    "audioadapter",
+    "audioadapter-buffers",
+    "audioadapter-sample",
+    "compat/*",
+]
 
 [workspace.dependencies]
 num-traits = { version = "0.2.15", default-features = false }
 audio-core = { version = "0.2.0", default-features = false }
+audioadapter = { version = "5.0.0", path = "audioadapter" }
+symphonia-core = { version = "0.6.0", default-features = false }
+dasp_frame = { version = "0.11.0" }
+ndarray = { version = "0.17.0", default-features = false }

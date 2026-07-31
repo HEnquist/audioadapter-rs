@@ -5,13 +5,18 @@ The `audioadapter` library simplifies working with audio data buffers.
 Audio data can vary in layout and numerical representation.
 This crate bridges these differences, handling both layout and data types effectively.
 
-The `audioadapter` family consists of three crates:
+The `audioadapter` family has three core crates:
 - [audioadapter](https://crates.io/crates/audioadapter):
-  This crate provides the traits such as [Adapter] and [AdapterMut].
+  This crate provides the traits such as [Adapter] and [AdapterMut],
+  as well as the statistics helpers in the [stats] module.
 - [audioadapter-sample](https://crates.io/crates/audioadapter-sample): A companion crate
   that provides sample format conversions as well as extensions to the standard `Read` and `Write` traits.
 - [audioadapter-buffers](https://crates.io/crates/audioadapter-buffers): A companion crate
   that provides wrappers for various common data structures.
+
+In addition to these, the `audioadapter-compat-*` crates implement the traits for
+buffer types from other audio crates, see
+[Compatibility with other audio buffer crates](#compatibility-with-other-audio-buffer-crates).
 
 
 ## Background
@@ -88,6 +93,27 @@ indirectly.
 This makes it possible to do implementations where the samples are converted
 from one format to another when reading and writing from/to the underlying data.
 
+## Statistics
+The [stats] module provides the [AdapterStats](stats::AdapterStats) extension trait.
+It is implemented for every adapter with a numerical sample type,
+and adds methods for calculating RMS, mean, peak and peak-to-peak values,
+per channel or per frame.
+Bring the trait into scope and call the methods on any adapter:
+```ignore
+use audioadapter::stats::AdapterStats;
+
+// `buffer` is any audioadapter `Adapter<f32>`
+let rms = buffer.channel_rms(0);
+let peak = buffer.channel_peak(0);
+```
+
+The raw sums the values are derived from,
+[channel_sum](stats::AdapterStats::channel_sum) and
+[channel_sum_of_squares](stats::AdapterStats::channel_sum_of_squares),
+are also available.
+These make it possible to accumulate statistics over a series of buffers,
+which cannot be done by averaging the per-buffer values.
+
 ## Safety and `unsafe trait`
 
 The core traits [Adapter] and [AdapterMut] are `unsafe trait`s.
@@ -117,21 +143,31 @@ with optional conversion to and from floating point values.
 The format conversions are performed using the
 [audioadapter-sample](https://crates.io/crates/audioadapter-sample) crate.
 
-## Compatibility with the [audio](https://crates.io/crates/audio) crate
-The [Adapter] and [AdapterMut] traits are implemented for
-buffers implementing the [audio_core::Buf], [audio_core::BufMut] and [audio_core::ExactSizeBuf]
-traits from the [audio](https://crates.io/crates/audio) crate.
-This is enabled via the `audio` Cargo feature, which is enabled by default.
+## Compatibility with other audio buffer crates
+The [Adapter] and [AdapterMut] traits are implemented for buffer types from
+several other crates in the Rust audio ecosystem. To keep the core crate free of
+those dependencies, each integration lives in its own companion crate that wraps
+the foreign buffer in a small adapter type.
 
-Example: Create a buffer and access it using [Adapter] methods.
-```
-use audioadapter::Adapter;
-use audio;
+The companion crates that exist today are:
 
-let buf: audio::buf::Interleaved<i32> = audio::buf::Interleaved::with_topology(2, 4);
-# #[cfg(feature = "audio")]
-buf.read_sample(0,0);
-```
+| Crate | Companion crate |
+|-------|-----------------|
+| [audio](https://crates.io/crates/audio) | [audioadapter-compat-audio](https://crates.io/crates/audioadapter-compat-audio) |
+| [symphonia](https://crates.io/crates/symphonia) | [audioadapter-compat-symphonia](https://crates.io/crates/audioadapter-compat-symphonia) |
+| [dasp](https://crates.io/crates/dasp) | [audioadapter-compat-dasp](https://crates.io/crates/audioadapter-compat-dasp) |
+| [ndarray](https://crates.io/crates/ndarray) | [audioadapter-compat-ndarray](https://crates.io/crates/audioadapter-compat-ndarray) |
+| [nice-plug](https://codeberg.org/RustAudio/nice-plug) / [nih-plug](https://github.com/robbert-vdh/nih-plug) | [audioadapter-compat-nice-plug](https://crates.io/crates/audioadapter-compat-nice-plug) |
+
+This list is only a snapshot, not the definitive set. Because a companion crate
+depends on the core crate rather than the other way around, new integrations can
+be published without any change to `audioadapter` itself, so more may exist than
+are listed here. If a crate you use is missing, please open an issue or pull
+request to add an integration for it.
+
+Because these companion crates expose the foreign buffer types in their public
+API, they are versioned independently and track their respective upstream crates
+on their own release cadence.
 
 ## Supporting new data structures
 The required trait methods are simple, in order to make it easy
@@ -155,6 +191,10 @@ for a vector of strings.
 ## Using without the standard library
 The `audioadapter` traits do not require the standard library,
 and can therefore be used in `no_std` environments.
+
+## Changelog
+
+See the [changelog](https://github.com/HEnquist/audioadapter-rs/blob/master/CHANGELOG.md).
 
 ## License
 

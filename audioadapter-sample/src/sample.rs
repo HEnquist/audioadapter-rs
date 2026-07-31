@@ -2,9 +2,6 @@
 
 use num_traits::{PrimInt, ToPrimitive, float::FloatCore};
 
-#[cfg(feature = "audio")]
-use audio_core::Sample;
-
 // ------ 16-bit integer formats ------
 
 /// 16 bit signed integer, little endian. Stored as 2 bytes.
@@ -196,7 +193,11 @@ where
     fn to_scaled_float<T: FloatCore + ToPrimitive>(&self) -> T;
 
     /// Convert a float in the range -1.0 .. +1.0 to a sample value.
-    /// Values outside the allowed range are clipped to the nearest limit.
+    ///
+    /// For integer formats, values outside the allowed range are clipped to the
+    /// nearest limit and the returned `clipped` flag is set.
+    /// Floating point formats are not range-limited: values outside -1.0 .. +1.0
+    /// are valid headroom, are passed through unchanged, and never set `clipped`.
     fn from_scaled_float<T: FloatCore + ToPrimitive>(value: T) -> ConversionResult<Self>;
 }
 
@@ -295,7 +296,9 @@ macro_rules! rawsample_for_float {
             }
 
             fn from_scaled_float<T: FloatCore + ToPrimitive>(value: T) -> ConversionResult<Self> {
-                // TODO clip here
+                // Floating point formats are not range-limited. Values outside
+                // -1.0..1.0 are valid headroom and pass through unchanged, so no
+                // clipping is applied and `clipped` is always false.
                 ConversionResult {
                     clipped: false,
                     value: value.$to().unwrap_or(0.0),
@@ -774,73 +777,6 @@ where
         }
     }
 }
-
-// Implement Sample for the audioadapter types
-#[cfg(feature = "audio")]
-macro_rules! impl_sample_for_newtype {
-    ($newtype:ident, $bytes:expr) => {
-        unsafe impl Sample for $newtype {
-            const ZERO: $newtype = $newtype([0; $bytes]);
-        }
-    };
-}
-
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I16_LE, 2);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U16_LE, 2);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I16_BE, 2);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U16_BE, 2);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_LE, 3);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_4LJ_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_4RJ_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_LE, 3);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_4LJ_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_4RJ_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_BE, 3);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_4LJ_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I24_4RJ_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_BE, 3);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_4LJ_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U24_4RJ_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I32_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U32_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I32_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U32_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I64_LE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U64_LE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(I64_BE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(U64_BE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(F32_LE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(F32_BE, 4);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(F64_LE, 8);
-#[cfg(feature = "audio")]
-impl_sample_for_newtype!(F64_BE, 8);
 
 #[cfg(test)]
 mod tests {

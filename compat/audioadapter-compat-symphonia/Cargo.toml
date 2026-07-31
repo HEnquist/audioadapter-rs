@@ -1,0 +1,16 @@
+[package]
+name = "audioadapter-compat-symphonia"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.87"
+authors = ["HEnquist <henrik.enquist@gmail.com>"]
+description = "audioadapter trait implementations for symphonia AudioBuffer"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/HEnquist/audioadapter-rs"
+keywords = ["audio", "buffer", "dsp", "symphonia", "pcm"]
+categories = ["multimedia::audio"]
+readme = "README.md"
+
+[dependencies]
+audioadapter.workspace = true
+symphonia-core.workspace = true

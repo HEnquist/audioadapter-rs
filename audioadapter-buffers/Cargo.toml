@@ -1,8 +1,8 @@
 [package]
 name = "audioadapter-buffers"
-version = "4.0.0"
+version = "5.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.87"
 authors = ["HEnquist <henrik.enquist@gmail.com>"]
 description = "A selection of wrappers and buffers for audio data"
 license = "MIT OR Apache-2.0"
@@ -18,13 +18,13 @@ alloc = []
 
 [dependencies]
 num-traits.workspace = true
-audioadapter = { version = "4.0.0", path = "../audioadapter" }
-audioadapter-sample = { version = "4.0.0", path = "../audioadapter-sample", default-features = false, features = ["audio"] }
+audioadapter = { version = "5.0.0", path = "../audioadapter" }
+audioadapter-sample = { version = "5.0.0", path = "../audioadapter-sample", default-features = false }
 
 
 [dev-dependencies]
 criterion = "0.6"
-audioadapter = { version = "4.0.0", path = "../audioadapter", features = ["test-utils"]}
+audioadapter = { version = "5.0.0", path = "../audioadapter", features = ["test-utils"]}
 
 [[bench]]
 name = "iteration"

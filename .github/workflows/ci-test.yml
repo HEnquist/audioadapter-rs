@@ -36,6 +36,32 @@ jobs:
       - name: Run cargo test no features
         run: cargo test --workspace --no-default-features
 
+  msrv:
+    name: Check MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v5
+
+      # Use the lowest `rust-version` declared by any crate in the workspace,
+      # so that this job never disagrees with the manifests. Picking the lowest
+      # also catches a crate that declares an older version than its
+      # dependencies actually need, since `cargo` then refuses to build it.
+      - name: Read MSRV
+        id: msrv
+        run: |
+          version=$(grep -h '^rust-version' */Cargo.toml compat/*/Cargo.toml | cut -d '"' -f 2 | sort -V | head -1)
+          echo "Lowest declared rust-version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+
+      - name: Run cargo check
+        run: cargo check --workspace --all-targets --all-features
+
   publish_dry_run:
     name: Publish dry-run
     runs-on: ubuntu-latest
@@ -77,6 +103,24 @@ jobs:
           if [ $status -ne 0 ]; then
             echo "::warning title=Dry-run failed (audioadapter-buffers)::cargo publish --dry-run exited with code $status. See log above."
           fi
+          exit 0
+
+      - name: Dry-run publish compat crates
+        run: |
+          set +e
+          for crate in \
+            audioadapter-compat-audio \
+            audioadapter-compat-symphonia \
+            audioadapter-compat-dasp \
+            audioadapter-compat-ndarray \
+            audioadapter-compat-nice-plug; do
+            output=$(cargo publish --dry-run -p "$crate" 2>&1)
+            status=$?
+            echo "$output"
+            if [ $status -ne 0 ]; then
+              echo "::warning title=Dry-run failed ($crate)::cargo publish --dry-run exited with code $status. See log above."
+            fi
+          done
           exit 0
 
   lints:

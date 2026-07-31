@@ -4,14 +4,18 @@ A crate that helps with handling audio samples in various formats.
 
 This crate is part of the `audioadapter` family.
 
-The `audioadapter` family consists of three crates:
+The `audioadapter` family has three core crates:
 - [audioadapter](https://crates.io/crates/audioadapter):
   The core `audioadapter` traits.
 - [audioadapter-sample](https://crates.io/crates/audioadapter-sample):
-  A companion crate that provides sample format conversions
+  This crate, a companion crate that provides sample format conversions
   as well as extensions to the standard `Read` and `Write` traits.
 - [audioadapter-buffers](https://crates.io/crates/audioadapter-buffers):
-  This crate, a companion crate that provides wrappers for various common data structures.
+  A companion crate that provides wrappers for various common data structures.
+
+In addition to these, the `audioadapter-compat-*` crates implement the traits for
+buffer types from other audio crates. See the
+[core crate documentation](https://docs.rs/audioadapter) for the current list.
 
 ## Introduction
 Audio data is stored and exchanged in various numerical formats,
@@ -164,17 +168,16 @@ let float_value = slice.read_converted::<I16_LE, f32>();
 # }
 ```
 
-## Compatibility with the [audio](https://crates.io/crates/audio) crate
-The wrappers for bytes implement the [audio_core::Sample] trait from the [audio](https://crates.io/crates/audio) crate.
-This is controlled by the `audio` feature which is enabled by default.
-
 ## Cargo features
 This crate has the following features:
  - `std` - enables the standard library (Enabled by default)
- - `audio` - enables `audio` crate compatibility (Enabled by default)
 
 ## Use without the standard library
 This crate can be used in `no_std` environments if the `std` Cargo feature is disabled.
+
+## Changelog
+
+See the [changelog](https://github.com/HEnquist/audioadapter-rs/blob/master/CHANGELOG.md).
 
 ## License
 

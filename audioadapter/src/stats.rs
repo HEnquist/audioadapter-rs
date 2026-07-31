@@ -1,6 +1,38 @@
-use num_traits::{Num, ToPrimitive};
-
 use crate::Adapter;
+
+/// A numerical sample type that statistics can be calculated for.
+///
+/// This is implemented for all the built in numerical types,
+/// such as `i16`, `i32`, `f32` etc.
+/// Implement it for a custom sample type to make the
+/// [AdapterStats] methods available for adapters using that type.
+pub trait StatsSample: Copy + PartialOrd {
+    /// The zero value of this type.
+    const ZERO: Self;
+
+    /// Convert the value to `f64`.
+    /// Types with more precision than `f64` are rounded.
+    fn as_f64(self) -> f64;
+}
+
+macro_rules! impl_stats_sample {
+    ($($type:ty),*) => {
+        $(
+            impl StatsSample for $type {
+                const ZERO: Self = 0 as $type;
+
+                #[inline]
+                fn as_f64(self) -> f64 {
+                    self as f64
+                }
+            }
+        )*
+    };
+}
+
+impl_stats_sample!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+);
 
 /// A simple implementation of Newton's method for calculating the square root of a number.
 /// This is used to avoid depending on `std`, until math support in core is stable.
@@ -41,61 +73,121 @@ fn sqrt_newton(value: f64) -> f64 {
     estimate
 }
 
-/// A trait providing methods to calculate the RMS and peak-to-peak values of a channel or frame.
-/// This requires that the samples are of a numerical type, that implement the
-/// [num_traits::ToPrimitive], [num_traits::Num] and [core::cmp::PartialOrd] traits.
-/// This includes all the built in numerical types such as `i16`, `i32`, `f32` etc.
+/// A trait providing methods to calculate the RMS, mean, peak and peak-to-peak
+/// values of a channel or frame, as well as the raw sums these are derived from.
+/// This requires that the samples are of a numerical type that implements [StatsSample],
+/// which includes all the built in numerical types such as `i16`, `i32`, `f32` etc.
 pub trait AdapterStats<T>: Adapter<T>
 where
-    T: Clone + ToPrimitive + Num + PartialOrd,
+    T: StatsSample,
 {
-    /// Calculate the RMS value of the given channel.
+    /// Calculate the sum of all the samples of the given channel.
     /// The result is returned as `f64`.
-    fn channel_rms(&self, channel: usize) -> f64 {
-        let mut square_sum = 0.0;
-        if self.frames() == 0 || self.channels() == 0 {
-            return 0.0;
-        }
+    /// An empty buffer, or a channel index that is out of bounds, gives a sum of zero.
+    ///
+    /// Together with the number of samples this makes it possible to
+    /// accumulate the mean value over several buffers.
+    fn channel_sum(&self, channel: usize) -> f64 {
+        let mut sum = 0.0;
         for frame in 0..self.frames() {
-            let sample = self
-                .read_sample(channel, frame)
-                .unwrap_or(T::zero())
-                .to_f64()
-                .unwrap_or_default();
+            sum += self.read_sample(channel, frame).unwrap_or(T::ZERO).as_f64();
+        }
+        sum
+    }
+
+    /// Calculate the sum of all the samples of the given frame.
+    /// The result is returned as `f64`.
+    /// An empty buffer, or a frame index that is out of bounds, gives a sum of zero.
+    fn frame_sum(&self, frame: usize) -> f64 {
+        let mut sum = 0.0;
+        for channel in 0..self.channels() {
+            sum += self.read_sample(channel, frame).unwrap_or(T::ZERO).as_f64();
+        }
+        sum
+    }
+
+    /// Calculate the sum of the squares of all the samples of the given channel.
+    /// The result is returned as `f64`.
+    /// An empty buffer, or a channel index that is out of bounds, gives a sum of zero.
+    ///
+    /// Together with the number of samples this makes it possible to
+    /// accumulate the RMS value over several buffers.
+    /// Note that RMS values from separate buffers cannot be averaged directly.
+    fn channel_sum_of_squares(&self, channel: usize) -> f64 {
+        let mut square_sum = 0.0;
+        for frame in 0..self.frames() {
+            let sample = self.read_sample(channel, frame).unwrap_or(T::ZERO).as_f64();
             square_sum += sample * sample;
         }
-        sqrt_newton(square_sum / self.frames() as f64)
+        square_sum
+    }
+
+    /// Calculate the sum of the squares of all the samples of the given frame.
+    /// The result is returned as `f64`.
+    /// An empty buffer, or a frame index that is out of bounds, gives a sum of zero.
+    fn frame_sum_of_squares(&self, frame: usize) -> f64 {
+        let mut square_sum = 0.0;
+        for channel in 0..self.channels() {
+            let sample = self.read_sample(channel, frame).unwrap_or(T::ZERO).as_f64();
+            square_sum += sample * sample;
+        }
+        square_sum
     }
 
     /// Calculate the RMS value of the given channel.
     /// The result is returned as `f64`.
-    fn frame_rms(&self, frame: usize) -> f64 {
-        let mut square_sum = 0.0;
+    fn channel_rms(&self, channel: usize) -> f64 {
         if self.frames() == 0 || self.channels() == 0 {
             return 0.0;
         }
-        for channel in 0..self.channels() {
-            let sample = self
-                .read_sample(channel, frame)
-                .unwrap_or(T::zero())
-                .to_f64()
-                .unwrap_or_default();
-            square_sum += sample * sample;
+        sqrt_newton(self.channel_sum_of_squares(channel) / self.frames() as f64)
+    }
+
+    /// Calculate the RMS value of the given frame.
+    /// The result is returned as `f64`.
+    fn frame_rms(&self, frame: usize) -> f64 {
+        if self.frames() == 0 || self.channels() == 0 {
+            return 0.0;
         }
-        sqrt_newton(square_sum / self.channels() as f64)
+        sqrt_newton(self.frame_sum_of_squares(frame) / self.channels() as f64)
+    }
+
+    /// Calculate the mean (average) value of the given channel.
+    /// The result is returned as `f64`.
+    /// For audio samples this is the DC offset of the channel.
+    fn channel_mean(&self, channel: usize) -> f64 {
+        if self.frames() == 0 || self.channels() == 0 {
+            return 0.0;
+        }
+        self.channel_sum(channel) / self.frames() as f64
+    }
+
+    /// Calculate the mean (average) value of the given frame.
+    /// The result is returned as `f64`.
+    fn frame_mean(&self, frame: usize) -> f64 {
+        if self.frames() == 0 || self.channels() == 0 {
+            return 0.0;
+        }
+        self.frame_sum(frame) / self.channels() as f64
     }
 
     /// Calculate the peak-to-peak value of the given channel.
     /// The result is returned as a tuple `(min, max)`
     /// with values of the same type as the samples.
+    /// An empty buffer, or a channel index that is out of bounds,
+    /// gives a result of `(0, 0)`.
     fn channel_min_and_max(&self, channel: usize) -> (T, T) {
-        let mut min = T::zero();
-        let mut max = T::zero();
-        if self.frames() == 0 || self.channels() == 0 {
-            return (T::zero(), T::zero());
-        }
-        for frame in 0..self.frames() {
-            let sample = self.read_sample(channel, frame).unwrap_or(T::zero());
+        // Seed with the first sample, to give the correct result
+        // also for channels where all samples have the same sign.
+        let Some(first) = self.read_sample(channel, 0) else {
+            return (T::ZERO, T::ZERO);
+        };
+        let mut min = first;
+        let mut max = first;
+        for frame in 1..self.frames() {
+            // Reads within the bounds never fail, and `first` is
+            // always within the range and leaves the result unchanged.
+            let sample = self.read_sample(channel, frame).unwrap_or(first);
             if sample < min {
                 min = sample;
             } else if sample > max {
@@ -109,20 +201,36 @@ where
     /// The result is returned as `f64`.
     fn channel_peak_to_peak(&self, channel: usize) -> f64 {
         let (min, max) = self.channel_min_and_max(channel);
-        max.to_f64().unwrap_or_default() - min.to_f64().unwrap_or_default()
+        max.as_f64() - min.as_f64()
+    }
+
+    /// Calculate the peak value, the largest absolute sample value, of the given channel.
+    /// The result is returned as `f64`, since the absolute value of the most
+    /// negative sample does not fit in the sample type.
+    /// This is the value shown by a peak meter.
+    ///
+    /// Note that the peak is measured from zero.
+    /// For unsigned sample types, where silence is at the middle of the range,
+    /// this gives the distance from zero and not from the silence level.
+    fn channel_peak(&self, channel: usize) -> f64 {
+        let (min, max) = self.channel_min_and_max(channel);
+        min.as_f64().abs().max(max.as_f64().abs())
     }
 
     /// Calculate the peak-to-peak value of the given frame.
     /// The result is returned as a tuple `(min, max)`
     /// with values of the same type as the samples.
+    /// An empty buffer, or a frame index that is out of bounds,
+    /// gives a result of `(0, 0)`.
     fn frame_min_and_max(&self, frame: usize) -> (T, T) {
-        let mut min = T::zero();
-        let mut max = T::zero();
-        if self.frames() == 0 || self.channels() == 0 {
-            return (T::zero(), T::zero());
-        }
-        for channel in 0..self.channels() {
-            let sample = self.read_sample(channel, frame).unwrap_or(T::zero());
+        // Seed with the first sample, see `channel_min_and_max`.
+        let Some(first) = self.read_sample(0, frame) else {
+            return (T::ZERO, T::ZERO);
+        };
+        let mut min = first;
+        let mut max = first;
+        for channel in 1..self.channels() {
+            let sample = self.read_sample(channel, frame).unwrap_or(first);
             if sample < min {
                 min = sample;
             } else if sample > max {
@@ -136,13 +244,20 @@ where
     /// The result is returned as `f64`.
     fn frame_peak_to_peak(&self, frame: usize) -> f64 {
         let (min, max) = self.frame_min_and_max(frame);
-        max.to_f64().unwrap_or_default() - min.to_f64().unwrap_or_default()
+        max.as_f64() - min.as_f64()
+    }
+
+    /// Calculate the peak value, the largest absolute sample value, of the given frame.
+    /// The result is returned as `f64`, see [AdapterStats::channel_peak].
+    fn frame_peak(&self, frame: usize) -> f64 {
+        let (min, max) = self.frame_min_and_max(frame);
+        min.as_f64().abs().max(max.as_f64().abs())
     }
 }
 
 impl<T, U> AdapterStats<T> for U
 where
-    T: Clone + ToPrimitive + Num + PartialOrd,
+    T: StatsSample,
     U: Adapter<T>,
 {
 }
@@ -157,7 +272,7 @@ where
 mod tests {
     extern crate alloc;
 
-    use crate::stats::AdapterStats;
+    use super::AdapterStats;
     use crate::tests::MinimalAdapter;
     use alloc::vec;
 
@@ -195,6 +310,105 @@ mod tests {
         assert_eq!(buffer.frame_rms(0), 1.0);
         assert_eq!(buffer.frame_min_and_max(0), (-1.0, 1.0));
         assert_eq!(buffer.frame_peak_to_peak(0), 2.0);
+    }
+
+    #[test]
+    fn stats_mean_integer() {
+        // Channel 0 is [1, 2, 3, 4], channel 1 is [5, 5, 5, 5].
+        let data = vec![1_i32, 5, 2, 5, 3, 5, 4, 5];
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 4);
+        assert_eq!(buffer.channel_mean(0), 2.5);
+        assert_eq!(buffer.channel_mean(1), 5.0);
+        assert_eq!(buffer.frame_mean(0), 3.0);
+        assert_eq!(buffer.frame_mean(3), 4.5);
+    }
+
+    #[test]
+    fn stats_mean_float() {
+        // Channel 0 is [1.0, 2.0, 3.0, 4.0], channel 1 is [5.0, 5.0, 5.0, 5.0].
+        let data = vec![1.0_f32, 5.0, 2.0, 5.0, 3.0, 5.0, 4.0, 5.0];
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 4);
+        assert_eq!(buffer.channel_mean(0), 2.5);
+        assert_eq!(buffer.channel_mean(1), 5.0);
+        assert_eq!(buffer.frame_mean(0), 3.0);
+        assert_eq!(buffer.frame_mean(3), 4.5);
+    }
+
+    #[test]
+    fn stats_min_and_max_without_zero_crossings() {
+        // Channel 0 is [30000, 31000, 32000, 33000], all positive and far from zero.
+        let data = vec![30000_u16, 1, 31000, 1, 32000, 1, 33000, 1];
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 4);
+        assert_eq!(buffer.channel_min_and_max(0), (30000, 33000));
+        assert_eq!(buffer.channel_peak_to_peak(0), 3000.0);
+        assert_eq!(buffer.frame_min_and_max(0), (1, 30000));
+        assert_eq!(buffer.frame_peak_to_peak(0), 29999.0);
+
+        // The same for a channel that stays below zero.
+        let data = vec![-4_i32, 0, -3, 0, -2, 0, -1, 0];
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 4);
+        assert_eq!(buffer.channel_min_and_max(0), (-4, -1));
+        assert_eq!(buffer.channel_peak_to_peak(0), 3.0);
+    }
+
+    #[test]
+    fn stats_peak() {
+        // Channel 0 is [1, -7, 3, 4], channel 1 is [5, 5, 5, 5].
+        let data = vec![1_i32, 5, -7, 5, 3, 5, 4, 5];
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 4);
+        assert_eq!(buffer.channel_peak(0), 7.0);
+        assert_eq!(buffer.channel_peak(1), 5.0);
+        assert_eq!(buffer.frame_peak(1), 7.0);
+    }
+
+    #[test]
+    fn stats_peak_most_negative_sample() {
+        // The absolute value of the most negative sample does not fit in `i16`.
+        let data = vec![i16::MIN, 0, 100, 0];
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 2);
+        assert_eq!(buffer.channel_peak(0), 32768.0);
+    }
+
+    #[test]
+    fn stats_min_and_max_out_of_bounds() {
+        let data = vec![1.0_f32, 5.0, 2.0, 5.0];
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 2);
+        assert_eq!(buffer.channel_min_and_max(2), (0.0, 0.0));
+        assert_eq!(buffer.frame_min_and_max(2), (0.0, 0.0));
+    }
+
+    #[test]
+    fn stats_sums() {
+        // Channel 0 is [1, 2, 3, 4], channel 1 is [5, 5, 5, 5].
+        let data = vec![1_i32, 5, 2, 5, 3, 5, 4, 5];
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 4);
+        assert_eq!(buffer.channel_sum(0), 10.0);
+        assert_eq!(buffer.channel_sum(1), 20.0);
+        assert_eq!(buffer.frame_sum(0), 6.0);
+        assert_eq!(buffer.channel_sum_of_squares(0), 30.0);
+        assert_eq!(buffer.channel_sum_of_squares(1), 100.0);
+        assert_eq!(buffer.frame_sum_of_squares(0), 26.0);
+    }
+
+    #[test]
+    fn stats_sums_out_of_bounds() {
+        let data = vec![1.0_f32, 5.0, 2.0, 5.0];
+        let buffer = MinimalAdapter::new_from_vec(data, 2, 2);
+        assert_eq!(buffer.channel_sum(2), 0.0);
+        assert_eq!(buffer.frame_sum(2), 0.0);
+        assert_eq!(buffer.channel_sum_of_squares(2), 0.0);
+        assert_eq!(buffer.frame_sum_of_squares(2), 0.0);
+    }
+
+    #[test]
+    fn stats_empty_buffer() {
+        let buffer = MinimalAdapter::new_from_vec(vec![] as vec::Vec<f32>, 0, 0);
+        assert_eq!(buffer.channel_sum(0), 0.0);
+        assert_eq!(buffer.channel_sum_of_squares(0), 0.0);
+        assert_eq!(buffer.channel_rms(0), 0.0);
+        assert_eq!(buffer.frame_rms(0), 0.0);
+        assert_eq!(buffer.channel_mean(0), 0.0);
+        assert_eq!(buffer.frame_mean(0), 0.0);
     }
 
     #[test]
