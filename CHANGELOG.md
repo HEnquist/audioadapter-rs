@@ -5,6 +5,12 @@ the crates that were published, with only the changed crates shown.
 
 ## Unreleased
 
+`audioadapter-sample` 5.1.0, `audioadapter-buffers` 5.1.0
+
+- Add the 8-bit byte-wrapper sample formats `I8` and `U8`
+
+## 2026-07-31
+
 `audioadapter` 5.0.0, `audioadapter-sample` 5.0.0, `audioadapter-buffers` 5.0.0,
 `audioadapter-compat-*` 1.0.0 (new)
 

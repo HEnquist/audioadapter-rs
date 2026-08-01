@@ -28,7 +28,8 @@ as well as handling reading and writing these samples as raw bytes.
 ## Sample formats
 This crate supports signed and unsigned integer samples with 8, 16, 24, 32 and 64 bits.
 Floating point samples are also supported, with 32 and 64 bits.
-For all formats, both little-endian and big-endian representations are supported.
+For all multi-byte formats, both little-endian and big-endian representations are supported.
+The 8-bit formats are a single byte and therefore have no byte order.
 
 When converting between integers and floating point, the value range of the integer
 is mapped to the floating point range of -1.0 to +1.0.

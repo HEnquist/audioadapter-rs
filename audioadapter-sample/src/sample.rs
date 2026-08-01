@@ -2,6 +2,20 @@
 
 use num_traits::{PrimInt, ToPrimitive, float::FloatCore};
 
+// ------ 8-bit integer formats ------
+
+/// 8 bit signed integer. Stored as 1 byte.
+/// A single byte has no byte order,
+/// so there are no little endian and big endian variants.
+#[derive(Debug, Clone, Copy)]
+pub struct I8([u8; 1]);
+
+/// 8 bit unsigned integer. Stored as 1 byte.
+/// A single byte has no byte order,
+/// so there are no little endian and big endian variants.
+#[derive(Debug, Clone, Copy)]
+pub struct U8([u8; 1]);
+
 // ------ 16-bit integer formats ------
 
 /// 16 bit signed integer, little endian. Stored as 2 bytes.
@@ -739,6 +753,10 @@ macro_rules! bytessample_for_newtype {
     };
 }
 
+// Single byte formats, where the endianness of the conversion is irrelevant.
+bytessample_for_newtype!(i8, I8, from_le_bytes, to_le_bytes);
+bytessample_for_newtype!(u8, U8, from_le_bytes, to_le_bytes);
+
 bytessample_for_newtype!(i64, I64_LE, from_le_bytes, to_le_bytes);
 bytessample_for_newtype!(u64, U64_LE, from_le_bytes, to_le_bytes);
 bytessample_for_newtype!(i64, I64_BE, from_be_bytes, to_be_bytes);
@@ -1009,6 +1027,87 @@ mod tests {
     test_float_bytes!(convert_f32_fom_F32_BE, f32, F32_BE, to_be_bytes);
     test_float_bytes!(convert_f64_fom_F64_LE, f64, F64_LE, to_le_bytes);
     test_float_bytes!(convert_f64_fom_F64_BE, f64, F64_BE, to_be_bytes);
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_I8() {
+        assert_eq!(I8::BYTES_PER_SAMPLE, 1);
+        assert_eq!(I8::zero().to_number(), 0);
+        assert_eq!(I8::from_slice(&[0x80]).to_number(), i8::MIN);
+
+        for number in [0, 1, -1, 100, i8::MIN, i8::MAX] {
+            let wrapped = I8::from_number(number);
+            assert_eq!(wrapped.as_slice(), number.to_le_bytes(), "bytes for {number}");
+            assert_eq!(wrapped.to_number(), number, "roundtrip of {number}");
+        }
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_U8() {
+        assert_eq!(U8::BYTES_PER_SAMPLE, 1);
+        assert_eq!(U8::zero().to_number(), 0);
+        assert_eq!(U8::from_slice(&[0x80]).to_number(), 128);
+
+        for number in [0, 1, 128, 200, u8::MAX] {
+            let wrapped = U8::from_number(number);
+            assert_eq!(wrapped.as_slice(), number.to_le_bytes(), "bytes for {number}");
+            assert_eq!(wrapped.to_number(), number, "roundtrip of {number}");
+        }
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn convert_I8_to_and_from_float() {
+        assert_eq!(I8::from_slice(&[0]).to_scaled_float::<f32>(), 0.0);
+        assert_eq!(I8::from_slice(&[0x80]).to_scaled_float::<f32>(), -1.0);
+        assert_eq!(I8::from_slice(&[0x40]).to_scaled_float::<f32>(), 0.5);
+        assert_eq!(I8::from_slice(&[0xC0]).to_scaled_float::<f32>(), -0.5);
+
+        let converted = I8::from_scaled_float(0.5f32);
+        assert_eq!(converted.value.as_slice(), [0x40]);
+        assert!(!converted.clipped);
+
+        let converted = I8::from_scaled_float(-1.0f32);
+        assert_eq!(converted.value.as_slice(), [0x80]);
+        assert!(!converted.clipped);
+
+        // Values outside -1.0 .. +1.0 clip at the limits of an i8.
+        let converted = I8::from_scaled_float(1.5f32);
+        assert_eq!(converted.value.to_number(), i8::MAX);
+        assert!(converted.clipped);
+
+        let converted = I8::from_scaled_float(-1.5f32);
+        assert_eq!(converted.value.to_number(), i8::MIN);
+        assert!(converted.clipped);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn convert_U8_to_and_from_float() {
+        // Unsigned samples are centered at 128.
+        assert_eq!(U8::from_slice(&[128]).to_scaled_float::<f32>(), 0.0);
+        assert_eq!(U8::from_slice(&[0]).to_scaled_float::<f32>(), -1.0);
+        assert_eq!(U8::from_slice(&[192]).to_scaled_float::<f32>(), 0.5);
+        assert_eq!(U8::from_slice(&[64]).to_scaled_float::<f32>(), -0.5);
+
+        let converted = U8::from_scaled_float(0.5f32);
+        assert_eq!(converted.value.as_slice(), [192]);
+        assert!(!converted.clipped);
+
+        let converted = U8::from_scaled_float(-1.0f32);
+        assert_eq!(converted.value.as_slice(), [0]);
+        assert!(!converted.clipped);
+
+        // Values outside -1.0 .. +1.0 clip at the limits of a u8.
+        let converted = U8::from_scaled_float(1.5f32);
+        assert_eq!(converted.value.to_number(), u8::MAX);
+        assert!(converted.clipped);
+
+        let converted = U8::from_scaled_float(-1.5f32);
+        assert_eq!(converted.value.to_number(), u8::MIN);
+        assert!(converted.clipped);
+    }
 
     #[test]
     #[allow(non_snake_case)]

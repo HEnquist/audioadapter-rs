@@ -182,6 +182,8 @@ macro_rules! byte_convert_traits_newtype {
         }
 }
 
+byte_convert_traits_newtype!(I8);
+byte_convert_traits_newtype!(U8);
 byte_convert_traits_newtype!(I16_LE);
 byte_convert_traits_newtype!(I16_BE);
 byte_convert_traits_newtype!(U16_LE);
@@ -337,6 +339,38 @@ mod tests {
     use crate::direct::InterleavedSlice;
     use audioadapter::Adapter;
     use audioadapter::tests::test_float_adapter_mut_methods;
+
+    #[test]
+    fn read_i8_bytes() {
+        let data: [[u8; 1]; 6] = [[0], [128], [64], [192], [32], [224]];
+        let buffer: InterleavedSlice<&[[u8; 1]]> = InterleavedSlice::new(&data, 2, 3).unwrap();
+        let converter: ConvertBytes<f32, I8, _> =
+            ConvertBytes::<f32, I8, _>::new(&buffer as &dyn Adapter<[u8; 1]>);
+        assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(converter.read_sample(1, 0).unwrap(), -1.0);
+        assert_eq!(converter.read_sample(0, 1).unwrap(), 0.5);
+        assert_eq!(converter.read_sample(1, 1).unwrap(), -0.5);
+        assert_eq!(converter.read_sample(0, 2).unwrap(), 0.25);
+        assert_eq!(converter.read_sample(1, 2).unwrap(), -0.25);
+    }
+
+    #[test]
+    fn write_u8_bytes() {
+        // Unsigned samples are centered at 128.
+        let expected: [[u8; 1]; 6] = [[128], [0], [192], [64], [160], [96]];
+        let mut data = [[0]; 6];
+        let mut buffer: InterleavedSlice<&mut [[u8; 1]]> =
+            InterleavedSlice::new_mut(&mut data, 2, 3).unwrap();
+        let mut converter: ConvertBytes<f32, U8, _> =
+            ConvertBytes::<f32, U8, _>::new_mut(&mut buffer as &mut dyn AdapterMut<[u8; 1]>);
+        converter.write_sample(0, 0, &0.0).unwrap();
+        converter.write_sample(1, 0, &-1.0).unwrap();
+        converter.write_sample(0, 1, &0.5).unwrap();
+        converter.write_sample(1, 1, &-0.5).unwrap();
+        converter.write_sample(0, 2, &0.25).unwrap();
+        converter.write_sample(1, 2, &-0.25).unwrap();
+        assert_eq!(data, expected);
+    }
 
     #[test]
     fn read_i16_bytes() {
