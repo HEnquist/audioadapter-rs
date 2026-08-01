@@ -92,9 +92,18 @@ A new byte-wrapper format needs edits in three places, and it is easy to miss th
   by declarative macros (`test_simple_int_bytes!`, `test_to_signed_int!`, ...); prefer extending an
   existing macro invocation list over writing a new one-off test, but write explicit tests where a
   format has behaviour the macro does not capture.
-- Everything is published together and the crates share a version number, so a change to one crate
-  usually means a version bump for all of them. Record user visible changes in the workspace-level
-  [CHANGELOG.md](CHANGELOG.md) under `Unreleased`, listing the crates and their next versions.
+- The crates are versioned and released independently. Bump only the crates that actually changed.
+  The version numbers happen to line up for the older releases because those changes touched every
+  crate, so do not read that history as a lockstep policy. Record user visible changes in the
+  workspace-level [CHANGELOG.md](CHANGELOG.md) under `Unreleased`, listing the crates that changed
+  and their next versions.
+- The core `audioadapter` crate is the stable point of the family and is meant to stay on its
+  current major version for a long time. Prefer solutions that leave its public API alone, and treat
+  a change that would force a major bump there as a decision to raise rather than make.
+- When one workspace crate starts using new API from another, raise the dependency requirement to
+  that version in the manifest, not just the version of the crate itself. `audioadapter-buffers`
+  requires `audioadapter-sample` 5.1.0 for exactly this reason: it uses `I8` and `U8`, and a
+  requirement of 5.0.0 would let a resolver pick a version that does not compile.
 - Edition 2024, MSRV 1.87 declared per crate as `rust-version`. The CI MSRV job reads the lowest
   `rust-version` in the workspace, so bumping it means bumping every manifest.
 
