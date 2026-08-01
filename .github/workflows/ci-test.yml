@@ -123,6 +123,56 @@ jobs:
           done
           exit 0
 
+  release_checks:
+    name: Release readiness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v5
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # Semver-compatible updates are picked up by cargo on its own, so they are
+      # not interesting here. What needs a human is an update that cargo refuses
+      # to make, either because it is semver-incompatible or because it needs a
+      # newer Rust than the MSRV. `cargo update --dry-run --verbose` reports
+      # exactly those as "Unchanged <crate> vA (available: vB)".
+      #
+      # Warning-level, like the publish dry-run above. A new release of a crate
+      # that a compat crate targets is something to handle before the next
+      # release, not a reason to block an unrelated pull request.
+      - name: Check for new releases of the targeted crates
+        run: |
+          targets=$(cargo metadata --format-version 1 --no-deps \
+            | jq -r '.packages[]
+                     | select(.name | startswith("audioadapter-compat-"))
+                     | .dependencies[].name' \
+            | grep -v '^audioadapter' | sort -u || true)
+          echo "Crates targeted by the compat crates: $(echo $targets | tr '\n' ' ')"
+          behind=$(cargo update --dry-run --verbose 2>&1 | grep 'Unchanged' || true)
+          for name in $targets; do
+            line=$(echo "$behind" | grep -E "^[[:space:]]*Unchanged $name v" || true)
+            if [ -z "$line" ]; then
+              echo "$name: up to date"
+              continue
+            fi
+            versions=$(echo "$line" | sed -E 's/.*Unchanged ([^ ]+) v([^ ]+) \(available: v([^)]+)\).*/\2 \3/')
+            echo "::warning title=New release available ($name)::In use: ${versions% *}, available: ${versions#* }. Cargo cannot take this update on its own, so it needs a manual retarget. Check before making a release."
+          done
+
+      # The newest changelog section must carry its release date by the time a
+      # tag is pushed, since pushing a tag publishes the crates straight away.
+      # Warning on every push means the reminder is visible while there is still
+      # a chance to act on it, rather than after the release is already out.
+      - name: Check that the changelog is dated
+        run: |
+          heading=$(grep -m1 '^## ' CHANGELOG.md || true)
+          echo "Newest changelog section: $heading"
+          if ! echo "$heading" | grep -qE '^## [0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]*$'; then
+            echo "::warning title=Changelog section is undated::The newest section of CHANGELOG.md is \"$heading\", which is not a release date. Replace the heading with the release date, as ## YYYY-MM-DD, before tagging a release."
+          fi
+
   lints:
     name: Lints
     runs-on: ubuntu-latest
