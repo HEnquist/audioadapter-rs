@@ -8,6 +8,7 @@ the crates that were published, with only the changed crates shown.
 `audioadapter-sample` 5.1.0, `audioadapter-buffers` 5.1.0
 
 - Add the 8-bit byte-wrapper sample formats `I8` and `U8`
+- Support the 64-bit integer formats in `ConvertBytes`, which previously only covered `F64`
 
 ## 2026-07-31
 
