@@ -1037,7 +1037,11 @@ mod tests {
 
         for number in [0, 1, -1, 100, i8::MIN, i8::MAX] {
             let wrapped = I8::from_number(number);
-            assert_eq!(wrapped.as_slice(), number.to_le_bytes(), "bytes for {number}");
+            assert_eq!(
+                wrapped.as_slice(),
+                number.to_le_bytes(),
+                "bytes for {number}"
+            );
             assert_eq!(wrapped.to_number(), number, "roundtrip of {number}");
         }
     }
@@ -1051,7 +1055,11 @@ mod tests {
 
         for number in [0, 1, 128, 200, u8::MAX] {
             let wrapped = U8::from_number(number);
-            assert_eq!(wrapped.as_slice(), number.to_le_bytes(), "bytes for {number}");
+            assert_eq!(
+                wrapped.as_slice(),
+                number.to_le_bytes(),
+                "bytes for {number}"
+            );
             assert_eq!(wrapped.to_number(), number, "roundtrip of {number}");
         }
     }
