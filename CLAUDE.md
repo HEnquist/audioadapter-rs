@@ -121,9 +121,10 @@ A new byte-wrapper format needs edits in three places, and it is easy to miss th
   `Unreleased`. Pushing a tag triggers the publish workflow and publishes immediately, so date the
   changelog before tagging. If a release turns out to already be published and its entry still says
   `Unreleased`, fix the heading using the date of the release tag.
-- The same `release_checks` job warns whenever the newest changelog heading is not a `YYYY-MM-DD`
-  date, which also catches a heading that is misspelled or carries a version number instead of a
-  date. That warning is expected during normal development, when the newest heading is `Unreleased`.
-  It is there so the reminder is in front of you in the pull request that prepares a release.
-- Both checks are warning-level and never fail the build, matching the publish dry-run job. An
-  upstream release or a not-yet-dated changelog should not block an unrelated pull request.
+- The same `release_checks` job also reports when the newest changelog heading is not a `YYYY-MM-DD`
+  date, which catches a heading that is misspelled or carries a version number instead of a date.
+- **A red `release_checks` is the normal state during development.** The job answers "could we tag a
+  release right now?", so it fails whenever there is anything to deal with first, most often a
+  changelog heading that still says `Unreleased`. Green means ready to tag. It is informational and
+  is deliberately not a required check, so it never blocks merging. Never make it pass by dating a
+  section that is not actually being released; that is the mistake it exists to prevent.

@@ -133,15 +133,21 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      # This job answers "could we tag a release right now?", so a red cross is
+      # the normal state during development and green means ready to release.
+      # Do not silence it by dating a section that is not being released.
+      #
+      # It is informational and is deliberately not a required check, so it does
+      # not block merging. Each check appends to a findings file and the last
+      # step fails if that file has anything in it.
+      - name: Prepare findings
+        run: 'echo -n > "$RUNNER_TEMP/findings.md"'
+
       # Semver-compatible updates are picked up by cargo on its own, so they are
       # not interesting here. What needs a human is an update that cargo refuses
       # to make, either because it is semver-incompatible or because it needs a
       # newer Rust than the MSRV. `cargo update --dry-run --verbose` reports
       # exactly those as "Unchanged <crate> vA (available: vB)".
-      #
-      # Warning-level, like the publish dry-run above. A new release of a crate
-      # that a compat crate targets is something to handle before the next
-      # release, not a reason to block an unrelated pull request.
       - name: Check for new releases of the targeted crates
         run: |
           targets=$(cargo metadata --format-version 1 --no-deps \
@@ -158,20 +164,42 @@ jobs:
               continue
             fi
             versions=$(echo "$line" | sed -E 's/.*Unchanged ([^ ]+) v([^ ]+) \(available: v([^)]+)\).*/\2 \3/')
-            echo "::warning title=New release available ($name)::In use: ${versions% *}, available: ${versions#* }. Cargo cannot take this update on its own, so it needs a manual retarget. Check before making a release."
+            echo "::warning title=New release available ($name)::In use: ${versions% *}, available: ${versions#* }. Cargo cannot take this update on its own, so it needs a manual retarget."
+            echo "- \`$name\`: in use ${versions% *}, available ${versions#* }. Cargo cannot take this update on its own, so it needs a manual retarget." >> "$RUNNER_TEMP/findings.md"
           done
 
       # The newest changelog section must carry its release date by the time a
       # tag is pushed, since pushing a tag publishes the crates straight away.
-      # Warning on every push means the reminder is visible while there is still
-      # a chance to act on it, rather than after the release is already out.
+      # Checking on every push means the reminder is visible while there is
+      # still a chance to act on it, rather than after the release is already
+      # out. Expect this one to report during normal development, when the
+      # newest heading is `Unreleased`.
       - name: Check that the changelog is dated
+        if: always()
         run: |
           heading=$(grep -m1 '^## ' CHANGELOG.md || true)
           echo "Newest changelog section: $heading"
           if ! echo "$heading" | grep -qE '^## [0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]*$'; then
             echo "::warning title=Changelog section is undated::The newest section of CHANGELOG.md is \"$heading\", which is not a release date. Replace the heading with the release date, as ## YYYY-MM-DD, before tagging a release."
+            echo "- Changelog: the newest section is \`$heading\`, which is not a release date. Replace the heading with the release date, as \`## YYYY-MM-DD\`, before tagging a release." >> "$RUNNER_TEMP/findings.md"
           fi
+
+      - name: Report
+        if: always()
+        run: |
+          if [ ! -s "$RUNNER_TEMP/findings.md" ]; then
+            echo "Ready to release." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Not ready to release"
+            echo
+            cat "$RUNNER_TEMP/findings.md"
+            echo
+            echo "This job is informational and does not block merging. It is"
+            echo "expected to be red until the changes are ready to be tagged."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 1
 
   lints:
     name: Lints
