@@ -150,10 +150,15 @@ jobs:
       # exactly those as "Unchanged <crate> vA (available: vB)".
       - name: Check for new releases of the targeted crates
         run: |
+          # `kind == null` is a normal dependency. Dev- and build-dependencies
+          # are test and build scaffolding rather than crates a compat crate
+          # integrates with, so they would only add noise here.
           targets=$(cargo metadata --format-version 1 --no-deps \
             | jq -r '.packages[]
                      | select(.name | startswith("audioadapter-compat-"))
-                     | .dependencies[].name' \
+                     | .dependencies[]
+                     | select(.kind == null)
+                     | .name' \
             | grep -v '^audioadapter' | sort -u || true)
           echo "Crates targeted by the compat crates: $(echo $targets | tr '\n' ' ')"
           behind=$(cargo update --dry-run --verbose 2>&1 | grep 'Unchanged' || true)
