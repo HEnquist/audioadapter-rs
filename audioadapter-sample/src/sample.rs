@@ -8,150 +8,180 @@ use num_traits::{PrimInt, ToPrimitive, float::FloatCore};
 /// A single byte has no byte order,
 /// so there are no little endian and big endian variants.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I8([u8; 1]);
 
 /// 8 bit unsigned integer. Stored as 1 byte.
 /// A single byte has no byte order,
 /// so there are no little endian and big endian variants.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U8([u8; 1]);
 
 // ------ 16-bit integer formats ------
 
 /// 16 bit signed integer, little endian. Stored as 2 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I16_LE([u8; 2]);
 
 /// 16 bit signed integer, big endian. Stored as 2 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I16_BE([u8; 2]);
 
 /// 16 bit unsigned integer, little endian. Stored as 2 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U16_LE([u8; 2]);
 
 /// 16 bit unsigned integer, big endian. Stored as 2 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U16_BE([u8; 2]);
 
 // ----- 24-bit formats -----
 
 /// 24 bit signed integer, little endian. Stored as 3 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I24_LE([u8; 3]);
 
 /// 24 bit signed integer, little endian. Stored as 4 bytes left justified.
 /// The 24 data bits are stored in the three most significant bytes,
 /// while the least significant byte is unused padding.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I24_4LJ_LE([u8; 4]);
 
 /// 24 bit signed integer, little endian. Stored as 4 bytes right justified.
 /// The 24 data bits are stored in the three least significant bytes,
 /// while the most significant byte is unused padding.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I24_4RJ_LE([u8; 4]);
 
 /// 24 bit signed integer, big endian. Stored as 3 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I24_BE([u8; 3]);
 
 /// 24 bit signed integer, big endian. Stored as 4 bytes left justified.
 /// The 24 data bits are stored in the three most significant bytes,
 /// while the least significant byte is unused padding.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I24_4LJ_BE([u8; 4]);
 
 /// 24 bit signed integer, big endian. Stored as 4 bytes right justified.
 /// The 24 data bits are stored in the three least significant bytes,
 /// while the most significant byte is unused padding.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I24_4RJ_BE([u8; 4]);
 
 /// 24 bit unsigned integer, little endian. Stored as 3 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U24_LE([u8; 3]);
 
 /// 24 bit unsigned integer, little endian. Stored as 4 bytes left justified.
 /// The 24 data bits are stored in the three most significant bytes,
 /// while the least significant byte is unused padding.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U24_4LJ_LE([u8; 4]);
 
 /// 24 bit unsigned integer, little endian. Stored as 4 bytes right justified.
 /// The 24 data bits are stored in the three least significant bytes,
 /// while the most significant byte is unused padding.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U24_4RJ_LE([u8; 4]);
 
 /// 24 bit unsigned integer, big endian. Stored as 3 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U24_BE([u8; 3]);
 
 /// 24 bit unsigned integer, big endian. Stored as 4 bytes left justified.
 /// The 24 data bits are stored in the three most significant bytes,
 /// while the least significant byte is unused padding.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U24_4LJ_BE([u8; 4]);
 
 /// 24 bit unsigned integer, big endian. Stored as 4 bytes right justified.
 /// The 24 data bits are stored in the three least significant bytes,
 /// while the most significant byte is unused padding.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U24_4RJ_BE([u8; 4]);
 
 // ------ 32-bit integer formats ------
 
 /// 32 bit signed integer, little endian. Stored as 4 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I32_LE([u8; 4]);
 
 /// 32 bit signed integer, big endian. Stored as 4 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I32_BE([u8; 4]);
 
 /// 32 bit unsigned integer, little endian. Stored as 4 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U32_LE([u8; 4]);
 
 /// 32 bit unsigned integer, big endian. Stored as 4 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U32_BE([u8; 4]);
 
 // ----- 64-bit integer formats ------
 
 /// 64 bit signed integer, little endian. Stored as 8 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I64_LE([u8; 8]);
 
 /// 64 bit signed integer, big endian. Stored as 8 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct I64_BE([u8; 8]);
 
 /// 64 bit unsigned integer, little endian. Stored as 8 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U64_LE([u8; 8]);
 
 /// 64 bit unsigned integer, big endian. Stored as 8 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct U64_BE([u8; 8]);
 
 // ----- floating point formats -----
 
 /// 32 bit floating point, little endian. Stored as 4 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct F32_LE([u8; 4]);
 
 /// 32 bit floating point, big endian. Stored as 4 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct F32_BE([u8; 4]);
 
 /// 64 bit floating point, little endian. Stored as 8 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct F64_LE([u8; 8]);
 
 /// 64 bit floating point, big endian. Stored as 8 bytes.
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct F64_BE([u8; 8]);
 
 /// Convert a float to an integer, clamp at the min and max limits of the integer.

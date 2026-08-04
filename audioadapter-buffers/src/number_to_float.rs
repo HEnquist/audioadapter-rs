@@ -123,16 +123,20 @@ macro_rules! byte_slice_as_type_mut {
 ///   is a plain "bag of bytes" with no validity invariants and no padding.
 ///
 /// All the byte-wrapper sample types in [`audioadapter_sample`] are
-/// `[u8; N]` newtypes that satisfy both requirements, and this trait is
-/// implemented for all of them. If you implement [BytesSample] for your own
-/// type and want to use it with those constructors, implement this trait too,
-/// upholding the requirements above.
+/// `#[repr(transparent)]` newtypes around `[u8; N]`, which guarantees they
+/// share that array's layout and therefore satisfy both requirements. This
+/// trait is implemented for all of them. If you implement [BytesSample] for
+/// your own type and want to use it with those constructors, implement this
+/// trait too, upholding the requirements above. Note that a newtype without
+/// `#[repr(transparent)]` does not qualify: `repr(Rust)` makes no guarantees
+/// about size, alignment or field offset.
 pub unsafe trait PlainBytes: BytesSample {}
 
 macro_rules! impl_plainbytes {
     ($($t:ty),* $(,)?) => {
         $(
-            // SAFETY: each type is a `#[derive(..)]` newtype around `[u8; N]`,
+            // SAFETY: each type is a `#[repr(transparent)]` newtype around
+            // `[u8; N]`, so it is guaranteed to share that array's layout,
             // which has alignment 1 and is valid for every bit pattern.
             unsafe impl PlainBytes for $t {}
         )*

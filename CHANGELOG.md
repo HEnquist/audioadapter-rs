@@ -9,6 +9,8 @@ the crates that were published, with only the changed crates shown.
 
 - Add the 8-bit byte-wrapper sample formats `I8` and `U8`
 - Support the 64-bit integer formats in `ConvertBytes`, which previously only covered `F64`
+- Mark the byte-wrapper sample formats as `#[repr(transparent)]`, so the layout the byte-based
+  constructors rely on is guaranteed rather than incidental
 
 ## 2026-07-31
 
