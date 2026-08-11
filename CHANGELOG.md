@@ -3,6 +3,12 @@
 Notable changes to the crates in this workspace. Each release is dated and lists
 the crates that were published, with only the changed crates shown.
 
+## Unreleased
+
+`audioadapter-sample` 5.2.0, `audioadapter-buffers` 5.2.0
+
+- Add the G.711 companded sample formats `ALAW` and `MULAW`
+
 ## 2026-08-05
 
 `audioadapter-sample` 5.1.0, `audioadapter-buffers` 5.1.0

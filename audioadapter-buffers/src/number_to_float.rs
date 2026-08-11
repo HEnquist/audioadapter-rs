@@ -68,10 +68,10 @@ use crate::slicetools::copy_within_slice;
 use crate::{check_slice_length, implement_size_getters};
 use audioadapter::{Adapter, AdapterMut};
 use audioadapter_sample::sample::{
-    BytesSample, F32_BE, F32_LE, F64_BE, F64_LE, I8, I16_BE, I16_LE, I24_4LJ_BE, I24_4LJ_LE,
-    I24_4RJ_BE, I24_4RJ_LE, I24_BE, I24_LE, I32_BE, I32_LE, I64_BE, I64_LE, RawSample, U8, U16_BE,
-    U16_LE, U24_4LJ_BE, U24_4LJ_LE, U24_4RJ_BE, U24_4RJ_LE, U24_BE, U24_LE, U32_BE, U32_LE, U64_BE,
-    U64_LE,
+    ALAW, BytesSample, F32_BE, F32_LE, F64_BE, F64_LE, I8, I16_BE, I16_LE, I24_4LJ_BE, I24_4LJ_LE,
+    I24_4RJ_BE, I24_4RJ_LE, I24_BE, I24_LE, I32_BE, I32_LE, I64_BE, I64_LE, MULAW, RawSample, U8,
+    U16_BE, U16_LE, U24_4LJ_BE, U24_4LJ_LE, U24_4RJ_BE, U24_4RJ_LE, U24_BE, U24_LE, U32_BE, U32_LE,
+    U64_BE, U64_LE,
 };
 
 /// A macro for creating a view of an immutable slice of bytes
@@ -146,7 +146,7 @@ macro_rules! impl_plainbytes {
 impl_plainbytes!(
     I8, U8, I16_LE, I16_BE, U16_LE, U16_BE, I24_LE, I24_BE, U24_LE, U24_BE, I24_4LJ_LE, I24_4LJ_BE,
     I24_4RJ_LE, I24_4RJ_BE, U24_4LJ_LE, U24_4LJ_BE, U24_4RJ_LE, U24_4RJ_BE, I32_LE, I32_BE, U32_LE,
-    U32_BE, I64_LE, I64_BE, U64_LE, U64_BE, F32_LE, F32_BE, F64_LE, F64_BE,
+    U32_BE, I64_LE, I64_BE, U64_LE, U64_BE, F32_LE, F32_BE, F64_LE, F64_BE, ALAW, MULAW,
 );
 
 /// A wrapper for a slice containing interleaved numerical samples.
@@ -688,6 +688,32 @@ mod tests {
         buffer.write_sample(1, 1, &-0.5).unwrap();
         buffer.write_sample(0, 2, &0.25).unwrap();
         buffer.write_sample(1, 2, &-0.25).unwrap();
+        assert_eq!(data, expected);
+    }
+
+    #[test]
+    fn read_mulaw_bytes_interleaved() {
+        // Silence, full scale negative, full scale positive.
+        let data: [u8; 6] = [0xff, 0x00, 0x80, 0xff, 0x00, 0x80];
+        let buffer = InterleavedNumbers::<&[MULAW], f32>::new_from_bytes(&data, 2, 3).unwrap();
+        assert_eq!(buffer.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(buffer.read_sample(1, 0).unwrap(), -32124.0 / 32768.0);
+        assert_eq!(buffer.read_sample(0, 1).unwrap(), 32124.0 / 32768.0);
+    }
+
+    #[test]
+    fn write_alaw_bytes_interleaved() {
+        // A-law has no code for silence, zero encodes to the smallest positive.
+        let expected: [u8; 6] = [0xd5, 0x2a, 0xaa, 0xd5, 0x2a, 0xaa];
+        let mut data = [0u8; 6];
+        let mut buffer =
+            InterleavedNumbers::<&mut [ALAW], f32>::new_from_bytes_mut(&mut data, 2, 3).unwrap();
+        buffer.write_sample(0, 0, &0.0).unwrap();
+        buffer.write_sample(1, 0, &-1.0).unwrap();
+        buffer.write_sample(0, 1, &1.0).unwrap();
+        buffer.write_sample(1, 1, &0.0).unwrap();
+        buffer.write_sample(0, 2, &-1.0).unwrap();
+        buffer.write_sample(1, 2, &1.0).unwrap();
         assert_eq!(data, expected);
     }
 
