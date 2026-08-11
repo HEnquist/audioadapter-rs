@@ -896,6 +896,14 @@ const MULAW_FIRST_SEGMENT_BITS: u32 = 6;
 /// The reference implementation searches a table of segment ends instead,
 /// which gives the same answer but is several times slower.
 ///
+/// Counting bits rather than searching a table is how the format was meant to
+/// be implemented. The segment is the position of the highest set bit, so any
+/// processor with an instruction for that can compute it directly. Texas
+/// Instruments describe this for the TMS320C54x in application note SPRA163A,
+/// "A-Law and mu-Law Companding Implementations Using the TMS320C54x", where
+/// the `EXP` instruction is used to avoid the table and save memory.
+/// See <https://www.ti.com/lit/an/spra163a/spra163a.pdf>, page 18.
+///
 /// Returns 8 or more when the value is past the last segment, which the
 /// callers treat as out of range.
 fn g711_segment(magnitude: i32, first_segment_bits: u32) -> u8 {
@@ -962,7 +970,10 @@ fn linear_to_mulaw(value: i16) -> u8 {
     let mut magnitude = i32::from(value) >> 2;
     // The sign is carried by the mask, which is applied at the end.
     let mask = if magnitude < 0 {
-        magnitude = -magnitude;
+        // The shift rounds towards negative infinity, so negating alone would
+        // land one step too high. Subtracting one compensates, and makes the
+        // negative half the mirror of the positive one.
+        magnitude = -magnitude - 1;
         0x7f
     } else {
         0xff
@@ -1665,6 +1676,41 @@ mod tests {
     test_g711_roundtrips!(roundtrip_MULAW, MULAW, 32124, [0x7f]);
 
     #[test]
+    fn g711_matches_reference_implementation() {
+        // Both directions of both formats are exhaustive, so this pins the
+        // conversions completely against an independent implementation.
+        //
+        // The authority is not that crate as such, it is the ITU G.191
+        // reference tools its tables and test vectors come from. If this test
+        // ever fails after an upgrade, check their side against G.191 before
+        // assuming ours is the side that drifted.
+        for byte in 0..=u8::MAX {
+            assert_eq!(
+                ALAW::from_slice(&[byte]).to_number(),
+                audio_codec_algorithms::decode_alaw(byte),
+                "A-law code word {byte:#04x}"
+            );
+            assert_eq!(
+                MULAW::from_slice(&[byte]).to_number(),
+                audio_codec_algorithms::decode_ulaw(byte),
+                "mu-law code word {byte:#04x}"
+            );
+        }
+        for number in i16::MIN..=i16::MAX {
+            assert_eq!(
+                ALAW::from_number(number).as_slice(),
+                [audio_codec_algorithms::encode_alaw(number)],
+                "A-law value {number}"
+            );
+            assert_eq!(
+                MULAW::from_number(number).as_slice(),
+                [audio_codec_algorithms::encode_ulaw(number)],
+                "mu-law value {number}"
+            );
+        }
+    }
+
+    #[test]
     #[allow(non_snake_case)]
     fn convert_ALAW_to_and_from_float() {
         assert_eq!(
@@ -1741,7 +1787,7 @@ mod tests {
         };
     }
 
-    // The measured worst cases are 16 and 35, so these are the exact bounds.
+    // The measured worst cases are 16 and 32, so these are the exact bounds.
     test_g711_accuracy!(accuracy_ALAW, ALAW, 16);
-    test_g711_accuracy!(accuracy_MULAW, MULAW, 35);
+    test_g711_accuracy!(accuracy_MULAW, MULAW, 32);
 }

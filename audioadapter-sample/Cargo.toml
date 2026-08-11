@@ -18,3 +18,7 @@ std = ["num-traits/std"]
 [dependencies]
 num-traits.workspace = true
 
+[dev-dependencies]
+# Only used to cross check the G.711 conversions against another implementation.
+audio-codec-algorithms.workspace = true
+
