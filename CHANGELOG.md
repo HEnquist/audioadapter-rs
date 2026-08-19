@@ -8,6 +8,8 @@ the crates that were published, with only the changed crates shown.
 `audioadapter-sample` 5.2.0, `audioadapter-buffers` 5.2.0
 
 - Add the G.711 companded sample formats `ALAW` and `MULAW`
+- `audioadapter-sample` has a new dependency on `audio-codec-algorithms`, which provides the
+  G.711 conversions
 
 ## 2026-08-05
 

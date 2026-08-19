@@ -17,8 +17,6 @@ std = ["num-traits/std"]
 
 [dependencies]
 num-traits.workspace = true
-
-[dev-dependencies]
-# Only used to cross check the G.711 conversions against another implementation.
+# Provides the G.711 A-law and mu-law conversions.
 audio-codec-algorithms.workspace = true
 

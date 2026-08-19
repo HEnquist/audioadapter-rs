@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types)]
 
+use audio_codec_algorithms::{decode_alaw, decode_ulaw, encode_alaw, encode_ulaw};
 use num_traits::{PrimInt, ToPrimitive, float::FloatCore};
 
 // ------ 8-bit integer formats ------
@@ -863,133 +864,14 @@ bytessample_for_newtype!(f64, F64_BE, from_be_bytes, to_be_bytes);
 
 // ----- G.711 companded formats -----
 //
-// The conversions follow the reference implementation from ITU-T G.711,
-// as published in the public domain `g711.c` by Sun Microsystems.
+// The conversions themselves are done by the `audio-codec-algorithms` crate.
+// Its decoding tables and test vectors come from the ITU-T G.191 reference
+// tools, and it verifies its encoders against them for every possible input.
+//
 // Both formats store the code word inverted, A-law with every other bit
 // flipped and mu-law fully complemented. This dates back to the analogue
 // telephone network, where it keeps the number of transitions on the line
 // high enough for clock recovery.
-
-/// Sign bit of a G.711 code word.
-const G711_SIGN_BIT: u8 = 0x80;
-/// Mask for the quantization bits of a G.711 code word.
-const G711_QUANT_MASK: u8 = 0x0f;
-/// Mask for the segment bits of a G.711 code word.
-const G711_SEG_MASK: u8 = 0x70;
-/// Number of bits to shift to get the segment number in place.
-const G711_SEG_SHIFT: u8 = 4;
-/// Bias added to a mu-law magnitude before encoding.
-const MULAW_BIAS: i32 = 0x84;
-/// Largest mu-law magnitude, in the scale used during encoding.
-const MULAW_CLIP: i32 = 8159;
-
-/// Number of bits in the first A-law segment, which ends at 0x1f.
-const ALAW_FIRST_SEGMENT_BITS: u32 = 5;
-/// Number of bits in the first mu-law segment, which ends at 0x3f.
-const MULAW_FIRST_SEGMENT_BITS: u32 = 6;
-
-/// Find the segment a magnitude belongs to.
-///
-/// The segments double in size, so segment `n` ends one below
-/// `1 << (first_segment_bits + n)`. Finding the segment is therefore the same
-/// as counting how many bits the magnitude has beyond the first segment.
-/// The reference implementation searches a table of segment ends instead,
-/// which gives the same answer but is several times slower.
-///
-/// Counting bits rather than searching a table is how the format was meant to
-/// be implemented. The segment is the position of the highest set bit, so any
-/// processor with an instruction for that can compute it directly. Texas
-/// Instruments describe this for the TMS320C54x in application note SPRA163A,
-/// "A-Law and mu-Law Companding Implementations Using the TMS320C54x", where
-/// the `EXP` instruction is used to avoid the table and save memory.
-/// See <https://www.ti.com/lit/an/spra163a/spra163a.pdf>, page 18.
-///
-/// Returns 8 or more when the value is past the last segment, which the
-/// callers treat as out of range.
-fn g711_segment(magnitude: i32, first_segment_bits: u32) -> u8 {
-    let bits = u32::BITS - (magnitude as u32).leading_zeros();
-    bits.saturating_sub(first_segment_bits) as u8
-}
-
-/// Decode an A-law code word to a linear value scaled to the [i16] range.
-fn alaw_to_linear(byte: u8) -> i16 {
-    let code = byte ^ 0x55;
-    let mut value = i32::from(code & G711_QUANT_MASK) << 4;
-    let segment = (code & G711_SEG_MASK) >> G711_SEG_SHIFT;
-    match segment {
-        0 => value += 8,
-        1 => value += 0x108,
-        _ => {
-            value += 0x108;
-            value <<= segment - 1;
-        }
-    }
-    if code & G711_SIGN_BIT != 0 {
-        value as i16
-    } else {
-        (-value) as i16
-    }
-}
-
-/// Encode a linear value scaled to the [i16] range as an A-law code word.
-fn linear_to_alaw(value: i16) -> u8 {
-    let mut magnitude = i32::from(value) >> 3;
-    // The sign is carried by the mask, which is applied at the end.
-    let mask = if magnitude >= 0 {
-        0xd5
-    } else {
-        magnitude = -magnitude - 1;
-        0x55
-    };
-    let segment = g711_segment(magnitude, ALAW_FIRST_SEGMENT_BITS);
-    if segment >= 8 {
-        // Out of range, use the largest magnitude.
-        return 0x7f ^ mask;
-    }
-    let shift = if segment < 2 { 1 } else { segment };
-    let code = (segment << G711_SEG_SHIFT) | ((magnitude >> shift) as u8 & G711_QUANT_MASK);
-    code ^ mask
-}
-
-/// Decode a mu-law code word to a linear value scaled to the [i16] range.
-fn mulaw_to_linear(byte: u8) -> i16 {
-    let code = !byte;
-    let mut value = (i32::from(code & G711_QUANT_MASK) << 3) + MULAW_BIAS;
-    value <<= (code & G711_SEG_MASK) >> G711_SEG_SHIFT;
-    // Note that the sign bit means the opposite of what it means in A-law,
-    // a set bit is a negative value here.
-    if code & G711_SIGN_BIT != 0 {
-        (MULAW_BIAS - value) as i16
-    } else {
-        (value - MULAW_BIAS) as i16
-    }
-}
-
-/// Encode a linear value scaled to the [i16] range as a mu-law code word.
-fn linear_to_mulaw(value: i16) -> u8 {
-    let mut magnitude = i32::from(value) >> 2;
-    // The sign is carried by the mask, which is applied at the end.
-    let mask = if magnitude < 0 {
-        // The shift rounds towards negative infinity, so negating alone would
-        // land one step too high. Subtracting one compensates, and makes the
-        // negative half the mirror of the positive one.
-        magnitude = -magnitude - 1;
-        0x7f
-    } else {
-        0xff
-    };
-    if magnitude > MULAW_CLIP {
-        magnitude = MULAW_CLIP;
-    }
-    magnitude += MULAW_BIAS >> 2;
-    let segment = g711_segment(magnitude, MULAW_FIRST_SEGMENT_BITS);
-    if segment >= 8 {
-        // Out of range, use the largest magnitude.
-        return 0x7f ^ mask;
-    }
-    let code = (segment << G711_SEG_SHIFT) | ((magnitude >> (segment + 1)) as u8 & G711_QUANT_MASK);
-    code ^ mask
-}
 
 macro_rules! bytessample_for_g711 {
     ($newtype:ident, $decode:ident, $encode:ident) => {
@@ -1024,8 +906,8 @@ macro_rules! bytessample_for_g711 {
     };
 }
 
-bytessample_for_g711!(ALAW, alaw_to_linear, linear_to_alaw);
-bytessample_for_g711!(MULAW, mulaw_to_linear, linear_to_mulaw);
+bytessample_for_g711!(ALAW, decode_alaw, encode_alaw);
+bytessample_for_g711!(MULAW, decode_ulaw, encode_ulaw);
 
 impl<V> RawSample for V
 where
@@ -1674,41 +1556,6 @@ mod tests {
     // and `0xff` is the one that encoding produces.
     test_g711_roundtrips!(roundtrip_ALAW, ALAW, 32256, []);
     test_g711_roundtrips!(roundtrip_MULAW, MULAW, 32124, [0x7f]);
-
-    #[test]
-    fn g711_matches_reference_implementation() {
-        // Both directions of both formats are exhaustive, so this pins the
-        // conversions completely against an independent implementation.
-        //
-        // The authority is not that crate as such, it is the ITU G.191
-        // reference tools its tables and test vectors come from. If this test
-        // ever fails after an upgrade, check their side against G.191 before
-        // assuming ours is the side that drifted.
-        for byte in 0..=u8::MAX {
-            assert_eq!(
-                ALAW::from_slice(&[byte]).to_number(),
-                audio_codec_algorithms::decode_alaw(byte),
-                "A-law code word {byte:#04x}"
-            );
-            assert_eq!(
-                MULAW::from_slice(&[byte]).to_number(),
-                audio_codec_algorithms::decode_ulaw(byte),
-                "mu-law code word {byte:#04x}"
-            );
-        }
-        for number in i16::MIN..=i16::MAX {
-            assert_eq!(
-                ALAW::from_number(number).as_slice(),
-                [audio_codec_algorithms::encode_alaw(number)],
-                "A-law value {number}"
-            );
-            assert_eq!(
-                MULAW::from_number(number).as_slice(),
-                [audio_codec_algorithms::encode_ulaw(number)],
-                "mu-law value {number}"
-            );
-        }
-    }
 
     #[test]
     #[allow(non_snake_case)]

@@ -27,7 +27,8 @@ Five kinds of crate, with a strict dependency direction:
   Keep it that way. `num-traits` is pulled in only by the optional `test-utils` feature, which
   exposes the generic trait-conformance helpers (`audioadapter::tests::test_float_adapter_mut_methods`
   and friends) that the other crates use in their own tests.
-- `audioadapter-sample` holds sample format conversion. Depends on `num-traits` only.
+- `audioadapter-sample` holds sample format conversion. Depends on `num-traits`, plus
+  `audio-codec-algorithms` for the G.711 A-law and mu-law conversions.
 - `audioadapter-buffers` holds buffer wrappers. Depends on the two above.
 - `compat/audioadapter-compat-*` implement the core traits for buffer types from foreign crates
   (`audio`, `symphonia`, `dasp`, `ndarray`, `nice-plug`). Each depends only on `audioadapter` plus
