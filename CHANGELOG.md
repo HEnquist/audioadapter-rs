@@ -3,7 +3,7 @@
 Notable changes to the crates in this workspace. Each release is dated and lists
 the crates that were published, with only the changed crates shown.
 
-## Unreleased
+## 2026-08-20
 
 `audioadapter-sample` 5.2.0, `audioadapter-buffers` 5.2.0
 
