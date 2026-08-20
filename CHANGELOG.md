@@ -3,6 +3,17 @@
 Notable changes to the crates in this workspace. Each release is dated and lists
 the crates that were published, with only the changed crates shown.
 
+## 2026-08-20
+
+`audioadapter-sample` 5.2.0, `audioadapter-buffers` 5.2.0,
+`audioadapter-compat-nice-plug` 2.0.0
+
+- Add the G.711 companded sample formats `ALAW` and `MULAW`
+- `audioadapter-sample` has a new dependency on `audio-codec-algorithms`, which provides the
+  G.711 conversions
+- Target `nice-plug-core` 0.3 in `audioadapter-compat-nice-plug`, which raises the MSRV of that
+  crate alone to 1.88. The other crates stay on 1.87.
+
 ## 2026-08-05
 
 `audioadapter-sample` 5.1.0, `audioadapter-buffers` 5.1.0

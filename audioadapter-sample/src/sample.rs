@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types)]
 
+use audio_codec_algorithms::{decode_alaw, decode_ulaw, encode_alaw, encode_ulaw};
 use num_traits::{PrimInt, ToPrimitive, float::FloatCore};
 
 // ------ 8-bit integer formats ------
@@ -183,6 +184,60 @@ pub struct F64_LE([u8; 8]);
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct F64_BE([u8; 8]);
+
+// ----- G.711 companded formats -----
+
+/// A-law companded sample, as defined by ITU-T G.711. Stored as 1 byte.
+/// A single byte has no byte order,
+/// so there are no little endian and big endian variants.
+///
+/// A-law fits the dynamic range of a 13 bit linear value into 8 bits,
+/// using a piecewise linear approximation of a logarithmic curve.
+/// The closest numeric type is [i16], and the decoded values are scaled
+/// to that range. The largest representable magnitude is 32256,
+/// so the range does not quite reach the limits of an [i16].
+/// A-law has no code for exact silence, the two smallest magnitudes
+/// are +8 and -8.
+///
+/// Note that [i16] is wider than the 256 values this format can represent,
+/// so unlike the linear formats, [`from_number`](BytesSample::from_number)
+/// quantizes and a number does not survive a roundtrip unchanged.
+/// Quantizing an already quantized value changes nothing further.
+///
+/// Note that a byte value of zero is not silence. It decodes to -5504.
+/// The A-law code for the smallest positive value is `0xD5`.
+///
+/// This is the format used for telephony in Europe and most of the world.
+/// It appears as `WAVE_FORMAT_ALAW` in wav files, as `PCMA` in RTP streams,
+/// and as `SND_PCM_FORMAT_A_LAW` in ALSA.
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct ALAW([u8; 1]);
+
+/// Mu-law companded sample, as defined by ITU-T G.711. Stored as 1 byte.
+/// A single byte has no byte order,
+/// so there are no little endian and big endian variants.
+///
+/// Mu-law fits the dynamic range of a 14 bit linear value into 8 bits,
+/// using a piecewise linear approximation of a logarithmic curve.
+/// The closest numeric type is [i16], and the decoded values are scaled
+/// to that range. The largest representable magnitude is 32124,
+/// so the range does not quite reach the limits of an [i16].
+///
+/// Note that [i16] is wider than the 256 values this format can represent,
+/// so unlike the linear formats, [`from_number`](BytesSample::from_number)
+/// quantizes and a number does not survive a roundtrip unchanged.
+/// Quantizing an already quantized value changes nothing further.
+///
+/// Note that a byte value of zero is not silence. It decodes to -32124.
+/// The mu-law code for silence is `0xFF`.
+///
+/// This is the format used for telephony in North America and Japan.
+/// It appears as `WAVE_FORMAT_MULAW` in wav files, as `PCMU` in RTP streams,
+/// and as `SND_PCM_FORMAT_MU_LAW` in ALSA.
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct MULAW([u8; 1]);
 
 /// Convert a float to an integer, clamp at the min and max limits of the integer.
 fn to_clamped_int<T: FloatCore + ToPrimitive, U: PrimInt>(
@@ -807,6 +862,53 @@ bytessample_for_newtype!(f32, F32_BE, from_be_bytes, to_be_bytes);
 bytessample_for_newtype!(f64, F64_LE, from_le_bytes, to_le_bytes);
 bytessample_for_newtype!(f64, F64_BE, from_be_bytes, to_be_bytes);
 
+// ----- G.711 companded formats -----
+//
+// The conversions themselves are done by the `audio-codec-algorithms` crate.
+// Its decoding tables and test vectors come from the ITU-T G.191 reference
+// tools, and it verifies its encoders against them for every possible input.
+//
+// Both formats store the code word inverted, A-law with every other bit
+// flipped and mu-law fully complemented. This dates back to the analogue
+// telephone network, where it keeps the number of transitions on the line
+// high enough for clock recovery.
+
+macro_rules! bytessample_for_g711 {
+    ($newtype:ident, $decode:ident, $encode:ident) => {
+        impl BytesSample for $newtype {
+            type NumericType = i16;
+            const BYTES_PER_SAMPLE: usize = 1;
+
+            fn zero() -> Self {
+                Self(Default::default())
+            }
+
+            fn from_slice(bytes: &[u8]) -> Self {
+                Self(bytes[0..1].try_into().unwrap())
+            }
+
+            fn as_slice(&self) -> &[u8] {
+                &self.0
+            }
+
+            fn as_mut_slice(&mut self) -> &mut [u8] {
+                &mut self.0
+            }
+
+            fn to_number(&self) -> Self::NumericType {
+                $decode(self.0[0])
+            }
+
+            fn from_number(value: Self::NumericType) -> Self {
+                Self([$encode(value)])
+            }
+        }
+    };
+}
+
+bytessample_for_g711!(ALAW, decode_alaw, encode_alaw);
+bytessample_for_g711!(MULAW, decode_ulaw, encode_ulaw);
+
 impl<V> RawSample for V
 where
     V: BytesSample,
@@ -1362,4 +1464,177 @@ mod tests {
         let wrapped = U24_4LJ_BE(bytes);
         assert_eq!(number, wrapped.to_number());
     }
+
+    // ----- G.711 companded formats -----
+    //
+    // The numeric type is wider than these formats, so the roundtrip property
+    // of the linear formats does not apply. A number does not survive a
+    // roundtrip unless it happens to be one of the 256 representable values.
+    // What does hold is that encoding is idempotent, and that every code word
+    // survives a roundtrip through its numeric value.
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_ALAW() {
+        assert_eq!(ALAW::BYTES_PER_SAMPLE, 1);
+
+        // A-law has no code for exact silence, the smallest magnitudes are +-8.
+        assert_eq!(ALAW::from_slice(&[0xd5]).to_number(), 8);
+        assert_eq!(ALAW::from_slice(&[0x55]).to_number(), -8);
+        assert_eq!(ALAW::from_number(0).as_slice(), [0xd5]);
+
+        // The largest representable magnitudes.
+        assert_eq!(ALAW::from_slice(&[0xaa]).to_number(), 32256);
+        assert_eq!(ALAW::from_slice(&[0x2a]).to_number(), -32256);
+
+        // An all zero byte is a valid code word, but it is not silence.
+        assert_eq!(ALAW::zero().to_number(), -5504);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_MULAW() {
+        assert_eq!(MULAW::BYTES_PER_SAMPLE, 1);
+
+        // Mu-law has two codes for silence, one per sign.
+        assert_eq!(MULAW::from_slice(&[0xff]).to_number(), 0);
+        assert_eq!(MULAW::from_slice(&[0x7f]).to_number(), 0);
+        assert_eq!(MULAW::from_number(0).as_slice(), [0xff]);
+
+        // The largest representable magnitudes. Note that the sign bit means
+        // the opposite of what it means in A-law.
+        assert_eq!(MULAW::from_slice(&[0x80]).to_number(), 32124);
+        assert_eq!(MULAW::from_slice(&[0x00]).to_number(), -32124);
+
+        // An all zero byte is a valid code word, but it is not silence.
+        assert_eq!(MULAW::zero().to_number(), -32124);
+    }
+
+    macro_rules! test_g711_roundtrips {
+        ($name:ident, $type:ident, $maxmagnitude:expr, $aliases:expr) => {
+            #[test]
+            #[allow(non_snake_case)]
+            fn $name() {
+                // Every code word survives a roundtrip via its numeric value,
+                // apart from any duplicate encoding of the same value.
+                for byte in 0..=u8::MAX {
+                    if $aliases.contains(&byte) {
+                        continue;
+                    }
+                    let number = $type::from_slice(&[byte]).to_number();
+                    assert_eq!(
+                        $type::from_number(number).as_slice(),
+                        [byte],
+                        "code word {byte:#04x} decoded to {number}"
+                    );
+                }
+
+                // Encoding is idempotent. Quantizing an already quantized
+                // value leaves it unchanged.
+                for number in (i16::MIN..=i16::MAX).step_by(7) {
+                    let once = $type::from_number(number).to_number();
+                    let twice = $type::from_number(once).to_number();
+                    assert_eq!(once, twice, "quantizing {number} is not stable");
+                }
+
+                // The decoded values never exceed the documented magnitude,
+                // and the format is symmetric around zero.
+                for byte in 0..=u8::MAX {
+                    let number = $type::from_slice(&[byte]).to_number();
+                    assert!(
+                        number.abs() <= $maxmagnitude,
+                        "code word {byte:#04x} decoded to {number}"
+                    );
+                    let mirrored = $type::from_slice(&[byte ^ 0x80]).to_number();
+                    assert_eq!(number, -mirrored, "code word {byte:#04x} is not symmetric");
+                }
+            }
+        };
+    }
+
+    // A-law encodes every value exactly once. Mu-law has two codes for zero,
+    // and `0xff` is the one that encoding produces.
+    test_g711_roundtrips!(roundtrip_ALAW, ALAW, 32256, []);
+    test_g711_roundtrips!(roundtrip_MULAW, MULAW, 32124, [0x7f]);
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn convert_ALAW_to_and_from_float() {
+        assert_eq!(
+            ALAW::from_slice(&[0xaa]).to_scaled_float::<f32>(),
+            32256.0 / 32768.0
+        );
+        assert_eq!(
+            ALAW::from_slice(&[0x2a]).to_scaled_float::<f32>(),
+            -32256.0 / 32768.0
+        );
+        assert!(ALAW::from_slice(&[0xd5]).to_scaled_float::<f32>().abs() < 0.001);
+
+        // Values outside -1.0 .. +1.0 clip, and land on the largest magnitude.
+        let converted = ALAW::from_scaled_float(1.5f32);
+        assert_eq!(converted.value.to_number(), 32256);
+        assert!(converted.clipped);
+
+        let converted = ALAW::from_scaled_float(-1.5f32);
+        assert_eq!(converted.value.to_number(), -32256);
+        assert!(converted.clipped);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn convert_MULAW_to_and_from_float() {
+        assert_eq!(
+            MULAW::from_slice(&[0x80]).to_scaled_float::<f32>(),
+            32124.0 / 32768.0
+        );
+        assert_eq!(
+            MULAW::from_slice(&[0x00]).to_scaled_float::<f32>(),
+            -32124.0 / 32768.0
+        );
+        assert_eq!(MULAW::from_slice(&[0xff]).to_scaled_float::<f32>(), 0.0);
+
+        // Values outside -1.0 .. +1.0 clip, and land on the largest magnitude.
+        let converted = MULAW::from_scaled_float(1.5f32);
+        assert_eq!(converted.value.to_number(), 32124);
+        assert!(converted.clipped);
+
+        let converted = MULAW::from_scaled_float(-1.5f32);
+        assert_eq!(converted.value.to_number(), -32124);
+        assert!(converted.clipped);
+    }
+
+    /// Check that the companding curve really is logarithmic, by verifying that
+    /// the error stays proportional to the value instead of being a fixed step.
+    ///
+    /// This only holds above the bottom of the range. Both curves have a linear
+    /// section around zero, where the step size stops shrinking and the relative
+    /// error grows without bound. That part is checked as an absolute error.
+    macro_rules! test_g711_accuracy {
+        ($name:ident, $type:ident, $smallerror:expr) => {
+            #[test]
+            #[allow(non_snake_case)]
+            fn $name() {
+                for value in (i16::MIN..=i16::MAX).step_by(3) {
+                    let encoded = $type::from_number(value).to_number();
+                    let error = (i32::from(encoded) - i32::from(value)).abs();
+                    if value.unsigned_abs() >= 1000 {
+                        let relative = f64::from(error) / f64::from(value.unsigned_abs());
+                        assert!(
+                            relative < 0.05,
+                            "relative error {relative} at {value} is too large, got {encoded}"
+                        );
+                    } else {
+                        assert!(
+                            error <= $smallerror,
+                            "error {error} at {value} is too large, got {encoded}"
+                        );
+                    }
+                }
+            }
+        };
+    }
+
+    // The measured worst cases are 16 and 32, so these are the exact bounds.
+    test_g711_accuracy!(accuracy_ALAW, ALAW, 16);
+    test_g711_accuracy!(accuracy_MULAW, MULAW, 32);
 }

@@ -31,6 +31,11 @@ Floating point samples are also supported, with 32 and 64 bits.
 For all multi-byte formats, both little-endian and big-endian representations are supported.
 The 8-bit formats are a single byte and therefore have no byte order.
 
+The two companded telephony formats from ITU-T G.711, A-law and mu-law, are also supported.
+These store a single byte per sample, and decode to the closest numeric type, `i16`.
+That type is wider than the format itself, which has some consequences,
+see the note below.
+
 When converting between integers and floating point, the value range of the integer
 is mapped to the floating point range of -1.0 to +1.0.
 If a floating point value outside this range is converted to integer,
@@ -96,6 +101,53 @@ let bytes = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
 for sample in bytes.chunks_exact(3) {
   let new_value: i32 = I24_LE::from_slice(sample).to_number();
   println!("{}", new_value);
+}
+```
+
+## Special note on the G.711 companded formats
+
+A-law and mu-law, defined by ITU-T G.711, are the sample formats of the telephone network.
+They are still the baseline of SIP and the PSTN, and also appear in `.wav` files
+as `WAVE_FORMAT_ALAW` and `WAVE_FORMAT_MULAW`.
+
+Both fit a wide dynamic range into a single byte by spacing the quantization steps
+logarithmically, finely near silence and coarsely near full scale.
+This keeps the relative error roughly constant across the range,
+which is what makes one byte per sample usable at all.
+A-law carries about 13 bits worth of range and mu-law about 14.
+For comparison, the linear `U8` format also uses one byte, but spaces its steps evenly,
+so it covers 8 bits of range and its quiet passages are far coarser.
+
+### The numeric type is wider than the format
+
+Every other format in this crate has a `NumericType` that holds exactly what the bytes hold.
+`U8` and [u8] carry the same information, so `from_number` followed by `to_number`
+returns the original value. Any loss happens later, when converting between numeric types.
+
+For A-law and mu-law the numeric type is [i16], which is wider than the 256 values
+the format can represent, so `from_number` itself quantizes. Converting a number to one of
+these formats and back does not return the original value. Converting the result a second
+time changes nothing further, so the quantization is at least stable.
+
+### An all-zero byte is not silence
+
+In A-law a zero byte decodes to -5504, and in mu-law to -32124, which is full scale negative.
+The code for silence is `0xD5` in A-law, which decodes to +8 rather than 0 since A-law has no
+code for exact zero, and `0xFF` in mu-law. Note also that the sign bit has opposite meanings
+in the two formats.
+
+### Example: read mu-law samples from raw bytes
+```rust
+use audioadapter_sample::sample::MULAW;
+use audioadapter_sample::sample::{BytesSample, RawSample};
+
+// Four mu-law samples: silence, full scale positive,
+// full scale negative, and silence again.
+let bytes = vec![0xff, 0x80, 0x00, 0xff];
+
+for sample in bytes.iter() {
+  let value: f32 = MULAW::from_slice(&[*sample]).to_scaled_float();
+  println!("{}", value);
 }
 ```
 

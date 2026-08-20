@@ -1,6 +1,6 @@
 [package]
 name = "audioadapter-sample"
-version = "5.1.0"
+version = "5.2.0"
 edition = "2024"
 rust-version = "1.87"
 authors = ["HEnquist <henrik.enquist@gmail.com>"]
@@ -17,4 +17,6 @@ std = ["num-traits/std"]
 
 [dependencies]
 num-traits.workspace = true
+# Provides the G.711 A-law and mu-law conversions.
+audio-codec-algorithms.workspace = true
 

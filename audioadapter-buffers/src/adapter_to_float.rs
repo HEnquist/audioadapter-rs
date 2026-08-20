@@ -212,6 +212,8 @@ byte_convert_traits_newtype!(F32_LE);
 byte_convert_traits_newtype!(F32_BE);
 byte_convert_traits_newtype!(F64_LE);
 byte_convert_traits_newtype!(F64_BE);
+byte_convert_traits_newtype!(ALAW);
+byte_convert_traits_newtype!(MULAW);
 
 /// A wrapper for an [Adapter] or [AdapterMut] buffer containing samples
 /// stored as numeric types.
@@ -482,6 +484,32 @@ mod tests {
         converter.write_sample(0, 2, &0.25).unwrap();
         converter.write_sample(1, 2, &-0.25).unwrap();
         assert_eq!(data, expected);
+    }
+
+    #[test]
+    fn read_write_mulaw_bytes() {
+        // Silence, full scale negative, full scale positive.
+        let data: [[u8; 1]; 6] = [[0xff], [0x00], [0x80], [0xff], [0x00], [0x80]];
+        let buffer: InterleavedSlice<&[[u8; 1]]> = InterleavedSlice::new(&data, 2, 3).unwrap();
+        let converter: ConvertBytes<f32, MULAW, _> =
+            ConvertBytes::<f32, MULAW, _>::new(&buffer as &dyn Adapter<[u8; 1]>);
+        assert_eq!(converter.read_sample(0, 0).unwrap(), 0.0);
+        assert_eq!(converter.read_sample(1, 0).unwrap(), -32124.0 / 32768.0);
+        assert_eq!(converter.read_sample(0, 1).unwrap(), 32124.0 / 32768.0);
+
+        // Writing the values back out reproduces the same code words.
+        let mut written = [[0u8; 1]; 6];
+        let mut target: InterleavedSlice<&mut [[u8; 1]]> =
+            InterleavedSlice::new_mut(&mut written, 2, 3).unwrap();
+        let mut writer: ConvertBytes<f32, MULAW, _> =
+            ConvertBytes::<f32, MULAW, _>::new_mut(&mut target as &mut dyn AdapterMut<[u8; 1]>);
+        for frame in 0..3 {
+            for channel in 0..2 {
+                let value = converter.read_sample(channel, frame).unwrap();
+                writer.write_sample(channel, frame, &value).unwrap();
+            }
+        }
+        assert_eq!(written, data);
     }
 
     #[test]
