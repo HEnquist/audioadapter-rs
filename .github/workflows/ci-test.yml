@@ -153,6 +153,11 @@ jobs:
       # `Cargo.lock` is not committed, so a fresh checkout always takes the
       # second path. Matching only "Unchanged" made every crate look up to date.
       - name: Check for new releases of the targeted crates
+        # The toolchain action sets CARGO_TERM_COLOR=always, which wraps the
+        # status verb in escape codes so that the anchored patterns below never
+        # match. This step reads cargo's output, so it wants it uncoloured.
+        env:
+          CARGO_TERM_COLOR: never
         run: |
           # `kind == null` is a normal dependency. Dev- and build-dependencies
           # are test and build scaffolding rather than crates a compat crate
