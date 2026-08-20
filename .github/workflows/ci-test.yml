@@ -147,7 +147,11 @@ jobs:
       # not interesting here. What needs a human is an update that cargo refuses
       # to make, either because it is semver-incompatible or because it needs a
       # newer Rust than the MSRV. `cargo update --dry-run --verbose` reports
-      # exactly those as "Unchanged <crate> vA (available: vB)".
+      # exactly those, but the verb depends on whether a lockfile already
+      # exists: "Unchanged <crate> vA (available: vB)" when updating one, and
+      # "Adding <crate> vA (available: vB)" when resolving from scratch.
+      # `Cargo.lock` is not committed, so a fresh checkout always takes the
+      # second path. Matching only "Unchanged" made every crate look up to date.
       - name: Check for new releases of the targeted crates
         run: |
           # `kind == null` is a normal dependency. Dev- and build-dependencies
@@ -161,14 +165,14 @@ jobs:
                      | .name' \
             | grep -v '^audioadapter' | sort -u || true)
           echo "Crates targeted by the compat crates: $(echo $targets | tr '\n' ' ')"
-          behind=$(cargo update --dry-run --verbose 2>&1 | grep 'Unchanged' || true)
+          behind=$(cargo update --dry-run --verbose 2>&1 | grep -E 'Unchanged|Adding' || true)
           for name in $targets; do
-            line=$(echo "$behind" | grep -E "^[[:space:]]*Unchanged $name v" || true)
+            line=$(echo "$behind" | grep -E "^[[:space:]]*(Unchanged|Adding) $name v" || true)
             if [ -z "$line" ]; then
               echo "$name: up to date"
               continue
             fi
-            versions=$(echo "$line" | sed -E 's/.*Unchanged ([^ ]+) v([^ ]+) \(available: v([^)]+)\).*/\2 \3/')
+            versions=$(echo "$line" | sed -E 's/.*(Unchanged|Adding) ([^ ]+) v([^ ]+) \(available: v([^)]+)\).*/\3 \4/')
             echo "::warning title=New release available ($name)::In use: ${versions% *}, available: ${versions#* }. Cargo cannot take this update on its own, so it needs a manual retarget."
             echo "- \`$name\`: in use ${versions% *}, available ${versions#* }. Cargo cannot take this update on its own, so it needs a manual retarget." >> "$RUNNER_TEMP/findings.md"
           done
