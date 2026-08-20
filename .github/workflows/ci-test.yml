@@ -47,12 +47,29 @@ jobs:
       # so that this job never disagrees with the manifests. Picking the lowest
       # also catches a crate that declares an older version than its
       # dependencies actually need, since `cargo` then refuses to build it.
+      #
+      # A compat crate follows whatever Rust the crate it targets needs, which
+      # can be newer than the rest of the workspace requires. That must not drag
+      # the MSRV of the other crates up with it, since raising theirs would mean
+      # releasing them all. Any crate declaring more than the lowest version is
+      # therefore skipped here. Those crates are not checked against their own
+      # `rust-version` yet.
       - name: Read MSRV
         id: msrv
         run: |
           version=$(grep -h '^rust-version' */Cargo.toml compat/*/Cargo.toml | cut -d '"' -f 2 | sort -V | head -1)
           echo "Lowest declared rust-version: $version"
+          excludes=""
+          for manifest in */Cargo.toml compat/*/Cargo.toml; do
+            declared=$(grep -m1 '^rust-version' "$manifest" | cut -d '"' -f 2)
+            if [ "$declared" != "$version" ]; then
+              name=$(grep -m1 '^name' "$manifest" | cut -d '"' -f 2)
+              echo "Skipping $name, it declares $declared"
+              excludes="$excludes --exclude $name"
+            fi
+          done
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "excludes=$excludes" >> "$GITHUB_OUTPUT"
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -60,7 +77,7 @@ jobs:
           toolchain: ${{ steps.msrv.outputs.version }}
 
       - name: Run cargo check
-        run: cargo check --workspace --all-targets --all-features
+        run: cargo check --workspace ${{ steps.msrv.outputs.excludes }} --all-targets --all-features
 
   publish_dry_run:
     name: Publish dry-run

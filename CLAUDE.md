@@ -106,7 +106,12 @@ A new byte-wrapper format needs edits in three places, and it is easy to miss th
   requires `audioadapter-sample` 5.1.0 for exactly this reason: it uses `I8` and `U8`, and a
   requirement of 5.0.0 would let a resolver pick a version that does not compile.
 - Edition 2024, MSRV 1.87 declared per crate as `rust-version`. The CI MSRV job reads the lowest
-  `rust-version` in the workspace, so bumping it means bumping every manifest.
+  `rust-version` in the workspace, so raising the MSRV of the whole family means bumping every
+  manifest, and therefore releasing every crate. A compat crate is allowed to declare more than the
+  rest, since it has to follow whatever Rust the crate it targets needs, and a target's MSRV must
+  not be able to force a release of the core crates. The MSRV job skips any crate declaring more
+  than the lowest, so those are currently not checked against their own `rust-version` at all.
+  `audioadapter-compat-nice-plug` is on 1.88, required by `nice-plug-core` 0.3.
 
 ### Releasing
 

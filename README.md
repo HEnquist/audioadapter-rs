@@ -67,8 +67,10 @@ Required checks (must pass):
 - `cargo test --workspace --no-default-features` - Runs tests with default features disabled.
 - `cargo fmt --all -- --check` - Verifies formatting matches `rustfmt` output.
 - `cargo clippy --workspace --all-targets --all-features -- -D warnings` - Runs Clippy and treats all lints as errors.
-- `cargo +1.87 check --workspace --all-targets --all-features` - Verifies that everything builds with the
-  oldest supported Rust version, the `rust-version` declared in the manifests.
+- `cargo +1.87 check --workspace --exclude audioadapter-compat-nice-plug --all-targets --all-features` -
+  Verifies that everything builds with the oldest supported Rust version, the lowest `rust-version`
+  declared in the manifests. A compat crate that needs a newer Rust than that, because the crate it
+  targets does, declares it in its own manifest and is excluded here.
 
 Publish dry-runs (warning-level checks):
 
